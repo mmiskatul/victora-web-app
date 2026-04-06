@@ -12,10 +12,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { Colors } from '../constants/Colors';
-import { AuthInput } from '../components/AuthInput';
-import { AuthButton } from '../components/AuthButton';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { Colors } from '../../constants/Colors';
+import { AuthInput } from '../../components/AuthInput';
+import { AuthButton } from '../../components/AuthButton';
+import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 
 const { height } = Dimensions.get('window');
 
@@ -37,7 +37,7 @@ export default function RegisterScreen() {
 
   return (
     <ImageBackground
-      source={require('../assets/images/gym-bg.png')}
+      source={require('../../assets/images/gym-bg.png')}
       style={styles.background}
       resizeMode="cover"
     >

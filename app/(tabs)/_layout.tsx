@@ -40,7 +40,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
-              <Ionicons name={focused ? 'chatbubble' : 'chatbubble-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
             </View>
           ),
         }}
@@ -50,7 +50,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
-              <Ionicons name={focused ? 'book' : 'book-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'restaurant' : 'restaurant-outline'} size={24} color={color} />
             </View>
           ),
         }}
@@ -60,7 +60,9 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
-              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+              <View style={styles.profileBadge}>
+                 <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+              </View>
             </View>
           ),
         }}
@@ -82,5 +84,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 240, 208, 0.12)',
     borderRadius: 16,
     padding: 8,
+  },
+  profileBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
