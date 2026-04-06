@@ -1,0 +1,15 @@
+export const Colors = {
+  primary: '#00F0D0',
+  primaryDark: '#00C4AA',
+  background: '#0D0D0D',
+  surface: '#1A1A2E',
+  inputBackground: 'rgba(30, 30, 50, 0.8)',
+  inputBorder: 'rgba(255, 255, 255, 0.15)',
+  text: '#FFFFFF',
+  textSecondary: 'rgba(255, 255, 255, 0.7)',
+  textMuted: 'rgba(255, 255, 255, 0.5)',
+  placeholder: 'rgba(255, 255, 255, 0.4)',
+  divider: 'rgba(255, 255, 255, 0.2)',
+  overlay: 'rgba(0, 0, 0, 0.65)',
+  googleButton: '#1A1A2E',
+};
