@@ -9,10 +9,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 28 * 2 - 12) / 2;
 
 // ── Greeting Card ──────────────────────────────────────────────
 function GreetingCard() {
@@ -80,47 +80,33 @@ function FeatureCards() {
   );
 }
 
-// ── Quick Action Icons ─────────────────────────────────────────
-function QuickActions() {
-  const actions = [
-    { icon: 'home-outline' as const, label: 'Home' },
-    { icon: 'barbell-outline' as const, label: 'Workout' },
-    { icon: 'chatbubble-outline' as const, label: 'Chat' },
-    { icon: 'book-outline' as const, label: 'Journal' },
-    { icon: 'person-outline' as const, label: 'Profile' },
-  ];
-
-  return (
-    <View style={styles.quickActionsRow}>
-      {actions.map((a, i) => (
-        <TouchableOpacity key={i} style={styles.quickActionItem}>
-          <Ionicons name={a.icon} size={22} color={Colors.textMuted} />
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
 
 // ── Mood / Journal Section ─────────────────────────────────────
 function MoodSection() {
+  const router = useRouter();
   const emojis = ['😡', '😟', '😐', '😊', '🤩'];
 
   return (
-    <View style={styles.moodSection}>
-      <View style={styles.moodHeader}>
-        <View style={styles.moodBubble}>
-          <Text style={styles.moodBubbleText}>tomorrow?</Text>
-        </View>
-        <TouchableOpacity style={styles.journalButton}>
-          <Text style={styles.journalButtonText}>Write in Journal</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <Text style={styles.moodQuestion}>How are you feeling right now?</Text>
-      <View style={styles.emojiRow}>
+    <View style={styles.moodCard}>
+      <Text style={styles.moodTitle}>Your Mindful Moment</Text>
+      <Text style={styles.moodSubtitle}>
+        What is one thing you will do for your well-being tomorrow?
+      </Text>
+
+      <TouchableOpacity
+        style={styles.journalActionBtn}
+        onPress={() => router.push('/journal')}
+      >
+        <Text style={styles.journalActionText}>Write in Journal</Text>
+      </TouchableOpacity>
+
+      <View style={styles.moodDivider} />
+
+      <Text style={styles.moodPromptText}>How are you feeling right now?</Text>
+      <View style={styles.moodEmojiRow}>
         {emojis.map((e, i) => (
-          <TouchableOpacity key={i} style={styles.emojiItem}>
-            <Text style={styles.emojiText}>{e}</Text>
+          <TouchableOpacity key={i} style={styles.moodEmojiBtn}>
+            <Text style={styles.moodEmojiText}>{e}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -150,106 +136,156 @@ function WorkoutSection() {
 }
 
 // ── Challenges Section ─────────────────────────────────────────
+function ChallengeCard({ title, points, description, participants }: { title: string, points: string, description: string, participants: number }) {
+  return (
+    <View style={styles.challengeCard}>
+      <View style={styles.challengeCardHeader}>
+        <Text style={styles.challengeCardTitle}>{title}</Text>
+        <View style={styles.pointsBadge}>
+          <Text style={styles.pointsText}>+{points} Pts.</Text>
+        </View>
+      </View>
+
+      <View style={styles.activeStatusRow}>
+        <View style={styles.activeDot} />
+        <Text style={styles.activeText}>ACTIVE</Text>
+      </View>
+
+      <Text style={styles.challengeDescription}>
+        {description}
+      </Text>
+
+      <View style={styles.challengeDivider} />
+
+      <View style={styles.challengeFooter}>
+        <View style={styles.footerInfo}>
+          <View style={styles.participantInfo}>
+            <Ionicons name="people-outline" size={16} color={Colors.textMuted} />
+            <Text style={styles.footerText}>{participants}</Text>
+          </View>
+          <TouchableOpacity style={styles.chatAction}>
+            <Ionicons name="chatbubble-outline" size={16} color={Colors.textMuted} />
+            <Text style={styles.footerText}>Chat</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.cardInviteBtn}>
+          <Text style={styles.cardInviteBtnText}>Invite</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 function ChallengesSection() {
+  const challenges = [
+    {
+      title: "3-Day Screen-Free Dinner",
+      points: "75",
+      description: "Enjoy eating as a family without any digital screens at the table to foster connection.",
+      participants: 4,
+    },
+    {
+      title: "Morning Ritual",
+      points: "50",
+      description: "Set a peaceful tone for your day by completing a 10-minute meditation before 8 AM.",
+      participants: 12,
+    }
+  ];
+
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>YOUR CHALLENGES</Text>
-        <TouchableOpacity style={styles.inviteFriendsBtnSmall}>
-          <Text style={styles.inviteFriendsBtnTextSmall}>Invite Friends</Text>
+        <TouchableOpacity style={styles.headerInviteBtn}>
+          <Text style={styles.headerInviteBtnText}>Invite Friends</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Challenge Table */}
-      <View style={styles.challengeTable}>
-        <View style={styles.challengeRow}>
-           <Text style={[styles.challengeCell, { flex: 0.2, color: Colors.textMuted }]}>#</Text>
-          <Text style={[styles.challengeCell, { color: Colors.textMuted }]}>table</Text>
-          <Text style={[styles.challengeCell, { flex: 0.3 }]}></Text>
-        </View>
-        
-        <View style={styles.challengeRow}>
-          <View style={{ flex: 0.2 }}>
-             <Ionicons name="home" size={16} color={Colors.primary} />
-          </View>
-          <Text style={styles.challengeCell}>Op Club</Text>
-          <TouchableOpacity style={styles.challengeInviteBtn}>
-            <Text style={styles.challengeInviteBtnText}>invite</Text>
-          </TouchableOpacity>
-        </View>
-
-         <View style={[styles.challengeRow, { borderBottomWidth: 0 }]}>
-          <View style={{ flex: 0.2 }}>
-             <Ionicons name="barbell" size={16} color={Colors.textMuted} />
-          </View>
-          <Text style={styles.challengeCell}>Champions League</Text>
-          <TouchableOpacity style={[styles.challengeInviteBtn, { backgroundColor: '#333' }]}>
-            <Text style={[styles.challengeInviteBtnText, { color: '#fff' }]}>join</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.challengesScroll}
+        snapToInterval={width - 48}
+        decelerationRate="fast"
+        snapToAlignment="start"
+      >
+        {challenges.map((c, i) => (
+          <ChallengeCard key={i} {...c} />
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
 // ── Accountability / Streak Section ────────────────────────────
 function AccountabilitySection() {
-  const days = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-  const completedDays = [true, true, false, true, true, false, false];
+  const days = [
+    { name: 'MON', active: true },
+    { name: 'TUE', active: true },
+    { name: 'WED', active: true },
+    { name: 'THU', active: true },
+    { name: 'FRI', active: true },
+    { name: 'SAT', active: false },
+    { name: 'SUN', active: false },
+  ];
 
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={styles.accountabilityTitle}>Accountability</Text>
         <View style={styles.accountabilityIcons}>
-          <Ionicons name="chatbox" size={20} color={Colors.primary} />
-          <Ionicons name="add" size={20} color={Colors.textSecondary} style={{ marginLeft: 10 }} />
+          <Ionicons name="chatbubble-outline" size={24} color={Colors.primary} />
+          <Ionicons name="add" size={24} color={Colors.textMuted} style={{ marginLeft: 16 }} />
         </View>
       </View>
-      
-      <View style={styles.streakCard}>
-        <View style={styles.streakTopRow}>
-          <View style={styles.streakInfo}>
-            <View style={styles.streakIconCircle}>
-              <Ionicons name="add" size={16} color="#fff" />
+
+      <View style={styles.accountabilityCard}>
+        <View style={styles.accountabilityTopRow}>
+          <View style={styles.streakWrapper}>
+            <View style={styles.streakAddBtn}>
+              <Ionicons name="add" size={24} color="#FF4D4D" />
             </View>
-            <View style={{ marginLeft: 10 }}>
-              <Text style={styles.streakLabel}>STREAK</Text>
-              <Text style={styles.streakDays}>3 Days</Text>
+            <View style={{ marginLeft: 16 }}>
+              <Text style={styles.streakSub}>STREAK</Text>
+              <Text style={styles.streakVal}>0 Days</Text>
             </View>
           </View>
-          <View style={styles.streakRiskBadge}>
-            <Text style={styles.streakRiskText}>STREAK AT RISK!</Text>
+
+          <TouchableOpacity style={styles.atRiskBtn} activeOpacity={0.8}>
+            <Text style={styles.atRiskText}>STREAK AT RISK!</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.milestoneContainer}>
+          <View style={styles.milestoneTextRow}>
+            <Text style={styles.milestoneLabel}>NEXT MILESTONE: 3 DAYS</Text>
+            <Text style={styles.milestonePercent}>0%</Text>
+          </View>
+          <View style={styles.dividerSubtle} />
+          <View style={styles.modernProgressBg}>
+            <View style={[styles.modernProgressFill, { width: '0%' }]} />
           </View>
         </View>
 
-        <View style={styles.milestoneRow}>
-          <Text style={styles.milestoneLabel}>NEXT MILESTONE: 7 DAYS</Text>
-          <Text style={styles.milestonePercent}>43%</Text>
-        </View>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFill, { width: '43%' }]} />
-        </View>
-
-        <View style={styles.daysRow}>
+        <View style={styles.modernDaysRow}>
           {days.map((d, i) => (
-            <View key={i} style={styles.dayItem}>
-              <Text style={[styles.dayLabel, completedDays[i] && styles.dayLabelActive]}>
-                {d}
+            <View key={i} style={styles.modernDayItem}>
+              <Text style={[styles.modernDayLabel, d.active && { color: Colors.primary }]}>
+                {d.name}
               </Text>
-              <View
-                style={[
-                  styles.dayDot,
-                  completedDays[i] && styles.dayDotActive,
-                ]}
-              />
+              <View style={[styles.modernDayDot, d.active && styles.modernDayDotActive]} />
             </View>
           ))}
         </View>
 
-        <View style={styles.championsRow}>
-           <Text style={styles.championsText}>
-            🏆🏆🏆 <Text style={{ color: Colors.primary }}>1,246</Text> CHAMPIONS TRAINING TODAY
+        <View style={styles.championsBannerPill}>
+          <View style={styles.avatarStack}>
+            <View style={[styles.avatarMini, { backgroundColor: '#444' }]} />
+            <View style={[styles.avatarMini, { backgroundColor: '#666', marginLeft: -8 }]} />
+            <View style={[styles.avatarMini, { backgroundColor: '#888', marginLeft: -8 }]} />
+          </View>
+          <Text style={styles.championsBannerText}>
+            <Text style={{ color: Colors.primary, fontWeight: '700' }}>1,270</Text> CHAMPIONS TRAINING TODAY
           </Text>
         </View>
       </View>
@@ -261,21 +297,27 @@ function AccountabilitySection() {
 function InviteFriendsCard() {
   return (
     <LinearGradient
-      colors={['#2D1B4E', '#1A1A3E']}
-      style={styles.inviteCard}
+      colors={['#6C3DE8', '#3730A3']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.premiumInviteCard}
     >
-      <View style={styles.invitePointsBadge}>
-        <Text style={styles.invitePointsText}>+100 Pts</Text>
+      <View style={styles.inviteTopRow}>
+        <View style={styles.inviteFriendsIcon}>
+          <Ionicons name="people-outline" size={28} color="rgba(255,255,255,0.85)" />
+        </View>
+        <View style={styles.goldBadge}>
+          <Text style={styles.goldBadgeText}>+100 Pts</Text>
+        </View>
       </View>
-      <View style={styles.inviteIconCircle}>
-        <FontAwesome5 name="users" size={20} color="#8B5CF6" />
-      </View>
-      <Text style={styles.inviteHeading}>Don't train alone!</Text>
-      <Text style={styles.inviteDesc}>
+
+      <Text style={styles.premiumInviteTitle}>Don't train alone!</Text>
+      <Text style={styles.premiumInviteDesc}>
         Bring your friends to Victory Fitness. Motivate each other and earn points for the next rank.
       </Text>
-      <TouchableOpacity style={styles.inviteBtn}>
-        <Text style={styles.inviteBtnText}>Invite Friends</Text>
+
+      <TouchableOpacity style={styles.premiumInviteBtn} activeOpacity={0.85}>
+        <Text style={styles.premiumInviteBtnText}>Invite Friends</Text>
       </TouchableOpacity>
     </LinearGradient>
   );
@@ -297,7 +339,6 @@ export default function HomeScreen() {
 
         <GreetingCard />
         <FeatureCards />
-        <QuickActions />
         <MoodSection />
         <WorkoutSection />
         <ChallengesSection />
@@ -441,67 +482,68 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 
-  /* Mood */
-  moodSection: {
+  /* Mood Card */
+  moodCard: {
+    backgroundColor: '#151528',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  moodTitle: {
+    color: Colors.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 12,
+  },
+  moodSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
     marginBottom: 24,
   },
-  moodHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  moodBubble: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  moodBubbleText: {
-    color: Colors.textSecondary,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  journalButton: {
+  journalActionBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    flex: 1,
-    marginLeft: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
     alignItems: 'center',
+    marginBottom: 20,
   },
-  journalButtonText: {
+  journalActionText: {
     color: '#000',
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter_700Bold',
   },
-  moodQuestion: {
-    color: Colors.textSecondary,
+  moodDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 20,
+  },
+  moodPromptText: {
+    color: Colors.textMuted,
     fontSize: 14,
-    marginBottom: 16,
     textAlign: 'center',
+    marginBottom: 20,
     fontFamily: 'Inter_400Regular',
   },
-  emojiRow: {
+  moodEmojiRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 8,
   },
-  emojiItem: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#1E1E1E',
+  moodEmojiBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
   },
-  emojiText: {
-    fontSize: 24,
+  moodEmojiText: {
+    fontSize: 28,
   },
 
   /* Workout */
@@ -519,6 +561,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.primary,
     letterSpacing: 1.5,
+    paddingTop: 10,
+    paddingBottom: 10,
     fontFamily: 'Inter_700Bold',
     textTransform: 'uppercase',
   },
@@ -577,243 +621,366 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
   },
 
-  /* Challenges */
-  inviteFriendsBtnSmall: {
-    backgroundColor: '#4C86FF',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  /* Challenges Redesign */
+  challengesScroll: {
+    paddingRight: 20,
+    marginBottom: 8,
   },
-  inviteFriendsBtnTextSmall: {
+  challengeCard: {
+    backgroundColor: '#1E1E2E',
+    borderRadius: 24,
+    padding: 24,
+    width: width - 64,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  challengeCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  challengeCardTitle: {
     color: '#fff',
+    fontSize: 18,
     fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    flex: 1,
+  },
+  pointsBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginLeft: 8,
+  },
+  pointsText: {
+    color: '#000',
     fontSize: 12,
+    fontWeight: '700',
     fontFamily: 'Inter_700Bold',
   },
-  challengeTable: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 16,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  challengeRow: {
+  activeStatusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 16,
   },
-  challengeCell: {
-    flex: 1,
-    color: '#fff',
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
+    marginRight: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  activeText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textShadowColor: 'rgba(0, 240, 208, 0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  challengeDescription: {
+    color: Colors.textSecondary,
     fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
     fontFamily: 'Inter_400Regular',
   },
-  challengeInviteBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+  challengeDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 16,
   },
-  challengeInviteBtnText: {
-    color: '#000',
+  challengeFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  participantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  chatAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  cardInviteBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardInviteBtnText: {
+    color: '#fff',
     fontWeight: '700',
-    fontSize: 12,
-    fontFamily: 'Inter_700Bold',
+    fontSize: 13,
+  },
+  headerInviteBtn: {
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  headerInviteBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 
-  /* Accountability */
+  /* Accountability Redesign */
   accountabilityTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#fff',
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.primary,
     fontFamily: 'Inter_700Bold',
   },
   accountabilityIcons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  streakCard: {
-    backgroundColor: '#1E1E1E',
+  accountabilityCard: {
+    backgroundColor: '#1E2530',
     borderRadius: 20,
-    padding: 20,
+    padding: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  streakTopRow: {
+  accountabilityTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  streakInfo: {
+  streakWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  streakIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+  streakAddBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: '#2A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 77, 77, 0.2)',
   },
-  streakLabel: {
+  streakSub: {
     color: Colors.textMuted,
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  streakNumber: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  streakDays: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 20,
-    fontFamily: 'Inter_700Bold',
-  },
-  streakRiskBadge: {
-    backgroundColor: '#FF3B5C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  streakRiskText: {
-    color: '#fff',
-    fontWeight: '700',
     fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  streakVal: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
     fontFamily: 'Inter_700Bold',
   },
-  milestoneRow: {
+  atRiskBtn: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  atRiskText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    fontFamily: 'Inter_700Bold',
+  },
+  milestoneContainer: {
+    marginBottom: 24,
+  },
+  milestoneTextRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  dividerSubtle: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginVertical: 16,
   },
   milestoneLabel: {
     color: Colors.textMuted,
-    fontSize: 11,
-    fontFamily: 'Inter_400Regular',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   milestonePercent: {
     color: Colors.primary,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 3,
-    marginBottom: 20,
+  modernProgressBg: {
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 4,
+    overflow: 'hidden',
   },
-  progressBarFill: {
-    height: 6,
+  modernProgressFill: {
+    height: '100%',
     backgroundColor: Colors.primary,
-    borderRadius: 3,
+    borderRadius: 4,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
-  daysRow: {
+  modernDaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    marginBottom: 24,
   },
-  dayItem: {
+  modernDayItem: {
     alignItems: 'center',
   },
-  dayLabel: {
+  modernDayLabel: {
     color: Colors.textMuted,
-    fontSize: 10,
-    fontFamily: 'Inter_400Regular',
+    fontSize: 11,
+    fontWeight: '700',
     marginBottom: 8,
   },
-  dayLabelActive: {
-    color: Colors.primary,
-  },
-  dayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  modernDayDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  dayDotActive: {
+  modernDayDotActive: {
     backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  championsRow: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+  championsBannerPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 12,
+    justifyContent: 'center',
   },
-  championsText: {
-    color: Colors.textMuted,
+  avatarStack: {
+    flexDirection: 'row',
+    marginRight: 12,
+  },
+  avatarMini: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#151528',
+  },
+  championsBannerText: {
+    color: Colors.textSecondary,
     fontSize: 12,
-    textAlign: 'center',
-    fontFamily: 'Inter_400Regular',
+    fontWeight: '500',
   },
 
-  /* Invite Friends Card */
-  inviteCard: {
+  /* Premium Invite Card */
+  premiumInviteCard: {
     borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
+    marginBottom: 24,
+    overflow: 'hidden',
   },
-  invitePointsBadge: {
-    backgroundColor: '#FFD700',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    alignSelf: 'flex-end',
-    position: 'absolute',
-    top: 20,
-    right: 20,
-  },
-  invitePointsText: {
-    color: '#000',
-    fontWeight: '700',
-    fontSize: 11,
-    fontFamily: 'Inter_700Bold',
-  },
-  inviteIconCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  inviteTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  inviteHeading: {
-    fontSize: 22,
-    fontWeight: '700',
+  inviteFriendsIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  goldBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  goldBadgeText: {
+    color: '#000',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  premiumInviteTitle: {
+    fontSize: 20,
+    fontWeight: '800',
     color: '#fff',
     marginBottom: 10,
     fontFamily: 'Inter_700Bold',
   },
-  inviteDesc: {
+  premiumInviteDesc: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: 21,
+    marginBottom: 20,
     fontFamily: 'Inter_400Regular',
   },
-  inviteBtn: {
-    backgroundColor: '#4C86FF',
-    borderRadius: 12,
-    paddingHorizontal: 40,
-    paddingVertical: 16,
+  premiumInviteBtn: {
+    backgroundColor: '#4F8EF7',
+    borderRadius: 14,
+    paddingVertical: 15,
     width: '100%',
     alignItems: 'center',
+    shadowColor: '#4F8EF7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  inviteBtnText: {
+  premiumInviteBtnText: {
     color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
+    fontSize: 16,
+    fontWeight: '800',
     fontFamily: 'Inter_700Bold',
   },
 });
