@@ -40,7 +40,7 @@ export default function TabsLayout() {
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
-              <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'trophy' : 'trophy-outline'} size={24} color={color} />
             </View>
           ),
         }}

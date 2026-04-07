@@ -323,7 +323,7 @@ function InviteFriendsCard() {
   );
 }
 
-// ── Main Home Screen ───────────────────────────────────────────
+// ── Main Home Screen ───────────────────────────────────────
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
