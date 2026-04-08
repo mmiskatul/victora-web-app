@@ -133,12 +133,100 @@ const MEAL_PLAN: Record<string, DayPlan> = {
   },
 };
 
+/* ── Weekly Shopping List Data ── */
+const SHOPPING_LIST = [
+  {
+    category: 'Produce',
+    items: [
+      { name: 'Mixed Berries',          qty: '30g' },
+      { name: 'Carrots',                qty: '2 medium' },
+      { name: 'Celery',                 qty: '1 bunch' },
+      { name: 'Mixed Stir-fry Veggies', qty: '50g' },
+      { name: 'Apples',                 qty: '1' },
+      { name: 'Cucumber',               qty: '1' },
+      { name: 'Cherry Tomatoes',         qty: '1 small box' },
+      { name: 'Sweet Corn',             qty: '30g' },
+      { name: 'Tomato',                 qty: '1' },
+      { name: 'Sweet Potatoes',         qty: '2 medium' },
+      { name: 'Mixed Peas and Carrots', qty: '40g' },
+      { name: 'Bananas',                qty: '3' },
+      { name: 'Zucchini',               qty: '1 large' },
+      { name: 'Bell Pepper',            qty: '1' },
+      { name: 'Pear',                   qty: '1' },
+      { name: 'Potatoes',               qty: '1' },
+      { name: 'Broccoli',               qty: '1 small head' },
+    ],
+  },
+  {
+    category: 'Dairy & Alternatives',
+    items: [
+      { name: 'Milk (or plant-based)', qty: '200ml' },
+      { name: 'Greek Yogurt',          qty: '120g' },
+      { name: 'Cheddar Cheese',        qty: '10g' },
+      { name: 'Butter',                qty: '10g' },
+      { name: 'Feta Cheese',           qty: '20g' },
+      { name: 'Cottage Cheese',        qty: '50g' },
+      { name: 'Parmesan Cheese',       qty: '10g' },
+      { name: 'Eggs',                  qty: '2 large' },
+    ],
+  },
+  {
+    category: 'Proteins',
+    items: [
+      { name: 'Firm Tofu', qty: '90g' },
+    ],
+  },
+  {
+    category: 'Pantry & Grains',
+    items: [
+      { name: 'Gluten-free Oats',         qty: '60g' },
+      { name: 'Cooked Lentils',           qty: '50g' },
+      { name: 'Vegetable Broth',          qty: '150ml' },
+      { name: 'White Rice',               qty: '150g (uncooked weight equiv)' },
+      { name: 'Olive Oil',                qty: '1 small bottle' },
+      { name: 'Soy Sauce',               qty: '1 small bottle' },
+      { name: 'Cooked Chickpeas',         qty: '50g' },
+      { name: 'Black Beans',              qty: '60g' },
+      { name: 'Pinto Beans',             qty: '80g' },
+      { name: 'Quinoa',                   qty: '80g (uncooked weight equiv)' },
+      { name: 'Gluten-free Crackers',     qty: '1 box' },
+      { name: 'Coconut Milk',             qty: '30ml' },
+      { name: 'Gluten-free Pancake Mix',  qty: '30g' },
+      { name: 'Tomato Broth',             qty: '150ml' },
+      { name: 'Kidney Beans',             qty: '30g' },
+      { name: 'Mixed Beans',             qty: '60g' },
+    ],
+  },
+  {
+    category: 'Spices & Condiments',
+    items: [
+      { name: 'Sesame Oil',         qty: '1 small bottle' },
+      { name: 'Honey',              qty: '1 small jar' },
+      { name: 'Apple Cider Vinegar',qty: '1 small bottle' },
+      { name: 'Lemon Juice',        qty: '1 small bottle' },
+      { name: 'Cinnamon',           qty: '1 small jar' },
+      { name: 'Mild Curry Powder',  qty: '1 small jar' },
+      { name: 'Paprika',            qty: '1 small jar' },
+    ],
+  },
+];
+
 /* ── MealPlanResult Component ── */
 function MealPlanResult({ goal }: { goal: string | null }) {
-  const [planTab, setPlanTab]     = useState('My Plan');
-  const [activeDay, setActiveDay] = useState('Mon');
-  const [expanded, setExpanded]   = useState<Record<string, boolean>>({});
-  const [mealSearch, setMealSearch] = useState('');
+  const [planTab, setPlanTab]           = useState('My Plan');
+  const [activeDay, setActiveDay]       = useState('Mon');
+  const [expanded, setExpanded]         = useState<Record<string, boolean>>({});
+  const [mealSearch, setMealSearch]     = useState('');
+  const [showShopping, setShowShopping] = useState(false);
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+
+  const toggleCheck = (key: string) => {
+    setCheckedItems(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   const toggleExpand = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -195,6 +283,91 @@ function MealPlanResult({ goal }: { goal: string | null }) {
     );
   };
 
+  /* Shopping List Screen */
+  if (showShopping) {
+    const totalItems   = SHOPPING_LIST.reduce((s, cat) => s + cat.items.length, 0);
+    const checkedCount = checkedItems.size;
+    return (
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.slHeader}>
+          <TouchableOpacity onPress={() => setShowShopping(false)} style={styles.slBackBtn}>
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.slTitle}>Weekly Shopping List</Text>
+            <Text style={styles.slSubtitle}>{checkedCount} of {totalItems} items checked</Text>
+          </View>
+          <TouchableOpacity onPress={() => setCheckedItems(new Set())} style={styles.slClearBtn}>
+            <Text style={styles.slClearText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Progress */}
+        <View style={styles.slProgressBg}>
+          <LinearGradient
+            colors={['#A855F7', '#C026D3']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.slProgressFill, { width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%` as any }]}
+          />
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.slScroll}>
+          {SHOPPING_LIST.map((section) => (
+            <View key={section.category}>
+              {/* Category Header */}
+              <Text style={styles.slCategoryHeader}>{section.category}</Text>
+              <View style={styles.slSection}>
+                {section.items.map((item, i) => {
+                  const key = `${section.category}-${item.name}`;
+                  const checked = checkedItems.has(key);
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.slRow, i !== section.items.length - 1 && styles.slRowBorder]}
+                      onPress={() => toggleCheck(key)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.slCheckBox, checked && styles.slCheckBoxActive]}>
+                        {checked && <Ionicons name="checkmark" size={12} color="#fff" />}
+                      </View>
+                      <Text style={[styles.slItemName, checked && styles.slItemNameChecked]}>
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.slItemQty, checked && styles.slItemQtyChecked]}>
+                        {item.qty}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          ))}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        {/* Fixed Copy List Button */}
+        <View style={styles.slBottomBar}>
+          <TouchableOpacity
+            style={styles.slCopyBtn}
+            activeOpacity={0.85}
+            onPress={() => {}}
+          >
+            <LinearGradient
+              colors={['#D946EF', '#A855F7']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.slCopyBtnGrad}
+            >
+              <Text style={styles.slCopyBtnText}>Copy List</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -244,7 +417,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
             <MealCard label="Breakfast" meal={day.breakfast} expandKey={`${activeDay}-b`} />
             <MealCard label="Lunch"     meal={day.lunch}     expandKey={`${activeDay}-l`} />
             <MealCard label="Dinner"    meal={day.dinner}    expandKey={`${activeDay}-d`} />
-            <TouchableOpacity style={styles.shoppingBtn} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.shoppingBtn} activeOpacity={0.85} onPress={() => setShowShopping(true)}>
               <LinearGradient colors={['#A855F7', '#C026D3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shoppingBtnGrad}>
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
               </LinearGradient>
@@ -692,4 +865,60 @@ const styles = StyleSheet.create({
   analysisEmptyCard: { backgroundColor: '#13132A', borderRadius: 16, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   analysisEmptyText: { color: 'rgba(255,255,255,0.5)', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold', marginTop: 14, marginBottom: 8 },
   analysisEmptySub: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
+
+  /* ── Shopping List ── */
+  slHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 56, paddingBottom: 16, backgroundColor: Colors.background },
+  slBackBtn: { padding: 4 },
+  slTitle: { fontSize: 16, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold' },
+  slSubtitle: { fontSize: 12, color: Colors.textMuted, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  slClearBtn: { padding: 8 },
+  slClearText: { color: '#A855F7', fontSize: 13, fontFamily: 'Inter_400Regular' },
+  slProgressBg: { height: 4, backgroundColor: 'rgba(255,255,255,0.1)', width: '100%' },
+  slProgressFill: { height: '100%', backgroundColor: '#A855F7' },
+  slScroll: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 40 },
+  slCategoryHeader: { fontSize: 14, fontWeight: '800', color: '#A855F7', fontFamily: 'Inter_700Bold', letterSpacing: 0.3, marginTop: 20, marginBottom: 4 },
+  slSection: { backgroundColor: '#13132A', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden', marginBottom: 4 },
+  slRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
+  slRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
+  slCheckBox: { width: 20, height: 20, borderRadius: 4, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
+  slCheckBoxActive: { backgroundColor: '#A855F7', borderColor: '#A855F7' },
+  slItemName: { flex: 1, fontSize: 14, color: '#fff', fontFamily: 'Inter_400Regular' },
+  slItemNameChecked: { color: Colors.textMuted, textDecorationLine: 'line-through' },
+  slItemQty: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Inter_400Regular', textAlign: 'right', maxWidth: 130 },
+  slItemQtyChecked: { color: 'rgba(255,255,255,0.2)' },
+
+  slBottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    paddingTop: 16,
+    backgroundColor: Colors.background,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  slCopyBtn: {
+    shadowColor: '#D946EF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  slCopyBtnGrad: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slCopyBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.3,
+  },
 });
+
+
