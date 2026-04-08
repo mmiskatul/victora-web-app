@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -42,10 +43,57 @@ const readyToStart = [
   { id: 'r3', title: '5-Day Meditation Reset', description: 'Meditate 10 minutes every day.', duration: '5 Days', type: 'Mindfulness', points: 100, participants: 18, difficulty: 'BEGINNER', difficultyColor: '#22C55E' },
 ];
 
+// ── Community Posts ──
+const communityPosts = [
+  {
+    id: 'p1',
+    author: 'Admin',
+    time: '12 days ago',
+    tier: 'ALL',
+    tierColor: '#22C55E',
+    content: "\uD83C\uDFC6 Challenge 'Kindness Sprint' gemeistert! Ein super Gef\u00fchl, das Ziel zu erreichen. Wer ist als n\u00e4chstes dran? #ChallengeAccepted",
+    likes: 0,
+    comments: 0,
+  },
+  {
+    id: 'p2',
+    author: 'Admin',
+    time: '13 days ago',
+    tier: 'ALL',
+    tierColor: '#22C55E',
+    content: 'how are you',
+    likes: 0,
+    comments: 0,
+  },
+  {
+    id: 'p3',
+    author: 'Coach Victor',
+    time: '2 days ago',
+    tier: 'PRO',
+    tierColor: '#A855F7',
+    content: '\uD83D\uDCAA Great work everyone on the 30-Day Push-Up Challenge! You are all crushing it. Keep the momentum going this week!',
+    likes: 14,
+    comments: 3,
+  },
+  {
+    id: 'p4',
+    author: 'Sarah K.',
+    time: '5 days ago',
+    tier: 'ALL',
+    tierColor: '#22C55E',
+    content: 'Just finished my morning run \uD83C\uDFC3\u200D\u2640\uFE0F Felt amazing! Who else is doing the 7-Day Morning Run challenge?',
+    likes: 7,
+    comments: 2,
+  },
+];
 
+
+const TIERS = ['All Tiers', 'Silver Only', 'Gold Only', 'Platinum Only', 'Inner Circle Only'];
 
 export default function ChallengesScreen() {
   const [activeTab, setActiveTab] = useState('CHALLENGES');
+  const [selectedTier, setSelectedTier] = useState('All Tiers');
+  const [tierDropdownOpen, setTierDropdownOpen] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -56,18 +104,6 @@ export default function ChallengesScreen() {
           <Text style={styles.brandTitle}>V I C T O R Y</Text>
           <Text style={styles.brandSubtitle}>F I T N E S S</Text>
         </View>
-
-        {/* Page Title Row */}
-        {/* <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.pageTitle}>CHALLENGES</Text>
-            <Text style={styles.pageSubtitle}>Compete. Earn. Win.</Text>
-          </View>
-          <TouchableOpacity style={styles.inviteBtn}>
-            <Ionicons name="person-add-outline" size={14} color="#fff" />
-            <Text style={styles.inviteBtnText}>Invite</Text>
-          </TouchableOpacity>
-        </View> */}
 
         {/* Tabs */}
         <View style={styles.tabRow}>
@@ -208,42 +244,106 @@ export default function ChallengesScreen() {
         {/* ── COMMUNITY TAB ── */}
         {activeTab === 'COMMUNITY' && (
           <View style={styles.section}>
-            <LinearGradient
-              colors={['#4F46E5', '#2D2A8A']}
-              style={styles.communityBanner}
-            >
-              <Ionicons name="people" size={36} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.communityBannerCount}>1,270</Text>
-              <Text style={styles.communityBannerLabel}>Champions Training Today</Text>
-              <TouchableOpacity style={styles.communityInviteBtn}>
-                <Text style={styles.communityInviteBtnText}>Invite Friends +100 Pts</Text>
-              </TouchableOpacity>
-            </LinearGradient>
 
-            {/* Community feed */}
-            {[
-              { user: 'Sarah K.', action: 'completed the 30-Day Push-Up Challenge', time: '2m ago', pts: '+500 Pts' },
-              { user: 'Mike T.', action: 'joined the 7-Day Morning Run', time: '15m ago', pts: '+150 Pts' },
-              { user: 'Josy M.', action: 'hit a 28-day streak! 🔥', time: '1h ago', pts: '+100 Pts' },
-              { user: 'Alex P.', action: 'completed 100 push-ups today', time: '3h ago', pts: '+50 Pts' },
-              { user: 'Priya S.', action: 'joined the 21-Day No Sugar Detox', time: '5h ago', pts: '+350 Pts' },
-            ].map((feed, i) => (
-              <View key={i} style={styles.feedCard}>
-                <View style={styles.feedAvatar}>
-                  <Text style={styles.feedAvatarText}>{feed.user[0]}</Text>
+            {/* Post Composer */}
+            <View style={styles.composerCard}>
+              <TextInput
+                style={styles.composerInput}
+                placeholder="What's on your mind?"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                multiline
+              />
+              <View style={styles.composerDivider} />
+              <View style={styles.composerActions}>
+                <TouchableOpacity style={styles.composerImgBtn}>
+                  <Ionicons name="image-outline" size={22} color="rgba(255,255,255,0.45)" />
+                </TouchableOpacity>
+
+                {/* Tier Dropdown */}
+                <View style={styles.tierDropdownWrapper}>
+                  <TouchableOpacity
+                    style={styles.tierSelector}
+                    onPress={() => setTierDropdownOpen(!tierDropdownOpen)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.tierText}>{selectedTier}</Text>
+                    <Ionicons
+                      name={tierDropdownOpen ? 'chevron-up' : 'chevron-down'}
+                      size={13}
+                      color="rgba(255,255,255,0.6)"
+                    />
+                  </TouchableOpacity>
+                  {tierDropdownOpen && (
+                    <View style={styles.tierDropdown}>
+                      {TIERS.map((tier) => (
+                        <TouchableOpacity
+                          key={tier}
+                          style={[
+                            styles.tierOption,
+                            selectedTier === tier && styles.tierOptionActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedTier(tier);
+                            setTierDropdownOpen(false);
+                          }}
+                        >
+                          <Text style={[
+                            styles.tierOptionText,
+                            selectedTier === tier && styles.tierOptionTextActive,
+                          ]}>
+                            {tier}
+                          </Text>
+                          {selectedTier === tier && (
+                            <Ionicons name="checkmark" size={14} color={Colors.primary} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
-                <View style={styles.feedContent}>
-                  <Text style={styles.feedText}>
-                    <Text style={styles.feedUser}>{feed.user} </Text>
-                    {feed.action}
-                  </Text>
-                  <Text style={styles.feedTime}>{feed.time}</Text>
+
+                <TouchableOpacity style={styles.postBtn}>
+                  <Text style={styles.postBtnText}>Post</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Community Posts */}
+            {communityPosts.map((post) => (
+              <View key={post.id} style={styles.postCard}>
+                {/* Post Header */}
+                <View style={styles.postHeader}>
+                  <View style={styles.postAvatar}>
+                    <Text style={styles.postAvatarText}>{post.author[0]}</Text>
+                  </View>
+                  <View style={styles.postMeta}>
+                    <View style={styles.postMetaRow}>
+                      <Text style={styles.postAuthor}>{post.author}</Text>
+                      <Text style={styles.postTime}>{post.time}</Text>
+                      <View style={[styles.tierBadge, { backgroundColor: post.tierColor }]}>
+                        <Text style={styles.tierBadgeText}>{post.tier}</Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.feedPts}>
-                  <Text style={styles.feedPtsText}>{feed.pts}</Text>
+
+                {/* Post Body */}
+                <Text style={styles.postBody}>{post.content}</Text>
+
+                {/* Post Footer */}
+                <View style={styles.postFooter}>
+                  <TouchableOpacity style={styles.postAction}>
+                    <Ionicons name="thumbs-up-outline" size={16} color="rgba(255,255,255,0.5)" />
+                    <Text style={styles.postActionText}>{post.likes}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.postAction}>
+                    <Ionicons name="chatbubble-outline" size={16} color="rgba(255,255,255,0.5)" />
+                    <Text style={styles.postActionText}>{post.comments}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ))}
+
           </View>
         )}
 
@@ -726,6 +826,198 @@ const styles = StyleSheet.create({
   feedPtsText: {
     color: '#F59E0B',
     fontSize: 11,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  /* Community Composer */
+  composerCard: {
+    backgroundColor: '#13132A',
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  composerInput: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    padding: 16,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  composerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 0,
+  },
+  composerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  composerImgBtn: {
+    padding: 6,
+  },
+  tierSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  tierText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  postBtn: {
+    marginLeft: 'auto',
+    backgroundColor: '#fff',
+    paddingHorizontal: 22,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  postBtnText: {
+    color: '#0A0A14',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+
+  /* Post Card */
+  postCard: {
+    backgroundColor: '#13132A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  postHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  postAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postAvatarText: {
+    color: '#000',
+    fontSize: 18,
+    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
+  },
+  postMeta: {
+    flex: 1,
+  },
+  postMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  postAuthor: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  postTime: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  tierBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginLeft: 'auto',
+  },
+  tierBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.5,
+  },
+  postBody: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 22,
+    marginBottom: 14,
+  },
+  postFooter: {
+    flexDirection: 'row',
+    gap: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    paddingTop: 12,
+  },
+  postAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  postActionText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+
+  /* Tier Dropdown */
+  tierDropdownWrapper: {
+    position: 'relative',
+  },
+  tierDropdown: {
+    position: 'absolute',
+    top: 40,
+    left: 0,
+    backgroundColor: '#1E1E38',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    zIndex: 999,
+    minWidth: 160,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+    overflow: 'hidden',
+  },
+  tierOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  tierOptionActive: {
+    backgroundColor: 'rgba(0,240,208,0.08)',
+  },
+  tierOptionText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  tierOptionTextActive: {
+    color: Colors.primary,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
   },
