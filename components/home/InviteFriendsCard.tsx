@@ -1,15 +1,11 @@
-import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../constants/Colors';
 
 export default function InviteFriendsCard() {
   return (
-    <LinearGradient
-      colors={['#6C3DE8', '#3730A3']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.premiumInviteCard}
+    <View
+      style={[styles.premiumInviteCard, { backgroundColor: Colors.accentPurple }]}
     >
       <View style={styles.inviteTopRow}>
         <View style={styles.inviteFriendsIcon}>
@@ -28,7 +24,7 @@ export default function InviteFriendsCard() {
       <TouchableOpacity style={styles.premiumInviteBtn} activeOpacity={0.85}>
         <Text style={styles.premiumInviteBtnText}>Invite Friends</Text>
       </TouchableOpacity>
-    </LinearGradient>
+    </View>
   );
 }
 

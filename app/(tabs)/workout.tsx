@@ -10,7 +10,6 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 
@@ -277,10 +276,7 @@ export default function WorkoutScreen() {
         {/* Workout of the Day Hero */}
         <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
           <Image source={{ uri: workoutOfTheDay.image }} style={styles.heroImage} />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.85)']}
-            style={styles.heroGradient}
-          />
+          <View style={styles.heroOverlay} />
           <View style={styles.heroContent}>
             <View style={styles.heroBadge}>
               <Text style={styles.heroBadgeText}>WORKOUT DES TAGES</Text>
@@ -302,10 +298,7 @@ export default function WorkoutScreen() {
           {newAndPopular.map((workout) => (
             <TouchableOpacity key={workout.id} style={styles.popularCard} activeOpacity={0.88}>
               <Image source={{ uri: workout.image }} style={styles.popularImage} />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.80)']}
-                style={styles.popularGradient}
-              />
+              <View style={styles.popularOverlay} />
               <View style={styles.popularContent}>
                 <Text style={styles.popularTitle} numberOfLines={2}>{workout.title}</Text>
                 <Text style={styles.popularMeta}>{workout.duration} · {workout.category}</Text>
@@ -322,12 +315,7 @@ export default function WorkoutScreen() {
               {row.map((cat) => (
                 <TouchableOpacity key={cat.id} style={styles.categoryCard} activeOpacity={0.85}>
                   <Image source={{ uri: cat.image }} style={styles.categoryImage} />
-                  <LinearGradient
-                    colors={['transparent', `${cat.color}CC`]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.categoryGradient}
-                  />
+                  <View style={[styles.categoryOverlay, { backgroundColor: `${cat.color}CC` }]} />
                   <View style={styles.categoryContent}>
                     <Text style={styles.categoryName}>{cat.name}</Text>
                     <Text style={styles.categoryCount}>{cat.count}</Text>
@@ -410,9 +398,9 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  heroGradient: {
+  heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    top: '40%',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   heroContent: {
     position: 'absolute',
@@ -478,9 +466,9 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  popularGradient: {
+  popularOverlay: {
     ...StyleSheet.absoluteFillObject,
-    top: '30%',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   popularContent: {
     position: 'absolute',
@@ -525,7 +513,7 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  categoryGradient: {
+  categoryOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
   categoryContent: {

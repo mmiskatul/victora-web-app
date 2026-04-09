@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
@@ -41,16 +40,7 @@ export default function RegisterScreen() {
       style={styles.background}
       resizeMode="cover"
     >
-      <LinearGradient
-        colors={[
-          'rgba(0,0,0,0.3)',
-          'rgba(0,0,0,0.6)',
-          'rgba(0,0,0,0.85)',
-          'rgba(0,0,0,0.95)',
-        ]}
-        locations={[0, 0.3, 0.6, 1]}
-        style={styles.gradient}
-      >
+      <View style={styles.overlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -123,7 +113,7 @@ export default function RegisterScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </LinearGradient>
+      </View>
     </ImageBackground>
   );
 }
@@ -134,8 +124,9 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  gradient: {
+  overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
   },
   keyboardView: {
     flex: 1,

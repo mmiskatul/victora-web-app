@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
+const QUOTES = [
+  { text: 'WISDOM LISTENS BEFORE IT LEADS.', author: 'Victor Akko' },
+  { text: 'YOUR ONLY LIMIT IS YOUR MIND.', author: 'Focus' },
+  { text: 'VICTORY BELONGS TO THE MOST PERSEVERING.', author: 'Napoleon' },
+  { text: 'STRENGTH DOES NOT COME FROM WINNING.', author: 'Arnold' },
+];
+
 export default function GreetingCard() {
+  const [quoteIndex, setQuoteIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQuoteIndex((prev) => (prev + 1) % QUOTES.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <View style={styles.greetingSection}>
       <Text style={styles.greetingText}>
@@ -10,9 +26,9 @@ export default function GreetingCard() {
       </Text>
       <View style={styles.quoteBox}>
         <Text style={styles.quoteText}>
-          WISDOM LISTENS <Text style={{ color: Colors.textSecondary }}>BEFORE IT LEADS.</Text>
+          {QUOTES[quoteIndex].text}
         </Text>
-        <Text style={styles.quoteAuthor}>- Victor Akko</Text>
+        <Text style={styles.quoteAuthor}>- {QUOTES[quoteIndex].author}</Text>
       </View>
     </View>
   );
@@ -20,10 +36,12 @@ export default function GreetingCard() {
 
 const styles = StyleSheet.create({
   greetingSection: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 16,
+    backgroundColor: '#13132A',
+    borderRadius: 20,
     padding: 24,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   greetingText: {
     fontSize: 20,
@@ -32,7 +50,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   greetingName: {
-    color: Colors.primary,
+    color: Colors.accentBlue,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
   },

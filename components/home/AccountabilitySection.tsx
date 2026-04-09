@@ -19,8 +19,8 @@ export default function AccountabilitySection() {
       <View style={styles.sectionHeader}>
         <Text style={styles.accountabilityTitle}>Accountability</Text>
         <View style={styles.accountabilityIcons}>
-          <Ionicons name="chatbubble-outline" size={24} color={Colors.primary} />
-          <Ionicons name="add" size={24} color={Colors.textMuted} style={{ marginLeft: 16 }} />
+          <Ionicons name="chatbubble-outline" size={24} color={Colors.accentBlue} />
+          <Ionicons name="add" size={24} color={Colors.accentBlue} style={{ marginLeft: 16 }} />
         </View>
       </View>
 
@@ -28,9 +28,9 @@ export default function AccountabilitySection() {
         <View style={styles.accountabilityTopRow}>
           <View style={styles.streakWrapper}>
             <View style={styles.streakAddBtn}>
-              <Ionicons name="add" size={24} color="#FF4D4D" />
+              <Ionicons name="fitness" size={16} color={Colors.accentPurple} />
             </View>
-            <View style={{ marginLeft: 16 }}>
+            <View style={{ marginLeft: 12 }}>
               <Text style={styles.streakSub}>STREAK</Text>
               <Text style={styles.streakVal}>0 Days</Text>
             </View>
@@ -54,7 +54,7 @@ export default function AccountabilitySection() {
         <View style={styles.modernDaysRow}>
           {days.map((d, i) => (
             <View key={i} style={styles.modernDayItem}>
-              <Text style={[styles.modernDayLabel, d.active && { color: Colors.primary }]}>
+              <Text style={[styles.modernDayLabel, d.active && { color: Colors.accentBlue }]}>
                 {d.name}
               </Text>
               <View style={[styles.modernDayDot, d.active && styles.modernDayDotActive]} />
@@ -69,7 +69,7 @@ export default function AccountabilitySection() {
             <View style={[styles.avatarMini, { backgroundColor: '#888', marginLeft: -8 }]} />
           </View>
           <Text style={styles.championsBannerText}>
-            <Text style={{ color: Colors.primary, fontWeight: '700' }}>1,270</Text> CHAMPIONS TRAINING TODAY
+            <Text style={{ color: Colors.accentBlue, fontWeight: '700' }}>1,270</Text> CHAMPIONS TRAINING TODAY
           </Text>
         </View>
       </View>
@@ -80,7 +80,7 @@ export default function AccountabilitySection() {
 const styles = StyleSheet.create({
   section: { marginBottom: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  accountabilityTitle: { fontSize: 24, fontWeight: '800', color: Colors.primary, fontFamily: 'Inter_700Bold' },
+  accountabilityTitle: { fontSize: 24, fontWeight: '800', color: Colors.accentBlue, fontFamily: 'Inter_700Bold' },
   accountabilityIcons: { flexDirection: 'row', alignItems: 'center' },
   accountabilityCard: {
     backgroundColor: '#1E2530',
@@ -97,40 +97,35 @@ const styles = StyleSheet.create({
   accountabilityTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   streakWrapper: { flexDirection: 'row', alignItems: 'center' },
   streakAddBtn: {
-    width: 52,
-    height: 52,
+    width: 30,
+    height: 30,
     borderRadius: 14,
-    backgroundColor: '#2A1A1A',
+    backgroundColor: 'rgba(168, 85, 247, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 77, 77, 0.2)',
+    borderColor: 'rgba(168, 85, 247, 0.2)',
   },
-  streakSub: { color: Colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  streakVal: { color: '#fff', fontSize: 10, fontWeight: '800', fontFamily: 'Inter_700Bold' },
+  streakSub: { color: Colors.textMuted, fontSize: 12, fontWeight: '500', letterSpacing: 1 },
+  streakVal: { color: '#fff', fontSize: 12, fontWeight: '500', fontFamily: 'Inter_500Medium' },
   atRiskBtn: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: Colors.accentPurple,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  atRiskText: { color: '#fff', fontSize: 12, fontWeight: '900', letterSpacing: 1, fontFamily: 'Inter_700Bold' },
+  atRiskText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 1, fontFamily: 'Inter_700Bold' },
   milestoneContainer: { marginBottom: 24 },
   milestoneTextRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   dividerSubtle: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 16 },
   milestoneLabel: { color: Colors.textMuted, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
-  milestonePercent: { color: Colors.primary, fontSize: 14, fontWeight: '700' },
+  milestonePercent: { color: Colors.accentBlue, fontSize: 14, fontWeight: '700' },
   modernProgressBg: { height: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 4, overflow: 'hidden' },
   modernProgressFill: {
     height: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.accentBlue,
     borderRadius: 4,
-    shadowColor: Colors.primary,
+    shadowColor: Colors.accentBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
@@ -140,8 +135,8 @@ const styles = StyleSheet.create({
   modernDayLabel: { color: Colors.textMuted, fontSize: 11, fontWeight: '700', marginBottom: 8 },
   modernDayDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.1)' },
   modernDayDotActive: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: Colors.accentBlue,
+    shadowColor: Colors.accentBlue,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 6,

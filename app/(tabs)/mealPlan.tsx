@@ -10,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -306,12 +305,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
         {/* Progress */}
         <View style={styles.slProgressBg}>
-          <LinearGradient
-            colors={['#A855F7', '#C026D3']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.slProgressFill, { width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%` as any }]}
-          />
+          <View style={[styles.slProgressFill, { width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%`, backgroundColor: Colors.accentPurple }]} />
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.slScroll}>
@@ -355,14 +349,10 @@ function MealPlanResult({ goal }: { goal: string | null }) {
             activeOpacity={0.85}
             onPress={() => { }}
           >
-            <LinearGradient
-              colors={['#D946EF', '#A855F7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.slCopyBtnGrad}
-            >
+            <View style={[styles.slCopyBtnGrad, { backgroundColor: Colors.accentPurple }]}>
+              <Ionicons name="copy-outline" size={18} color="#fff" />
               <Text style={styles.slCopyBtnText}>Copy List</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -415,9 +405,9 @@ function MealPlanResult({ goal }: { goal: string | null }) {
             <MealCard label="Lunch" meal={day.lunch} expandKey={`${activeDay}-l`} />
             <MealCard label="Dinner" meal={day.dinner} expandKey={`${activeDay}-d`} />
             <TouchableOpacity style={styles.shoppingBtn} activeOpacity={0.85} onPress={() => setShowShopping(true)}>
-              <LinearGradient colors={['#A855F7', '#C026D3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shoppingBtnGrad}>
+              <View style={[styles.shoppingBtnGrad, { backgroundColor: Colors.accentPurple }]}>
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.newPlanBtn} activeOpacity={0.7}>
               <Text style={styles.newPlanBtnText}>Create New Plan</Text>
@@ -492,21 +482,12 @@ function MealPlanResult({ goal }: { goal: string | null }) {
         {/* ── MEAL ANALYSIS ── */}
         {planTab === 'Meal Analysis' && (
           <View style={styles.planContent}>
-            <View style={styles.analysisCard}>
-              <Text style={styles.analysisTitle}>Analyse your meal by photo</Text>
-              <Text style={styles.analysisDesc}>
-                Let our AI analyse your meal. Take a photo or upload one to estimate the nutritional values.
-              </Text>
-              <TouchableOpacity activeOpacity={0.85}>
-                <LinearGradient
-                  colors={['#A855F7', '#C026D3']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.analysisUploadGrad}
-                >
-                  <Ionicons name="image-outline" size={20} color="#fff" />
-                  <Text style={styles.analysisUploadText}>Take photo / Upload</Text>
-                </LinearGradient>
+            <View style={[styles.analysisCard, { backgroundColor: Colors.accentPurple }]}>
+              <Ionicons name="analytics-outline" size={40} color="#fff" style={{ opacity: 0.3, marginBottom: 12 }} />
+              <Text style={styles.analysisTitle}>AI MEAL ANALYSIS</Text>
+              <Text style={styles.analysisDesc}>Take a photo of your meal to get instant macro tracking and health feedback.</Text>
+              <TouchableOpacity style={styles.analysisBtn}>
+                <Text style={styles.analysisBtnText}>Start Analysis</Text>
               </TouchableOpacity>
             </View>
 
@@ -593,11 +574,8 @@ export default function JournalScreen() {
 
       {/* Progress Bar */}
       <View style={styles.progressBarBg}>
-        <LinearGradient
-          colors={['#A855F7', '#C026D3']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.progressBarFill, { width: `${progressFraction * 100}%` as any }]}
+        <View
+          style={[styles.progressBarFill, { width: `${progressFraction * 100}%`, backgroundColor: Colors.accentPurple }]}
         />
       </View>
 
@@ -724,15 +702,16 @@ export default function JournalScreen() {
         </TouchableOpacity>
         {step < TOTAL_STEPS ? (
           <TouchableOpacity onPress={goNext} disabled={!canNext()} activeOpacity={0.85}>
-            <LinearGradient colors={canNext() ? ['#A855F7', '#C026D3'] : ['#2A2A40', '#2A2A40']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.nextBtn}>
+            <View style={[styles.nextBtn, { backgroundColor: canNext() ? Colors.accentPurple : '#2A2A40' }]}>
               <Text style={[styles.nextBtnText, !canNext() && styles.nextBtnDisabled]}>Next</Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={generatePlan} activeOpacity={0.85}>
-            <LinearGradient colors={['#A855F7', '#C026D3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.generateBtn}>
-              <Text style={styles.nextBtnText}>Generate Plan</Text>
-            </LinearGradient>
+            <View style={[styles.generateBtn, { backgroundColor: Colors.accentPurple }]}>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.generateBtnText}>Curating Your Plan...</Text>
+            </View>
           </TouchableOpacity>
         )}
       </View>
@@ -922,6 +901,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.3,
+  },
+  generateBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  analysisBtn: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  analysisBtnText: {
+    color: Colors.accentPurple,
+    fontWeight: '700',
+    fontSize: 14,
   },
 });
 

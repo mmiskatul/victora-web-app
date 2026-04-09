@@ -9,7 +9,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');

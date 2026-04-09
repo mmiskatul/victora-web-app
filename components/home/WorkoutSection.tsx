@@ -5,8 +5,8 @@ import { Colors } from '../../constants/Colors';
 export default function WorkoutSection() {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>NEXT UP: YOUR WORKOUT</Text>
       <View style={styles.workoutCard}>
+        <Text style={styles.sectionTitle}>NEXT UP: YOUR WORKOUT</Text>
         <Text style={styles.workoutHeading}>NO PLAN? NO PROBLEM.</Text>
         <Text style={styles.workoutDesc}>
           Choose your path to victory. Which plan will you start?
@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.primary,
+    color: Colors.accentBlue,
     letterSpacing: 1.5,
     paddingTop: 10,
     paddingBottom: 10,
@@ -63,14 +63,14 @@ const styles = StyleSheet.create({
   },
   workoutBtnPrimary: {
     width: '100%',
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.accentBlue,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 12,
   },
   workoutBtnPrimaryText: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '700',
     fontSize: 14,
     letterSpacing: 1,

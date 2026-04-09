@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
   },
   moodTitle: {
-    color: Colors.primary,
+    color: Colors.accentBlue,
     fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
@@ -60,14 +60,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   journalActionBtn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.accentBlue,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 20,
   },
   journalActionText: {
-    color: '#000',
+    color: '#fff',
     fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Inter_700Bold',

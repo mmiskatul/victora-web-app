@@ -1,5 +1,6 @@
 export const Colors = {
   primary: '#00F0D0',
+  secondary: '#A855F7',
   primaryDark: '#00C4AA',
   background: '#0D0D0D',
   surface: '#1A1A2E',
@@ -12,4 +13,12 @@ export const Colors = {
   divider: 'rgba(255, 255, 255, 0.2)',
   overlay: 'rgba(0, 0, 0, 0.65)',
   googleButton: '#1A1A2E',
+  
+  // Premium Accent Colors (Replaced Gradients)
+  accentBlue: '#06B6D4',
+  accentPurple: '#A855F7',
+  accentPink: '#D946EF',
+  accentGold: '#F59E0B',
+  accentDanger: '#EF4444',
+  accentSurface: '#1E1E38', // Lighter surface for "Hero" cards
 };

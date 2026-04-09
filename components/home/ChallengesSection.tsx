@@ -69,7 +69,7 @@ export default function ChallengesSection() {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>YOUR CHALLENGES</Text>
+        <Text style={styles.sectionTitle}>CHALLENGES</Text>
         <TouchableOpacity style={styles.headerInviteBtn}>
           <Text style={styles.headerInviteBtnText}>Invite Friends</Text>
         </TouchableOpacity>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: Colors.primary,
+    color: Colors.accentBlue,
     letterSpacing: 1.5,
     paddingTop: 10,
     paddingBottom: 10,
@@ -133,32 +133,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pointsBadge: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: Colors.accentPurple,
     borderRadius: 20,
     paddingHorizontal: 12,
     paddingVertical: 4,
     marginLeft: 8,
   },
-  pointsText: { color: '#000', fontSize: 12, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  pointsText: { color: '#fff', fontSize: 12, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   activeStatusRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   activeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.accentBlue,
     marginRight: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 8,
   },
   activeText: {
-    color: Colors.primary,
+    color: Colors.accentBlue,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.2,
-    textShadowColor: 'rgba(0, 240, 208, 0.4)',
+    textShadowColor: 'rgba(6, 182, 212, 0.4)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 8,
   },
@@ -180,26 +175,17 @@ const styles = StyleSheet.create({
   chatAction: { flexDirection: 'row', alignItems: 'center' },
   footerText: { color: Colors.textMuted, fontSize: 13, marginLeft: 4 },
   cardInviteBtn: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: Colors.accentBlue,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
   },
-  cardInviteBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  cardInviteBtnText: { color: '#000', fontWeight: '700', fontSize: 13 },
   headerInviteBtn: {
-    backgroundColor: '#3B82F6',
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    backgroundColor: Colors.accentBlue,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   headerInviteBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

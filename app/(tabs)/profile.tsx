@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -52,10 +51,7 @@ export default function ProfileScreen() {
         <VictoryHeader />
 
         {/* ── Hero Profile Card ── */}
-        <LinearGradient
-          colors={['#1A1A3E', '#0D0D20']}
-          style={styles.heroCard}
-        >
+        <View style={[styles.heroCard, { backgroundColor: Colors.surface }]}>
           {/* Avatar */}
           <View style={styles.avatarWrap}>
             <Image
@@ -82,15 +78,12 @@ export default function ProfileScreen() {
               <Text style={styles.rankProgressLabel}>{nextRankPts - pts} pts to WARRIOR</Text>
             </View>
             <View style={styles.rankBarBg}>
-              <LinearGradient
-                colors={['#06B6D4', '#A855F7']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.rankBarFill, { width: `${progressFraction * 100}%` as any }]}
+              <View
+                style={[styles.rankBarFill, { width: `${progressFraction * 100}%` as any, backgroundColor: Colors.accentBlue }]}
               />
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* ── Stats Grid ── */}
         <View style={styles.statsGrid}>
@@ -136,10 +129,10 @@ export default function ProfileScreen() {
         {/* ── Coach Cards ── */}
         <View style={styles.coachSection}>
           <Text style={styles.sectionTitle}>MY COACHES</Text>
-          <View style={styles.coachCard}>
-            <LinearGradient colors={['#06B6D4', '#0EA5E9']} style={styles.coachIconWrap}>
+          <View style={[styles.coachCard, { backgroundColor: Colors.surface }]}>
+            <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentBlue }]}>
               <Ionicons name="add" size={26} color="#fff" />
-            </LinearGradient>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.coachName}>COACH VICTOR</Text>
               <Text style={styles.coachStatus}>🟢 Ready for you</Text>
@@ -149,9 +142,9 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.coachCard}>
-            <LinearGradient colors={['#A855F7', '#EC4899']} style={styles.coachIconWrap}>
+            <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentPurple }]}>
               <Ionicons name="pulse" size={22} color="#fff" />
-            </LinearGradient>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.coachName}>LONGEVITY OS</Text>
               <Text style={[styles.coachStatus, { color: '#A855F7' }]}>⚡ Optimizing for you</Text>
@@ -190,14 +183,11 @@ export default function ProfileScreen() {
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>ADMINISTRATION</Text>
           <TouchableOpacity style={styles.adminBtn} activeOpacity={0.85}>
-            <LinearGradient
-              colors={['rgba(6,182,212,0.15)', 'rgba(6,182,212,0.05)']}
-              style={styles.adminBtnGrad}
-            >
+            <View style={[styles.adminBtnGrad, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
               <Ionicons name="shield-checkmark-outline" size={20} color="#06B6D4" />
               <Text style={styles.adminBtnText}>ADMIN PANEL</Text>
               <Ionicons name="chevron-forward" size={16} color="#06B6D4" style={{ marginLeft: 'auto' }} />
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         </View>
 

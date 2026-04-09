@@ -1,20 +1,17 @@
-import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Colors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
 
 export default function FeatureCards() {
+  const router = useRouter();
+
   return (
     <View style={styles.featureContainer}>
       {/* Coach Victor */}
-      <LinearGradient
-        colors={['#00F0D0', '#00BAFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.featureCardFull}
-      >
+      <View style={[styles.featureCardFull, { backgroundColor: Colors.accentBlue }]}>
         <View style={styles.featureIconCircle}>
           <Ionicons name="add" size={24} color="#fff" />
         </View>
@@ -23,19 +20,17 @@ export default function FeatureCards() {
           <Text style={styles.featureDesc}>
             Your AI companion for motivation, advice, and feedback.
           </Text>
-          <TouchableOpacity style={styles.featureAction}>
+          <TouchableOpacity 
+            style={styles.featureAction}
+            onPress={() => router.push('/chat')}
+          >
             <Text style={styles.featureLink}>Start Chat +</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* Nutrition */}
-      <LinearGradient
-        colors={['#BF19FF', '#197BFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.featureCardFull, { marginTop: 16 }]}
-      >
+      <View style={[styles.featureCardFull, { backgroundColor: Colors.accentPurple, marginTop: 16 }]}>
         <View style={styles.featureIconCircle}>
           <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#fff" />
         </View>
@@ -44,11 +39,14 @@ export default function FeatureCards() {
           <Text style={styles.featureDesc}>
             Personalized nutrition plans and recipes for your goals.
           </Text>
-          <TouchableOpacity style={styles.featureAction}>
+          <TouchableOpacity 
+            style={styles.featureAction}
+            onPress={() => router.push('/mealPlan')}
+          >
             <Text style={styles.featureLink}>View Plan +</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
     </View>
   );
 }
@@ -58,11 +56,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   featureCardFull: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 140,
   },
   featureIconCircle: {
     width: 48,
