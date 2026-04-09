@@ -56,6 +56,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.inputBorder,
     fontFamily: 'Inter_400Regular',
+    outlineStyle: 'none' as any,
   },
   eyeButton: {
     position: 'absolute',

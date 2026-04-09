@@ -277,6 +277,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     fontFamily: 'Inter_400Regular',
+    outlineStyle: 'none' as any,
   },
   sendButton: {
     width: 32,

@@ -837,6 +837,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
   },
+  searchInput: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    paddingVertical: 12,
+    outlineStyle: 'none' as any,
+  },
   composerInput: {
     color: '#fff',
     fontSize: 15,

@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 
 export default function WorkoutSection() {
+  const router = useRouter();
+
   return (
     <View style={styles.section}>
       <View style={styles.workoutCard}>
@@ -11,7 +14,10 @@ export default function WorkoutSection() {
         <Text style={styles.workoutDesc}>
           Choose your path to victory. Which plan will you start?
         </Text>
-        <TouchableOpacity style={styles.workoutBtnPrimary}>
+        <TouchableOpacity 
+          style={styles.workoutBtnPrimary}
+          onPress={() => router.push('/mealPlan')}
+        >
           <Text style={styles.workoutBtnPrimaryText}>7-DAY VIDEO PLAN</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.workoutBtnOutline}>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -26,10 +27,10 @@ const MENU_SECTIONS = [
   {
     title: 'Account',
     items: [
-      { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7' },
-      { icon: 'lock-closed-outline', label: 'Privacy & Security', tint: '#A855F7' },
+      { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
+      { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
       { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
-      { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6' },
+      { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6', route: '/profile/support' },
     ],
   },
   {
@@ -37,12 +38,13 @@ const MENU_SECTIONS = [
     items: [
       { icon: 'barbell-outline', label: 'Workout', tint: '#06B6D4' },
       { icon: 'restaurant-outline', label: 'Nutrition', tint: '#F97316' },
-      { icon: 'body-outline', label: 'Journal', tint: '#EC4899' },
+      { icon: 'body-outline', label: 'Journal', tint: '#EC4899', route: '/journal' },
     ],
   }
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
 
   return (
     <View style={styles.container}>
@@ -100,17 +102,21 @@ export default function ProfileScreen() {
         <View style={styles.metricsCard}>
           <View style={styles.metricsTitleRow}>
             <Text style={styles.metricsTitle}>BODY METRICS</Text>
-            <TouchableOpacity style={styles.metricsEditBtn} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.metricsEditBtn}
+              activeOpacity={0.8}
+              onPress={() => router.push('/profile/metrics')}
+            >
               <Ionicons name="pencil-outline" size={14} color="#06B6D4" />
               <Text style={styles.metricsEditText}>Edit</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.metricsGrid}>
             {[
-              { label: 'Age',    value: '28',   unit: 'yrs', icon: 'calendar-outline', tint: '#4F8EF7' },
-              { label: 'Height', value: '175',  unit: 'cm',  icon: 'resize-outline',   tint: '#06B6D4' },
-              { label: 'Weight', value: '72',   unit: 'kg',  icon: 'barbell-outline',  tint: '#A855F7' },
-              { label: 'Gender', value: 'Male', unit: '',    icon: 'person-outline',   tint: '#F97316' },
+              { label: 'Age', value: '28', unit: 'yrs', icon: 'calendar-outline', tint: '#4F8EF7' },
+              { label: 'Height', value: '175', unit: 'cm', icon: 'resize-outline', tint: '#06B6D4' },
+              { label: 'Weight', value: '72', unit: 'kg', icon: 'barbell-outline', tint: '#A855F7' },
+              { label: 'Gender', value: 'Male', unit: '', icon: 'person-outline', tint: '#F97316' },
             ].map((m) => (
               <View key={m.label} style={styles.metricCard}>
                 <View style={[styles.metricIconBox, { backgroundColor: `${m.tint}18` }]}>
@@ -137,7 +143,10 @@ export default function ProfileScreen() {
               <Text style={styles.coachName}>COACH VICTOR</Text>
               <Text style={styles.coachStatus}>🟢 Ready for you</Text>
             </View>
-            <TouchableOpacity style={styles.coachArrow}>
+            <TouchableOpacity
+              style={styles.coachArrow}
+              onPress={() => router.push('/chat')}
+            >
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
           </View>
@@ -162,13 +171,17 @@ export default function ProfileScreen() {
             <View style={styles.menuCard}>
               {section.items.map((item, i) => (
                 <View key={item.label}>
-                  <TouchableOpacity style={styles.menuRow} activeOpacity={0.7}>
+                  <TouchableOpacity
+                    style={styles.menuRow}
+                    activeOpacity={0.7}
+                    onPress={() => (item as any).route && router.push((item as any).route)}
+                  >
                     <View style={[styles.menuIconWrap, { backgroundColor: `${item.tint}20` }]}>
                       <Ionicons name={item.icon as any} size={18} color={item.tint} />
                     </View>
                     <Text style={styles.menuLabel}>{item.label}</Text>
                     <View style={styles.menuRight}>
-                      {item.value && <Text style={styles.menuValue}>{item.value}</Text>}
+                      {(item as any).value && <Text style={styles.menuValue}>{(item as any).value}</Text>}
                       <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
                     </View>
                   </TouchableOpacity>
@@ -192,7 +205,11 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Log Out ── */}
-        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          activeOpacity={0.7}
+          onPress={() => router.replace('/login')}
+        >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>

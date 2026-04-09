@@ -374,6 +374,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
+    outlineStyle: 'none' as any,
   },
   searchActions: {
     flexDirection: 'row',
