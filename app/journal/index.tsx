@@ -7,12 +7,19 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  StatusBar,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 
-const MOODS = ['😡', '😟', '😐', '😊', '🤩'];
+const MOODS = [
+  { emoji: '😡', label: 'ANGRY' },
+  { emoji: '😟', label: 'ANXIOUS' },
+  { emoji: '😐', label: 'NEUTRAL' },
+  { emoji: '😊', label: 'GOOD' },
+  { emoji: '🤩', label: 'VICTORIOUS' },
+];
 
 export default function JournalScreen() {
   const router = useRouter();
@@ -21,12 +28,13 @@ export default function JournalScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       <Stack.Screen options={{ 
         headerShown: true, 
-        title: 'JOURNAL',
+        title: 'ZEN JOURNAL',
         headerTransparent: true,
         headerTintColor: '#fff',
-        headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 2 } as any,
+        headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 4 } as any,
         headerLeft: () => (
           <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
             <Ionicons name="chevron-back" size={28} color="#fff" />
@@ -34,53 +42,80 @@ export default function JournalScreen() {
         ),
       }} />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>HOW ARE YOU FEELING TODAY?</Text>
-          
-          <View style={styles.moodContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.welcomeSection}>
+          <Text style={styles.dateLabel}>THURSDAY, APRIL 9</Text>
+          <Text style={styles.mainTitle}>Reflect on your victory.</Text>
+        </View>
+
+        <View style={styles.glassCard}>
+          <Text style={styles.sectionLabel}>CURRENT VIBE</Text>
+          <View style={styles.moodScale}>
             {MOODS.map((m, i) => (
               <TouchableOpacity 
                 key={i} 
                 onPress={() => setMood(i)}
-                style={[styles.moodBtn, mood === i && styles.moodBtnActive]}
+                style={[
+                  styles.moodBtn, 
+                  mood === i && styles.moodBtnActive,
+                  mood === i && { shadowColor: i > 2 ? Colors.accentBlue : '#EF4444' }
+                ]}
               >
-                <Text style={[styles.moodEmoji, mood === i && styles.moodEmojiActive]}>{m}</Text>
+                <Text style={[styles.moodEmoji, mood === i && styles.moodEmojiActive]}>
+                  {m.emoji}
+                </Text>
+                {mood === i && (
+                  <Text style={styles.activeMoodLabel}>{m.label}</Text>
+                )}
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={styles.inputSection}>
+          <View style={styles.composerContainer}>
             <TextInput
-              style={styles.textInput}
-              placeholder="What's on your mind? Write it down or use voice..."
-              placeholderTextColor="rgba(255,255,255,0.3)"
+              style={styles.composer}
+              placeholder="Start typing your reflection..."
+              placeholderTextColor="rgba(255,255,255,0.2)"
               multiline
               value={entry}
               onChangeText={setEntry}
             />
-            <TouchableOpacity style={styles.micBtn}>
-              <Ionicons name="mic" size={24} color="#000" />
-            </TouchableOpacity>
+            
+            <View style={styles.composerFooter}>
+              <Text style={styles.charCount}>{entry.length} characters</Text>
+              <TouchableOpacity style={styles.glassMicBtn} activeOpacity={0.7}>
+                <Ionicons name="mic" size={22} color={Colors.accentBlue} />
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8}>
-            <Text style={styles.saveBtnText}>SAVE ENTRY</Text>
+          <TouchableOpacity style={styles.primaryAction} activeOpacity={0.8}>
+            <Text style={styles.primaryActionText}>SECURE LOG</Text>
+            <Ionicons name="shield-checkmark" size={18} color="#000" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.insightBtn} activeOpacity={0.8}>
-            <Text style={styles.insightBtnText}>GENERATE INSIGHT</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.aiAction} activeOpacity={0.8}>
+            <Ionicons name="sparkles" size={18} color={Colors.accentPurple} />
+            <Text style={styles.aiActionText}>ANALYZE WITH AI</Text>
+          </TouchableOpacity> glassCard: {
+  },
         </View>
 
-        <View style={styles.historySection}>
-          <Text style={styles.historyTitle}>HISTORY (3)</Text>
+        <View style={styles.footer}>
+          <View style={styles.footerHeader}>
+            <Text style={styles.footerTitle}>YOUR JOURNEY</Text>
+            <View style={styles.streakBadge}>
+              <Ionicons name="flame" size={14} color="#F59E0B" />
+              <Text style={styles.streakText}>4 DAY STREAK</Text>
+            </View>
+          </View>
+          
           <TouchableOpacity 
-            style={styles.showHistoryBtn}
+            style={styles.historyLink}
             onPress={() => router.push('/journal/history')}
           >
-            <Text style={styles.showHistoryText}>SHOW HISTORY</Text>
-            <Ionicons name="chevron-down" size={16} color={Colors.accentBlue} />
+            <Text style={styles.historyLinkText}>View All Past Entries</Text>
+            <Ionicons name="arrow-forward" size={16} color={Colors.accentBlue} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -91,143 +126,211 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E1E',
+    backgroundColor: '#0F0F0F', // Deeper background
   },
   scrollContent: {
-    paddingTop: 100, // For transparent header
-    paddingHorizontal: 16,
+    paddingTop: 110,
+    paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  card: {
-    backgroundColor: '#131313',
-    borderRadius: 32,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
+  welcomeSection: {
+    marginBottom: 32,
   },
-  cardTitle: {
-    color: 'rgba(255,255,255,0.6)',
+  dateLabel: {
+    color: Colors.accentBlue,
     fontSize: 12,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 2,
+    marginBottom: 8,
+  },
+  mainTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontFamily: 'Inter_800ExtraBold',
+    letterSpacing: -0.5,
+  },
+  glassCard: {
+    backgroundColor: '#161616',
+    borderRadius: 32,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
     marginBottom: 32,
+  },
+  sectionLabel: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.5,
+    marginBottom: 20,
     textAlign: 'center',
   },
-  moodContainer: {
+  moodScale: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 40,
+    marginBottom: 32,
+    height: 80,
+    alignItems: 'center',
   },
   moodBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
     alignItems: 'center',
-    opacity: 0.5,
+    justifyContent: 'center',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
   moodBtnActive: {
-    opacity: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    height: 70,
+    width: 60,
+    borderRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   moodEmoji: {
-    fontSize: 40,
+    fontSize: 24,
+    opacity: 0.4,
   },
   moodEmojiActive: {
-    // Optional: add some effect for active emoji
+    fontSize: 32,
+    opacity: 1,
   },
-  inputSection: {
-    width: '100%',
-    backgroundColor: '#1A1A1A',
-    borderRadius: 24,
-    minHeight: 280, // Increased size
-    padding: 24,
-    paddingBottom: 80, // More room for mic button
-    marginBottom: 24,
-    position: 'relative',
-  },
-  textInput: {
+  activeMoodLabel: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: 8,
+    fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  composerContainer: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 24,
+    padding: 20,
+    minHeight: 300,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.03)',
+  },
+  composer: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 17,
     fontFamily: 'Inter_400Regular',
+    lineHeight: 26,
     textAlignVertical: 'top',
-    minHeight: 180, // Ensure text area itself is large
     outlineStyle: 'none' as any,
   },
-  micBtn: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: Colors.accentBlue,
+  composerFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 16,
+  },
+  charCount: {
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  glassMicBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(6,182,212,0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.accentBlue,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(6,182,212,0.1)',
   },
-  saveBtn: {
-    width: '100%',
+  primaryAction: {
     backgroundColor: Colors.accentBlue,
-    paddingVertical: 18,
-    borderRadius: 16,
+    flexDirection: 'row',
+    height: 60,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  primaryActionText: {
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
+    letterSpacing: 1.5,
+  },
+  aiAction: {
+    flexDirection: 'row',
+    height: 56,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.3)',
+    backgroundColor: 'rgba(168,85,247,0.03)',
+  },
+  aiActionText: {
+    color: Colors.accentPurple,
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 2,
+  },
+  footer: {
+    backgroundColor: '#161616',
+    borderRadius: 24,
+    padding: 20,
+  },
+  footerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  saveBtnText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-  },
-  insightBtn: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(6,182,212,0.3)',
-    backgroundColor: 'rgba(6,182,212,0.05)',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  insightBtnText: {
-    color: Colors.accentBlue,
-    fontSize: 14,
-    fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 2,
-  },
-  historySection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 24,
-    paddingHorizontal: 8,
-  },
-  historyTitle: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
+  footerTitle: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 1.5,
   },
-  showHistoryBtn: {
+  streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
   },
-  showHistoryText: {
+  streakText: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '800',
+    fontFamily: 'Inter_800ExtraBold',
+  },
+  historyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.05)',
+  },
+  historyLinkText: {
     color: Colors.accentBlue,
-    fontSize: 11,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

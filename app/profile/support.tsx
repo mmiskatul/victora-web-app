@@ -7,25 +7,24 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Linking,
+  TextInput,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 
-const FAQS = [
-  { q: "How do I sync my Apple Health data?", a: "Go to Settings > Data Sync and toggle the Apple Health switch. You will be prompted to grant permissions." },
-  { q: "What is Coach Victor?", a: "Coach Victor is your AI-powered companion available 24/7 to provide personalized fitness advice, workout plans, and nutrition tips." },
-  { q: "How do I cancel my premium subscription?", a: "Subscriptions are managed via your App Store or Play Store account settings under 'Subscriptions'." },
-];
-
-export default function SupportScreen() {
+export default function ContactUsScreen() {
   const router = useRouter();
+
+  const handleEmail = () => {
+    Linking.openURL('mailto:office@victorakko.com');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ 
-        headerShown: true, 
-        title: 'HELP & SUPPORT',
+      <Stack.Screen options={{
+        headerShown: true,
+        title: 'CONTACT US',
         headerTransparent: true,
         headerTintColor: '#fff',
         headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 2 } as any,
@@ -37,51 +36,63 @@ export default function SupportScreen() {
       }} />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.contactHeader}>
-          <Text style={styles.contactTitle}>HOW CAN WE HELP?</Text>
-          <Text style={styles.contactSub}>Our team and AI coach are available to support your victory.</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>GET IN TOUCH</Text>
+          <Text style={styles.subtitle}>
+            Have a question or feedback? We'd love to hear from you. Our team and AI coach are ready to help.
+          </Text>
         </View>
 
         <View style={styles.contactGrid}>
-          <TouchableOpacity 
-            style={styles.contactCard} 
-            activeOpacity={0.7}
-            onPress={() => Linking.openURL('mailto:office@victorakko.com')}
-          >
+          <TouchableOpacity style={styles.contactCard} activeOpacity={0.8} onPress={handleEmail}>
             <View style={[styles.iconBox, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
-              <Ionicons name="mail-outline" size={24} color={Colors.accentBlue} />
+              <Ionicons name="mail-outline" size={28} color={Colors.accentBlue} />
             </View>
-            <Text style={styles.contactLabel}>Email Us</Text>
-            <Text style={styles.contactVal}>office@victorakko.com</Text>
+            <Text style={styles.cardTitle}>EMAIL US</Text>
+            <Text style={styles.cardValue}>office@victorakko.com</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.contactCard} 
-            activeOpacity={0.7}
+          <TouchableOpacity
+            style={styles.contactCard}
+            activeOpacity={0.8}
             onPress={() => router.push('/chat')}
           >
             <View style={[styles.iconBox, { backgroundColor: 'rgba(168,85,247,0.1)' }]}>
-              <Ionicons name="chatbubbles-outline" size={24} color={Colors.accentPurple} />
+              <Ionicons name="chatbubbles-outline" size={28} color={Colors.accentPurple} />
             </View>
-            <Text style={styles.contactLabel}>AI Support</Text>
-            <Text style={styles.contactVal}>Talk to Victor</Text>
+            <Text style={styles.cardTitle}>AI COACH</Text>
+            <Text style={styles.cardValue}>Chat with Victor</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>FREQUENTLY ASKED QUESTIONS</Text>
-          {FAQS.map((faq, i) => (
-            <View key={i} style={styles.faqCard}>
-              <Text style={styles.faqQ}>{faq.q}</Text>
-              <Text style={styles.faqA}>{faq.a}</Text>
-            </View>
-          ))}
-        </View>
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>SEND US A MESSAGE</Text>
 
-        <TouchableOpacity style={styles.knowledgeBtn}>
-          <Text style={styles.knowledgeText}>Visit Knowledge Base</Text>
-          <Ionicons name="arrow-forward" size={16} color={Colors.accentBlue} />
-        </TouchableOpacity>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>SUBJECT</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="What can we help you with?"
+              placeholderTextColor="rgba(255,255,255,0.2)"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>MESSAGE</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Write your message here..."
+              placeholderTextColor="rgba(255,255,255,0.2)"
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.sendBtn} activeOpacity={0.8}>
+            <Text style={styles.sendBtnText}>SEND MESSAGE</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,24 +108,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
   },
-  contactHeader: {
+  header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
   },
-  contactTitle: {
+  title: {
     color: '#fff',
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 1,
+    letterSpacing: 2,
     marginBottom: 8,
   },
-  contactSub: {
+  subtitle: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 14,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
     fontFamily: 'Inter_400Regular',
+    maxWidth: '90%',
   },
   contactGrid: {
     flexDirection: 'row',
@@ -124,80 +136,104 @@ const styles = StyleSheet.create({
   contactCard: {
     flex: 1,
     backgroundColor: '#1A1A1A',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 24,
+    padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   iconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 14,
+    width: 60,
+    height: 60,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  contactLabel: {
+  cardTitle: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    marginBottom: 4,
+    letterSpacing: 1.5,
+    marginBottom: 8,
   },
-  contactVal: {
+  cardValue: {
     color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '500',
     fontFamily: 'Inter_600SemiBold',
     textAlign: 'center',
   },
-  section: {
-    marginBottom: 32,
+  formSection: {
+    marginBottom: 40,
   },
   sectionTitle: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 11,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
-    letterSpacing: 1.5,
-    marginBottom: 16,
+    letterSpacing: 2,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 10,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1,
+    marginBottom: 8,
     marginLeft: 4,
   },
-  faqCard: {
+  input: {
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  faqQ: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     color: '#fff',
     fontSize: 15,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 8,
-  },
-  faqA: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 13,
-    lineHeight: 18,
     fontFamily: 'Inter_400Regular',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+    outlineStyle: 'none' as any,
   },
-  knowledgeBtn: {
-    flexDirection: 'row',
+  textArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  sendBtn: {
+    backgroundColor: Colors.accentBlue,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
+    marginTop: 10,
   },
-  knowledgeText: {
-    color: Colors.accentBlue,
+  sendBtnText: {
+    color: '#000',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
     fontFamily: 'Inter_700Bold',
+    letterSpacing: 2,
+  },
+  socialSection: {
+    alignItems: 'center',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 24,
+  },
+  socialIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
 });

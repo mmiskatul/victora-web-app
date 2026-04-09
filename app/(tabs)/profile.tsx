@@ -36,8 +36,8 @@ const MENU_SECTIONS = [
   {
     title: 'Fitness',
     items: [
-      { icon: 'barbell-outline', label: 'Workout', tint: '#06B6D4' },
-      { icon: 'restaurant-outline', label: 'Nutrition', tint: '#F97316' },
+      { icon: 'barbell-outline', label: 'Workout', tint: '#06B6D4', route: '/workoutplan' },
+      { icon: 'restaurant-outline', label: 'Nutrition', tint: '#F97316', route: '/mealPlan' },
       { icon: 'body-outline', label: 'Journal', tint: '#EC4899', route: '/journal' },
     ],
   }
