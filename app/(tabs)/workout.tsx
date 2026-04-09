@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/Colors';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 16 * 2 - 12) / 2;
+
 
 interface Workout {
   id: string;
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   categoryCard: {
-    width: CARD_WIDTH,
+    flex: 1,
     height: 110,
     borderRadius: 16,
     overflow: 'hidden',

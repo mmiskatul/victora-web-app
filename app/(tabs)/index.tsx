@@ -45,7 +45,7 @@ function FeatureCards() {
         <View style={styles.featureIconCircle}>
           <Ionicons name="add" size={24} color="#fff" />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.featureTitle}>COACH VICTOR</Text>
           <Text style={styles.featureDesc}>
             Your AI companion for motivation, advice, and feedback.
@@ -66,7 +66,7 @@ function FeatureCards() {
         <View style={styles.featureIconCircle}>
           <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#fff" />
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.featureTitle}>NUTRITION</Text>
           <Text style={styles.featureDesc}>
             Personalized nutrition plans and recipes for your goals.
@@ -95,7 +95,7 @@ function MoodSection() {
 
       <TouchableOpacity
         style={styles.journalActionBtn}
-        onPress={() => router.push('/journal')}
+        onPress={() => router.push('/mealPlan')}
       >
         <Text style={styles.journalActionText}>Write in Journal</Text>
       </TouchableOpacity>

@@ -592,6 +592,12 @@ export default function JournalScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      {/* Brand Header */}
+      <View style={styles.wizardHeader}>
+        <Text style={styles.wizardBrandTitle}>V I C T O R Y</Text>
+        <Text style={styles.wizardBrandSub}>F I T N E S S</Text>
+      </View>
+
       {/* Progress Bar */}
       <View style={styles.progressBarBg}>
         <LinearGradient
@@ -748,7 +754,7 @@ const styles = StyleSheet.create({
   progressBarBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.1)', width: '100%' },
   progressBarFill: { height: '100%' },
 
-  scrollContent: { paddingHorizontal: 24, paddingTop: 36, paddingBottom: 24 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
   stepCounter: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Inter_400Regular', marginBottom: 24, letterSpacing: 0.5 },
 
   bigQuestion: { fontSize: 28, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', lineHeight: 38, marginBottom: 12 },
@@ -786,6 +792,11 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
+
+  /* Wizard Header */
+  wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
+  wizardBrandTitle: { fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 8, fontFamily: 'Inter_700Bold' },
+  wizardBrandSub: { fontSize: 12, fontWeight: '600', color: '#fff', letterSpacing: 6, marginTop: 4, fontFamily: 'Inter_600SemiBold' },
 
   /* ── MealPlanResult ── */
   planBrand: { alignItems: 'center', paddingTop: 52, paddingBottom: 8 },

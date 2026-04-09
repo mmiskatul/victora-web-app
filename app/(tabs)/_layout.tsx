@@ -46,7 +46,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="journal"
+        name="mealPlan"
         options={{
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
@@ -61,7 +61,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
               <View style={styles.profileBadge}>
-                 <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+                <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
               </View>
             </View>
           ),
