@@ -1,0 +1,102 @@
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Colors } from '../../constants/Colors';
+
+const emojis = ['😡', '😟', '😐', '😊', '🤩'];
+
+export default function MoodSection() {
+  const router = useRouter();
+
+  return (
+    <View style={styles.moodCard}>
+      <Text style={styles.moodTitle}>Your Mindful Moment</Text>
+      <Text style={styles.moodSubtitle}>
+        What is one thing you will do for your well-being tomorrow?
+      </Text>
+
+      <TouchableOpacity
+        style={styles.journalActionBtn}
+        onPress={() => router.push('/mealPlan')}
+      >
+        <Text style={styles.journalActionText}>Write in Journal</Text>
+      </TouchableOpacity>
+
+      <View style={styles.moodDivider} />
+
+      <Text style={styles.moodPromptText}>How are you feeling right now?</Text>
+      <View style={styles.moodEmojiRow}>
+        {emojis.map((e, i) => (
+          <TouchableOpacity key={i} style={styles.moodEmojiBtn}>
+            <Text style={styles.moodEmojiText}>{e}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  moodCard: {
+    backgroundColor: '#151528',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  moodTitle: {
+    color: Colors.primary,
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 12,
+  },
+  moodSubtitle: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 24,
+  },
+  journalActionBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  journalActionText: {
+    color: '#000',
+    fontWeight: '700',
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+  moodDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 20,
+  },
+  moodPromptText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontFamily: 'Inter_400Regular',
+  },
+  moodEmojiRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+  },
+  moodEmojiBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moodEmojiText: {
+    fontSize: 28,
+  },
+});

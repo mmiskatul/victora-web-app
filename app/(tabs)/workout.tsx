@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Colors } from '../../constants/Colors';
+import VictoryHeader from '../../components/VictoryHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -243,11 +244,7 @@ export default function WorkoutScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Victory Fitness Brand Header */}
-        <View style={styles.brandHeader}>
-          <Text style={styles.brandTitle}>V I C T O R Y</Text>
-          <Text style={styles.brandSubtitle}>F I T N E S S</Text>
-        </View>
+        <VictoryHeader />
 
         {/* Page Title */}
         <Text style={styles.pageTitle}>WORKOUTS</Text>
@@ -352,30 +349,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   scrollContent: {
-    paddingTop: 56,
+    paddingTop: 20,
     paddingBottom: 40,
   },
 
-  /* Brand Header */
-  brandHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  brandTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 8,
-    fontFamily: 'Inter_700Bold',
-  },
-  brandSubtitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
-    letterSpacing: 6,
-    marginTop: 4,
-    fontFamily: 'Inter_600SemiBold',
-  },
 
   /* Page Title */
   pageTitle: {

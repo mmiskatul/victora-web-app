@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
-  Platform,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
+import VictoryHeader from '../../components/VictoryHeader';
 
 const pts = 105;
 const nextRankPts = 500;
@@ -29,7 +29,6 @@ const MENU_SECTIONS = [
     items: [
       { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7' },
       { icon: 'lock-closed-outline', label: 'Privacy & Security', tint: '#A855F7' },
-      // { icon: 'notifications-outline', label: 'Notifications', tint: '#F59E0B' },
       { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
       { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6' },
     ],
@@ -45,18 +44,12 @@ const MENU_SECTIONS = [
 ];
 
 export default function ProfileScreen() {
-  const [notificationsOn, setNotificationsOn] = useState(true);
-  const [darkMode, setDarkMode] = useState(true);
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
 
-        {/* ── Brand Header ── */}
-        <View style={styles.brandHeader}>
-          <Text style={styles.brandTitle}>V I C T O R Y</Text>
-          <Text style={styles.brandSub}>F I T N E S S</Text>
-        </View>
+        <VictoryHeader />
 
         {/* ── Hero Profile Card ── */}
         <LinearGradient
@@ -65,20 +58,10 @@ export default function ProfileScreen() {
         >
           {/* Avatar */}
           <View style={styles.avatarWrap}>
-            <LinearGradient colors={['#06B6D4', '#0EA5E9']} style={styles.avatarGrad}>
-              <Text style={styles.avatarLetter}>A</Text>
-            </LinearGradient>
-            <View style={styles.rankRingOuter}>
-              <LinearGradient
-                colors={['#06B6D4', '#A855F7']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.rankRingGrad}
-              />
-            </View>
-            <TouchableOpacity style={styles.cameraBtn}>
-              <Ionicons name="camera-outline" size={13} color="#fff" />
-            </TouchableOpacity>
+            <Image
+              source={require('../../assets/a.jpg')}
+              style={styles.avatarImage}
+            />
           </View>
 
           {/* Name & Badge */}
@@ -107,12 +90,6 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
-
-          {/* Inner Circle Pill */}
-          {/* <View style={styles.innerCirclePill}>
-            <View style={styles.innerDot} />
-            <Text style={styles.innerCircleText}>INNER CIRCLE SUBSCRIPTION</Text>
-          </View> */}
         </LinearGradient>
 
         {/* ── Stats Grid ── */}
@@ -128,59 +105,33 @@ export default function ProfileScreen() {
 
         {/* ── Body Metrics ── */}
         <View style={styles.metricsCard}>
-          <Text style={styles.metricsTitle}>BODY METRICS</Text>
-          <View style={styles.metricsRow}>
+          <View style={styles.metricsTitleRow}>
+            <Text style={styles.metricsTitle}>BODY METRICS</Text>
+            <TouchableOpacity style={styles.metricsEditBtn} activeOpacity={0.8}>
+              <Ionicons name="pencil-outline" size={14} color="#06B6D4" />
+              <Text style={styles.metricsEditText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.metricsGrid}>
             {[
-              { label: 'Age', value: '--', unit: 'yrs' },
-              { label: 'Height', value: '--', unit: 'cm' },
-              { label: 'Weight', value: '--', unit: 'kg' },
-              { label: 'Gender', value: '--', unit: '' },
+              { label: 'Age',    value: '28',   unit: 'yrs', icon: 'calendar-outline', tint: '#4F8EF7' },
+              { label: 'Height', value: '175',  unit: 'cm',  icon: 'resize-outline',   tint: '#06B6D4' },
+              { label: 'Weight', value: '72',   unit: 'kg',  icon: 'barbell-outline',  tint: '#A855F7' },
+              { label: 'Gender', value: 'Male', unit: '',    icon: 'person-outline',   tint: '#F97316' },
             ].map((m) => (
-              <View key={m.label} style={styles.metricItem}>
-                <Text style={styles.metricValue}>{m.value}<Text style={styles.metricUnit}>{m.unit}</Text></Text>
+              <View key={m.label} style={styles.metricCard}>
+                <View style={[styles.metricIconBox, { backgroundColor: `${m.tint}18` }]}>
+                  <Ionicons name={m.icon as any} size={18} color={m.tint} />
+                </View>
+                <Text style={styles.metricBigVal}>
+                  {m.value}
+                  {m.unit ? <Text style={styles.metricUnit}> {m.unit}</Text> : null}
+                </Text>
                 <Text style={styles.metricLabel}>{m.label}</Text>
               </View>
             ))}
           </View>
-          <TouchableOpacity style={styles.updateMetricsBtn} activeOpacity={0.8}>
-            <Text style={styles.updateMetricsText}>Update Metrics</Text>
-            <Ionicons name="chevron-forward" size={15} color="#06B6D4" />
-          </TouchableOpacity>
         </View>
-
-        {/* ── Preferences Toggles ── */}
-        {/* <View style={styles.togglesCard}>
-          <Text style={styles.sectionTitle}>PREFERENCES</Text>
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleLeft}>
-              <View style={[styles.toggleIcon, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
-                <Ionicons name="notifications-outline" size={18} color="#F59E0B" />
-              </View>
-              <Text style={styles.toggleLabel}>Push Notifications</Text>
-            </View>
-            <Switch
-              value={notificationsOn}
-              onValueChange={setNotificationsOn}
-              trackColor={{ false: '#1E1E38', true: '#06B6D4' }}
-              thumbColor="#fff"
-            />
-          </View>
-          <View style={styles.divider} />
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleLeft}>
-              <View style={[styles.toggleIcon, { backgroundColor: 'rgba(168,85,247,0.15)' }]}>
-                <Ionicons name="moon-outline" size={18} color="#A855F7" />
-              </View>
-              <Text style={styles.toggleLabel}>Dark Mode</Text>
-            </View>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: '#1E1E38', true: '#A855F7' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View> */}
 
         {/* ── Coach Cards ── */}
         <View style={styles.coachSection}>
@@ -267,10 +218,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   scroll: { paddingBottom: 30 },
 
-  /* Brand Header */
-  brandHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16 },
-  brandTitle: { fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 8, fontFamily: 'Inter_700Bold' },
-  brandSub: { fontSize: 12, fontWeight: '600', color: '#fff', letterSpacing: 6, marginTop: 4, fontFamily: 'Inter_600SemiBold' },
 
   /* Hero Card */
   heroCard: {
@@ -283,14 +230,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatarWrap: { position: 'relative', width: 88, height: 88, marginBottom: 16 },
-  avatarGrad: {
+  avatarImage: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    resizeMode: 'cover',
   },
-  avatarLetter: { fontSize: 36, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold' },
   rankRingOuter: {
     position: 'absolute',
     top: -4,
@@ -377,22 +322,24 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.07)',
     marginBottom: 16,
   },
-  metricsTitle: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 16 },
-  metricsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  metricItem: { alignItems: 'center', flex: 1 },
-  metricValue: { fontSize: 22, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold' },
-  metricUnit: { fontSize: 11, color: Colors.textMuted },
-  metricLabel: { fontSize: 10, color: Colors.textMuted, fontFamily: 'Inter_400Regular', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.4 },
-  updateMetricsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  metricsTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  metricsTitle: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase' },
+  metricsEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(6,182,212,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(6,182,212,0.25)' },
+  metricsEditText: { color: '#06B6D4', fontSize: 12, fontWeight: '600', fontFamily: 'Inter_700Bold' },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  metricCard: {
+    width: '47.5%',
+    backgroundColor: '#0D0D20',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
     gap: 6,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  updateMetricsText: { color: '#06B6D4', fontSize: 13, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  metricIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+  metricBigVal: { fontSize: 26, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', lineHeight: 30 },
+  metricUnit: { fontSize: 13, color: Colors.textMuted, fontWeight: '400', fontFamily: 'Inter_400Regular' },
+  metricLabel: { fontSize: 10, color: Colors.textMuted, fontFamily: 'Inter_400Regular', textTransform: 'uppercase', letterSpacing: 0.6 },
 
   /* Toggles */
   togglesCard: {

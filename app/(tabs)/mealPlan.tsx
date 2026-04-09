@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
+import VictoryHeader from '../../components/VictoryHeader';
 
 const TOTAL_STEPS = 8;
 
@@ -98,38 +99,38 @@ type DayPlan = { breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry; };
 const MEAL_PLAN: Record<string, DayPlan> = {
   Mon: {
     breakfast: { name: 'Oatmeal with Mashed Banana', desc: 'A small, comforting bowl of oats naturally sweetened.', kcal: 250, p: 4, c: 45, f: 5, ingredients: ['½ cup rolled oats', '1 ripe banana', '1 cup water', 'Pinch of cinnamon'] },
-    lunch:     { name: 'Rice and Mild Lentil Stew', desc: 'A balanced portion of complex carbs and plant protein.', kcal: 300, p: 8, c: 50, f: 5, ingredients: ['½ cup white rice', '½ cup red lentils', '1 tomato', '1 onion', 'Spices'], instructions: ['Rinse lentils and boil until soft.', 'Sauté onion and tomato, add lentils.', 'Serve over cooked rice.'] },
-    dinner:    { name: 'Chicken and Sweet Potato Mash', desc: 'Lean protein paired with vitamin-rich sweet potatoes.', kcal: 250, p: 8, c: 30, f: 6, ingredients: ['100g chicken breast', '1 medium sweet potato', '1 tsp olive oil', 'Salt, pepper, garlic'], instructions: ['Boil and mash sweet potato.', 'Grill chicken with spices.', 'Serve alongside mash.'] },
+    lunch: { name: 'Rice and Mild Lentil Stew', desc: 'A balanced portion of complex carbs and plant protein.', kcal: 300, p: 8, c: 50, f: 5, ingredients: ['½ cup white rice', '½ cup red lentils', '1 tomato', '1 onion', 'Spices'], instructions: ['Rinse lentils and boil until soft.', 'Sauté onion and tomato, add lentils.', 'Serve over cooked rice.'] },
+    dinner: { name: 'Chicken and Sweet Potato Mash', desc: 'Lean protein paired with vitamin-rich sweet potatoes.', kcal: 250, p: 8, c: 30, f: 6, ingredients: ['100g chicken breast', '1 medium sweet potato', '1 tsp olive oil', 'Salt, pepper, garlic'], instructions: ['Boil and mash sweet potato.', 'Grill chicken with spices.', 'Serve alongside mash.'] },
   },
   Tue: {
     breakfast: { name: 'Scrambled Eggs & Toast', desc: 'Classic protein-rich morning fuel.', kcal: 280, p: 14, c: 30, f: 10, ingredients: ['2 eggs', '1 slice whole-grain bread', '1 tsp butter', 'Salt & pepper'] },
-    lunch:     { name: 'Grilled Chicken Salad', desc: 'Fresh greens with grilled protein.', kcal: 320, p: 26, c: 15, f: 12, ingredients: ['120g chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil dressing'], instructions: ['Grill chicken and slice.', 'Toss vegetables with dressing.', 'Top with chicken.'] },
-    dinner:    { name: 'Vegetable Stir Fry & Brown Rice', desc: 'Colorful vegetables with whole grain.', kcal: 270, p: 7, c: 48, f: 6, ingredients: ['½ cup brown rice', 'Bell peppers', 'Broccoli', 'Soy sauce', 'Garlic'], instructions: ['Cook brown rice.', 'Stir-fry vegetables in light oil.', 'Season and serve over rice.'] },
+    lunch: { name: 'Grilled Chicken Salad', desc: 'Fresh greens with grilled protein.', kcal: 320, p: 26, c: 15, f: 12, ingredients: ['120g chicken breast', 'Mixed greens', 'Cherry tomatoes', 'Cucumber', 'Olive oil dressing'], instructions: ['Grill chicken and slice.', 'Toss vegetables with dressing.', 'Top with chicken.'] },
+    dinner: { name: 'Vegetable Stir Fry & Brown Rice', desc: 'Colorful vegetables with whole grain.', kcal: 270, p: 7, c: 48, f: 6, ingredients: ['½ cup brown rice', 'Bell peppers', 'Broccoli', 'Soy sauce', 'Garlic'], instructions: ['Cook brown rice.', 'Stir-fry vegetables in light oil.', 'Season and serve over rice.'] },
   },
   Wed: {
     breakfast: { name: 'Greek Yogurt & Berries', desc: 'Probiotic-rich with antioxidants.', kcal: 180, p: 12, c: 22, f: 4, ingredients: ['200g Greek yogurt', '½ cup mixed berries', '1 tsp honey'] },
-    lunch:     { name: 'Lentil Soup & Bread', desc: 'Hearty legume-based soup.', kcal: 310, p: 14, c: 52, f: 4, ingredients: ['1 cup lentils', 'Carrots', 'Celery', 'Onion', '1 slice bread'], instructions: ['Sauté vegetables.', 'Add lentils and broth.', 'Simmer 25 minutes.'] },
-    dinner:    { name: 'Baked Salmon & Veggies', desc: 'Omega-rich fish with roasted vegetables.', kcal: 340, p: 28, c: 18, f: 14, ingredients: ['120g salmon', 'Zucchini', 'Bell pepper', 'Olive oil', 'Lemon'], instructions: ['Preheat oven to 200°C.', 'Season salmon and vegetables.', 'Bake 20 mins together.'] },
+    lunch: { name: 'Lentil Soup & Bread', desc: 'Hearty legume-based soup.', kcal: 310, p: 14, c: 52, f: 4, ingredients: ['1 cup lentils', 'Carrots', 'Celery', 'Onion', '1 slice bread'], instructions: ['Sauté vegetables.', 'Add lentils and broth.', 'Simmer 25 minutes.'] },
+    dinner: { name: 'Baked Salmon & Veggies', desc: 'Omega-rich fish with roasted vegetables.', kcal: 340, p: 28, c: 18, f: 14, ingredients: ['120g salmon', 'Zucchini', 'Bell pepper', 'Olive oil', 'Lemon'], instructions: ['Preheat oven to 200°C.', 'Season salmon and vegetables.', 'Bake 20 mins together.'] },
   },
   Thu: {
     breakfast: { name: 'Smoothie Bowl', desc: 'Blended fruits with crunchy toppings.', kcal: 220, p: 6, c: 40, f: 5, ingredients: ['1 banana', '½ cup frozen berries', 'Almond milk', 'Granola', 'Chia seeds'] },
-    lunch:     { name: 'Tuna Wrap', desc: 'Protein-packed whole wheat wrap.', kcal: 350, p: 24, c: 38, f: 8, ingredients: ['1 can tuna', 'Whole wheat wrap', 'Lettuce', 'Tomato', 'Light mayo'], instructions: ['Mix tuna with light mayo.', 'Layer vegetables on wrap.', 'Roll tightly and serve.'] },
-    dinner:    { name: 'Beef & Vegetable Soup', desc: 'Lean beef in a hearty broth.', kcal: 290, p: 20, c: 28, f: 9, ingredients: ['100g lean beef', 'Potatoes', 'Carrots', 'Onion', 'Beef broth'], instructions: ['Brown beef cubes.', 'Add broth and vegetables.', 'Simmer 30 minutes.'] },
+    lunch: { name: 'Tuna Wrap', desc: 'Protein-packed whole wheat wrap.', kcal: 350, p: 24, c: 38, f: 8, ingredients: ['1 can tuna', 'Whole wheat wrap', 'Lettuce', 'Tomato', 'Light mayo'], instructions: ['Mix tuna with light mayo.', 'Layer vegetables on wrap.', 'Roll tightly and serve.'] },
+    dinner: { name: 'Beef & Vegetable Soup', desc: 'Lean beef in a hearty broth.', kcal: 290, p: 20, c: 28, f: 9, ingredients: ['100g lean beef', 'Potatoes', 'Carrots', 'Onion', 'Beef broth'], instructions: ['Brown beef cubes.', 'Add broth and vegetables.', 'Simmer 30 minutes.'] },
   },
   Fri: {
     breakfast: { name: 'Avocado Toast', desc: 'Healthy fats on whole grain bread.', kcal: 260, p: 7, c: 28, f: 14, ingredients: ['1 avocado', '2 slices bread', 'Lemon juice', 'Red pepper flakes'] },
-    lunch:     { name: 'Chickpea Curry', desc: 'Plant protein in aromatic spices.', kcal: 330, p: 12, c: 50, f: 8, ingredients: ['1 can chickpeas', 'Tomatoes', 'Coconut milk', 'Curry powder', 'Rice'], instructions: ['Saute spices.', 'Add chickpeas and tomatoes.', 'Simmer with coconut milk 15 mins.'] },
-    dinner:    { name: 'Shrimp & Quinoa Bowl', desc: 'Light seafood with complete protein grain.', kcal: 310, p: 22, c: 35, f: 8, ingredients: ['150g shrimp', '½ cup quinoa', 'Spinach', 'Garlic', 'Olive oil'], instructions: ['Cook quinoa.', 'Saute garlic and shrimp.', 'Serve over quinoa with spinach.'] },
+    lunch: { name: 'Chickpea Curry', desc: 'Plant protein in aromatic spices.', kcal: 330, p: 12, c: 50, f: 8, ingredients: ['1 can chickpeas', 'Tomatoes', 'Coconut milk', 'Curry powder', 'Rice'], instructions: ['Saute spices.', 'Add chickpeas and tomatoes.', 'Simmer with coconut milk 15 mins.'] },
+    dinner: { name: 'Shrimp & Quinoa Bowl', desc: 'Light seafood with complete protein grain.', kcal: 310, p: 22, c: 35, f: 8, ingredients: ['150g shrimp', '½ cup quinoa', 'Spinach', 'Garlic', 'Olive oil'], instructions: ['Cook quinoa.', 'Saute garlic and shrimp.', 'Serve over quinoa with spinach.'] },
   },
   Sat: {
     breakfast: { name: 'Pancakes with Fruit', desc: 'Whole grain pancakes with fresh fruit.', kcal: 320, p: 9, c: 55, f: 7, ingredients: ['1 cup whole wheat flour', '1 egg', 'Milk', 'Baking powder', 'Mixed berries'] },
-    lunch:     { name: 'Turkey & Vegetable Sandwich', desc: 'Lean turkey on seeded bread.', kcal: 340, p: 22, c: 38, f: 9, ingredients: ['100g turkey breast', 'Seeded bread', 'Lettuce', 'Tomato', 'Mustard'], instructions: ['Layer turkey and vegetables.', 'Add condiments.', 'Serve with salad.'] },
-    dinner:    { name: 'Pasta Primavera', desc: 'Whole grain pasta with garden vegetables.', kcal: 380, p: 12, c: 65, f: 8, ingredients: ['80g whole grain pasta', 'Zucchini', 'Cherry tomatoes', 'Basil', 'Parmesan'], instructions: ['Cook pasta al dente.', 'Saute vegetables in olive oil.', 'Toss together with basil.'] },
+    lunch: { name: 'Turkey & Vegetable Sandwich', desc: 'Lean turkey on seeded bread.', kcal: 340, p: 22, c: 38, f: 9, ingredients: ['100g turkey breast', 'Seeded bread', 'Lettuce', 'Tomato', 'Mustard'], instructions: ['Layer turkey and vegetables.', 'Add condiments.', 'Serve with salad.'] },
+    dinner: { name: 'Pasta Primavera', desc: 'Whole grain pasta with garden vegetables.', kcal: 380, p: 12, c: 65, f: 8, ingredients: ['80g whole grain pasta', 'Zucchini', 'Cherry tomatoes', 'Basil', 'Parmesan'], instructions: ['Cook pasta al dente.', 'Saute vegetables in olive oil.', 'Toss together with basil.'] },
   },
   Sun: {
     breakfast: { name: 'French Toast', desc: 'Egg-soaked bread with cinnamon.', kcal: 290, p: 10, c: 42, f: 9, ingredients: ['2 slices bread', '2 eggs', 'Milk', 'Cinnamon', 'Maple syrup'] },
-    lunch:     { name: 'Bean & Vegetable Burrito', desc: 'Fibre-rich bean burrito.', kcal: 360, p: 14, c: 58, f: 8, ingredients: ['1 whole wheat tortilla', '½ cup black beans', 'Brown rice', 'Peppers', 'Salsa'], instructions: ['Warm beans and rice.', 'Layer in tortilla with peppers.', 'Roll and enjoy.'] },
-    dinner:    { name: 'Roast Chicken & Steamed Broc', desc: 'Simple roasted protein with greens.', kcal: 300, p: 26, c: 12, f: 11, ingredients: ['120g chicken thigh', 'Broccoli', 'Garlic', 'Olive oil', 'Herbs'], instructions: ['Roast chicken at 200C 30 mins.', 'Steam broccoli 5-7 mins.', 'Serve with lemon juice.'] },
+    lunch: { name: 'Bean & Vegetable Burrito', desc: 'Fibre-rich bean burrito.', kcal: 360, p: 14, c: 58, f: 8, ingredients: ['1 whole wheat tortilla', '½ cup black beans', 'Brown rice', 'Peppers', 'Salsa'], instructions: ['Warm beans and rice.', 'Layer in tortilla with peppers.', 'Roll and enjoy.'] },
+    dinner: { name: 'Roast Chicken & Steamed Broc', desc: 'Simple roasted protein with greens.', kcal: 300, p: 26, c: 12, f: 11, ingredients: ['120g chicken thigh', 'Broccoli', 'Garlic', 'Olive oil', 'Herbs'], instructions: ['Roast chicken at 200C 30 mins.', 'Steam broccoli 5-7 mins.', 'Serve with lemon juice.'] },
   },
 };
 
@@ -138,36 +139,36 @@ const SHOPPING_LIST = [
   {
     category: 'Produce',
     items: [
-      { name: 'Mixed Berries',          qty: '30g' },
-      { name: 'Carrots',                qty: '2 medium' },
-      { name: 'Celery',                 qty: '1 bunch' },
+      { name: 'Mixed Berries', qty: '30g' },
+      { name: 'Carrots', qty: '2 medium' },
+      { name: 'Celery', qty: '1 bunch' },
       { name: 'Mixed Stir-fry Veggies', qty: '50g' },
-      { name: 'Apples',                 qty: '1' },
-      { name: 'Cucumber',               qty: '1' },
-      { name: 'Cherry Tomatoes',         qty: '1 small box' },
-      { name: 'Sweet Corn',             qty: '30g' },
-      { name: 'Tomato',                 qty: '1' },
-      { name: 'Sweet Potatoes',         qty: '2 medium' },
+      { name: 'Apples', qty: '1' },
+      { name: 'Cucumber', qty: '1' },
+      { name: 'Cherry Tomatoes', qty: '1 small box' },
+      { name: 'Sweet Corn', qty: '30g' },
+      { name: 'Tomato', qty: '1' },
+      { name: 'Sweet Potatoes', qty: '2 medium' },
       { name: 'Mixed Peas and Carrots', qty: '40g' },
-      { name: 'Bananas',                qty: '3' },
-      { name: 'Zucchini',               qty: '1 large' },
-      { name: 'Bell Pepper',            qty: '1' },
-      { name: 'Pear',                   qty: '1' },
-      { name: 'Potatoes',               qty: '1' },
-      { name: 'Broccoli',               qty: '1 small head' },
+      { name: 'Bananas', qty: '3' },
+      { name: 'Zucchini', qty: '1 large' },
+      { name: 'Bell Pepper', qty: '1' },
+      { name: 'Pear', qty: '1' },
+      { name: 'Potatoes', qty: '1' },
+      { name: 'Broccoli', qty: '1 small head' },
     ],
   },
   {
     category: 'Dairy & Alternatives',
     items: [
       { name: 'Milk (or plant-based)', qty: '200ml' },
-      { name: 'Greek Yogurt',          qty: '120g' },
-      { name: 'Cheddar Cheese',        qty: '10g' },
-      { name: 'Butter',                qty: '10g' },
-      { name: 'Feta Cheese',           qty: '20g' },
-      { name: 'Cottage Cheese',        qty: '50g' },
-      { name: 'Parmesan Cheese',       qty: '10g' },
-      { name: 'Eggs',                  qty: '2 large' },
+      { name: 'Greek Yogurt', qty: '120g' },
+      { name: 'Cheddar Cheese', qty: '10g' },
+      { name: 'Butter', qty: '10g' },
+      { name: 'Feta Cheese', qty: '20g' },
+      { name: 'Cottage Cheese', qty: '50g' },
+      { name: 'Parmesan Cheese', qty: '10g' },
+      { name: 'Eggs', qty: '2 large' },
     ],
   },
   {
@@ -179,44 +180,44 @@ const SHOPPING_LIST = [
   {
     category: 'Pantry & Grains',
     items: [
-      { name: 'Gluten-free Oats',         qty: '60g' },
-      { name: 'Cooked Lentils',           qty: '50g' },
-      { name: 'Vegetable Broth',          qty: '150ml' },
-      { name: 'White Rice',               qty: '150g (uncooked weight equiv)' },
-      { name: 'Olive Oil',                qty: '1 small bottle' },
-      { name: 'Soy Sauce',               qty: '1 small bottle' },
-      { name: 'Cooked Chickpeas',         qty: '50g' },
-      { name: 'Black Beans',              qty: '60g' },
-      { name: 'Pinto Beans',             qty: '80g' },
-      { name: 'Quinoa',                   qty: '80g (uncooked weight equiv)' },
-      { name: 'Gluten-free Crackers',     qty: '1 box' },
-      { name: 'Coconut Milk',             qty: '30ml' },
-      { name: 'Gluten-free Pancake Mix',  qty: '30g' },
-      { name: 'Tomato Broth',             qty: '150ml' },
-      { name: 'Kidney Beans',             qty: '30g' },
-      { name: 'Mixed Beans',             qty: '60g' },
+      { name: 'Gluten-free Oats', qty: '60g' },
+      { name: 'Cooked Lentils', qty: '50g' },
+      { name: 'Vegetable Broth', qty: '150ml' },
+      { name: 'White Rice', qty: '150g (uncooked weight equiv)' },
+      { name: 'Olive Oil', qty: '1 small bottle' },
+      { name: 'Soy Sauce', qty: '1 small bottle' },
+      { name: 'Cooked Chickpeas', qty: '50g' },
+      { name: 'Black Beans', qty: '60g' },
+      { name: 'Pinto Beans', qty: '80g' },
+      { name: 'Quinoa', qty: '80g (uncooked weight equiv)' },
+      { name: 'Gluten-free Crackers', qty: '1 box' },
+      { name: 'Coconut Milk', qty: '30ml' },
+      { name: 'Gluten-free Pancake Mix', qty: '30g' },
+      { name: 'Tomato Broth', qty: '150ml' },
+      { name: 'Kidney Beans', qty: '30g' },
+      { name: 'Mixed Beans', qty: '60g' },
     ],
   },
   {
     category: 'Spices & Condiments',
     items: [
-      { name: 'Sesame Oil',         qty: '1 small bottle' },
-      { name: 'Honey',              qty: '1 small jar' },
-      { name: 'Apple Cider Vinegar',qty: '1 small bottle' },
-      { name: 'Lemon Juice',        qty: '1 small bottle' },
-      { name: 'Cinnamon',           qty: '1 small jar' },
-      { name: 'Mild Curry Powder',  qty: '1 small jar' },
-      { name: 'Paprika',            qty: '1 small jar' },
+      { name: 'Sesame Oil', qty: '1 small bottle' },
+      { name: 'Honey', qty: '1 small jar' },
+      { name: 'Apple Cider Vinegar', qty: '1 small bottle' },
+      { name: 'Lemon Juice', qty: '1 small bottle' },
+      { name: 'Cinnamon', qty: '1 small jar' },
+      { name: 'Mild Curry Powder', qty: '1 small jar' },
+      { name: 'Paprika', qty: '1 small jar' },
     ],
   },
 ];
 
 /* ── MealPlanResult Component ── */
 function MealPlanResult({ goal }: { goal: string | null }) {
-  const [planTab, setPlanTab]           = useState('My Plan');
-  const [activeDay, setActiveDay]       = useState('Mon');
-  const [expanded, setExpanded]         = useState<Record<string, boolean>>({});
-  const [mealSearch, setMealSearch]     = useState('');
+  const [planTab, setPlanTab] = useState('My Plan');
+  const [activeDay, setActiveDay] = useState('Mon');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [mealSearch, setMealSearch] = useState('');
   const [showShopping, setShowShopping] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
 
@@ -232,18 +233,18 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
   const day = MEAL_PLAN[activeDay];
   const totalKcal = day.breakfast.kcal + day.lunch.kcal + day.dinner.kcal;
-  const totalP    = day.breakfast.p   + day.lunch.p   + day.dinner.p;
-  const totalC    = day.breakfast.c   + day.lunch.c   + day.dinner.c;
-  const totalF    = day.breakfast.f   + day.lunch.f   + day.dinner.f;
+  const totalP = day.breakfast.p + day.lunch.p + day.dinner.p;
+  const totalC = day.breakfast.c + day.lunch.c + day.dinner.c;
+  const totalF = day.breakfast.f + day.lunch.f + day.dinner.f;
 
   const goalLabel = goal === 'g1' ? 'Weight Loss'
-                  : goal === 'g2' ? 'Muscle Building'
-                  : goal === 'g3' ? 'Weight Maintenance'
-                  : goal === 'g4' ? 'Flexibility'
-                  : 'Endurance';
+    : goal === 'g2' ? 'Muscle Building'
+      : goal === 'g3' ? 'Weight Maintenance'
+        : goal === 'g4' ? 'Flexibility'
+          : 'Endurance';
 
   const MealCard = ({ label, meal, expandKey }: { label: string; meal: MealEntry; expandKey: string }) => {
-    const ingKey  = `${expandKey}-ing`;
+    const ingKey = `${expandKey}-ing`;
     const instKey = `${expandKey}-inst`;
     return (
       <View style={styles.mealCard}>
@@ -285,7 +286,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
   /* Shopping List Screen */
   if (showShopping) {
-    const totalItems   = SHOPPING_LIST.reduce((s, cat) => s + cat.items.length, 0);
+    const totalItems = SHOPPING_LIST.reduce((s, cat) => s + cat.items.length, 0);
     const checkedCount = checkedItems.size;
     return (
       <View style={styles.container}>
@@ -352,7 +353,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
           <TouchableOpacity
             style={styles.slCopyBtn}
             activeOpacity={0.85}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <LinearGradient
               colors={['#D946EF', '#A855F7']}
@@ -371,11 +372,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Brand Header */}
-        <View style={styles.planBrand}>
-          <Text style={styles.planBrandTitle}>VICTORY</Text>
-          <Text style={styles.planBrandSub}>FITNESS</Text>
-        </View>
+        <VictoryHeader />
 
         {/* Tab Bar */}
         <View style={styles.planTabRow}>
@@ -415,8 +412,8 @@ function MealPlanResult({ goal }: { goal: string | null }) {
               </View>
             </View>
             <MealCard label="Breakfast" meal={day.breakfast} expandKey={`${activeDay}-b`} />
-            <MealCard label="Lunch"     meal={day.lunch}     expandKey={`${activeDay}-l`} />
-            <MealCard label="Dinner"    meal={day.dinner}    expandKey={`${activeDay}-d`} />
+            <MealCard label="Lunch" meal={day.lunch} expandKey={`${activeDay}-l`} />
+            <MealCard label="Dinner" meal={day.dinner} expandKey={`${activeDay}-d`} />
             <TouchableOpacity style={styles.shoppingBtn} activeOpacity={0.85} onPress={() => setShowShopping(true)}>
               <LinearGradient colors={['#A855F7', '#C026D3']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shoppingBtnGrad}>
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
@@ -440,9 +437,9 @@ function MealPlanResult({ goal }: { goal: string | null }) {
               <View style={styles.macroGrid}>
                 {[
                   { label: 'CALORIES', val: '0', unit: 'kcal' },
-                  { label: 'PROTEIN',  val: '0', unit: 'g' },
-                  { label: 'CARBS',    val: '0', unit: 'g' },
-                  { label: 'FAT',      val: '0', unit: 'g' },
+                  { label: 'PROTEIN', val: '0', unit: 'g' },
+                  { label: 'CARBS', val: '0', unit: 'g' },
+                  { label: 'FAT', val: '0', unit: 'g' },
                 ].map((m) => (
                   <View key={m.label} style={styles.macroGridCell}>
                     <Text style={styles.macroGridLabel}>{m.label}</Text>
@@ -531,21 +528,21 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
 /* ── Main Wizard Screen ── */
 export default function JournalScreen() {
-  const [step, setStep]                         = useState(1);
-  const [generating, setGenerating]             = useState(false);
-  const [done, setDone]                         = useState(false);
+  const [step, setStep] = useState(1);
+  const [generating, setGenerating] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const [selectedGoal, setSelectedGoal]         = useState<string | null>(null);
-  const [cuisine, setCuisine]                   = useState('');
-  const [favoriteMeal, setFavoriteMeal]         = useState('');
-  const [selectedDiet, setSelectedDiet]         = useState<string | null>(null);
-  const [allergies, setAllergies]               = useState('');
+  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
+  const [cuisine, setCuisine] = useState('');
+  const [favoriteMeal, setFavoriteMeal] = useState('');
+  const [selectedDiet, setSelectedDiet] = useState<string | null>(null);
+  const [allergies, setAllergies] = useState('');
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
-  const [age, setAge]                           = useState('');
-  const [gender, setGender]                     = useState('Please select...');
-  const [genderOpen, setGenderOpen]             = useState(false);
-  const [height, setHeight]                     = useState('');
-  const [weight, setWeight]                     = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('Please select...');
+  const [genderOpen, setGenderOpen] = useState(false);
+  const [height, setHeight] = useState('');
+  const [weight, setWeight] = useState('');
   const [healthConditions, setHealthConditions] = useState<Set<string>>(new Set());
 
   const toggleHealth = (id: string) => {
@@ -592,11 +589,7 @@ export default function JournalScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      {/* Brand Header */}
-      <View style={styles.wizardHeader}>
-        <Text style={styles.wizardBrandTitle}>V I C T O R Y</Text>
-        <Text style={styles.wizardBrandSub}>F I T N E S S</Text>
-      </View>
+      <VictoryHeader />
 
       {/* Progress Bar */}
       <View style={styles.progressBarBg}>
