@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Dimensions,
+  Pressable,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,14 @@ const HEAL_CATEGORIES = [
 export default function LongevityOS() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/profile');
+    }
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -343,12 +352,16 @@ export default function LongevityOS() {
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => router.back()}
+          <Pressable 
+            style={({ pressed }) => [
+              styles.backButton,
+              { opacity: pressed ? 0.6 : 1 }
+            ]} 
+            onPress={handleBack}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
           >
             <Ionicons name="chevron-back" size={24} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
           <View style={styles.headerLeft}>
             <Text style={styles.osTitle}>Longevity OS</Text>
             <Text style={styles.osSub}>Optimizing for Healthspan</Text>
@@ -416,6 +429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    zIndex: 10,
   },
   headerLeft: {
     flex: 1,
