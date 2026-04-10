@@ -158,7 +158,10 @@ export default function ProfileScreen() {
               <Text style={styles.coachName}>LONGEVITY OS</Text>
               <Text style={[styles.coachStatus, { color: '#A855F7' }]}>⚡ Optimizing for you</Text>
             </View>
-            <TouchableOpacity style={styles.coachArrow}>
+            <TouchableOpacity 
+              style={styles.coachArrow}
+              onPress={() => router.push('/profile/longevity-os')}
+            >
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
           </View>

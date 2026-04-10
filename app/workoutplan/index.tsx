@@ -94,7 +94,10 @@ export default function WorkoutPlanScreen() {
             <TouchableOpacity 
               style={styles.optionCard} 
               activeOpacity={0.7}
-              onPress={() => setIsModalVisible(false)}
+              onPress={() => {
+                setIsModalVisible(false);
+                router.push('/workoutplan/strength-wizard');
+              }}
             >
               <Text style={styles.optionTitle}>CUSTOM STRENGTH PLAN</Text>
               <Text style={styles.optionDescription}>
