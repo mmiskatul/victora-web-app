@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,41 +8,53 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
-} from 'react-native';
-import { Stack, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../constants/Colors';
+} from "react-native";
+import { Stack, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Colors } from "../../constants/Colors";
 
 const MOODS = [
-  { emoji: '😡', label: 'ANGRY' },
-  { emoji: '😟', label: 'ANXIOUS' },
-  { emoji: '😐', label: 'NEUTRAL' },
-  { emoji: '😊', label: 'GOOD' },
-  { emoji: '🤩', label: 'VICTORIOUS' },
+  { emoji: "😡", label: "ANGRY" },
+  { emoji: "😟", label: "ANXIOUS" },
+  { emoji: "😐", label: "NEUTRAL" },
+  { emoji: "😊", label: "GOOD" },
+  { emoji: "🤩", label: "VICTORIOUS" },
 ];
 
 export default function JournalScreen() {
   const router = useRouter();
   const [mood, setMood] = useState(3); // Default to happy
-  const [entry, setEntry] = useState('');
+  const [entry, setEntry] = useState("");
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <Stack.Screen options={{ 
-        headerShown: true, 
-        title: 'ZEN JOURNAL',
-        headerTransparent: true,
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 4 } as any,
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
-            <Ionicons name="chevron-back" size={28} color="#fff" />
-          </TouchableOpacity>
-        ),
-      }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "JOURNAL",
+          headerTransparent: true,
+          headerTintColor: "#fff",
+          headerTitleStyle: {
+            fontFamily: "Inter_700Bold",
+            fontSize: 16,
+            letterSpacing: 4,
+          } as any,
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ marginLeft: 8 }}
+            >
+              <Ionicons name="chevron-back" size={28} color="#fff" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.welcomeSection}>
           <Text style={styles.dateLabel}>THURSDAY, APRIL 9</Text>
           <Text style={styles.mainTitle}>Reflect on your victory.</Text>
@@ -52,16 +64,23 @@ export default function JournalScreen() {
           <Text style={styles.sectionLabel}>CURRENT VIBE</Text>
           <View style={styles.moodScale}>
             {MOODS.map((m, i) => (
-              <TouchableOpacity 
-                key={i} 
+              <TouchableOpacity
+                key={i}
                 onPress={() => setMood(i)}
                 style={[
-                  styles.moodBtn, 
+                  styles.moodBtn,
                   mood === i && styles.moodBtnActive,
-                  mood === i && { shadowColor: i > 2 ? Colors.accentBlue : '#EF4444' }
+                  mood === i && {
+                    shadowColor: i > 2 ? Colors.accentBlue : "#EF4444",
+                  },
                 ]}
               >
-                <Text style={[styles.moodEmoji, mood === i && styles.moodEmojiActive]}>
+                <Text
+                  style={[
+                    styles.moodEmoji,
+                    mood === i && styles.moodEmojiActive,
+                  ]}
+                >
                   {m.emoji}
                 </Text>
                 {mood === i && (
@@ -70,7 +89,6 @@ export default function JournalScreen() {
               </TouchableOpacity>
             ))}
           </View>
-
           <View style={styles.composerContainer}>
             <TextInput
               style={styles.composer}
@@ -80,7 +98,7 @@ export default function JournalScreen() {
               value={entry}
               onChangeText={setEntry}
             />
-            
+
             <View style={styles.composerFooter}>
               <Text style={styles.charCount}>{entry.length} characters</Text>
               <TouchableOpacity style={styles.glassMicBtn} activeOpacity={0.7}>
@@ -88,34 +106,28 @@ export default function JournalScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
           <TouchableOpacity style={styles.primaryAction} activeOpacity={0.8}>
             <Text style={styles.primaryActionText}>SECURE LOG</Text>
             <Ionicons name="shield-checkmark" size={18} color="#000" />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.aiAction} activeOpacity={0.8}>
             <Ionicons name="sparkles" size={18} color={Colors.accentPurple} />
             <Text style={styles.aiActionText}>ANALYZE WITH AI</Text>
-          </TouchableOpacity> glassCard: {
-  },
+          </TouchableOpacity>{" "}
+          glassCard: {},
         </View>
 
         <View style={styles.footer}>
-          <View style={styles.footerHeader}>
-            <Text style={styles.footerTitle}>YOUR JOURNEY</Text>
-            <View style={styles.streakBadge}>
-              <Ionicons name="flame" size={14} color="#F59E0B" />
-              <Text style={styles.streakText}>4 DAY STREAK</Text>
-            </View>
-          </View>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.historyLink}
-            onPress={() => router.push('/journal/history')}
+            onPress={() => router.push("/journal/history")}
           >
             <Text style={styles.historyLinkText}>View All Past Entries</Text>
-            <Ionicons name="arrow-forward" size={16} color={Colors.accentBlue} />
+            <Ionicons
+              name="arrow-forward"
+              size={16}
+              color={Colors.accentBlue}
+            />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -126,7 +138,7 @@ export default function JournalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F0F', // Deeper background
+    backgroundColor: "#0F0F0F", // Deeper background
   },
   scrollContent: {
     paddingTop: 110,
@@ -139,51 +151,51 @@ const styles = StyleSheet.create({
   dateLabel: {
     color: Colors.accentBlue,
     fontSize: 12,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 2,
     marginBottom: 8,
   },
   mainTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 28,
-    fontFamily: 'Inter_800ExtraBold',
+    fontFamily: "Inter_800ExtraBold",
     letterSpacing: -0.5,
   },
   glassCard: {
-    backgroundColor: '#161616',
+    backgroundColor: "#161616",
     borderRadius: 32,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: "rgba(255,255,255,0.05)",
     marginBottom: 32,
   },
   sectionLabel: {
-    color: 'rgba(255,255,255,0.3)',
+    color: "rgba(255,255,255,0.3)",
     fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 1.5,
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   moodScale: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 32,
     height: 80,
-    alignItems: 'center',
+    alignItems: "center",
   },
   moodBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: "rgba(255,255,255,0.03)",
   },
   moodBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: "rgba(255,255,255,0.08)",
     height: 70,
     width: 60,
     borderRadius: 20,
@@ -201,136 +213,136 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
   activeMoodLabel: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 8,
-    fontWeight: '800',
-    fontFamily: 'Inter_800ExtraBold',
+    fontWeight: "800",
+    fontFamily: "Inter_800ExtraBold",
     marginTop: 4,
     letterSpacing: 0.5,
   },
   composerContainer: {
-    backgroundColor: '#0A0A0A',
+    backgroundColor: "#0A0A0A",
     borderRadius: 24,
     padding: 20,
     minHeight: 300,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.03)',
+    borderColor: "rgba(255,255,255,0.03)",
   },
   composer: {
     flex: 1,
-    color: '#fff',
+    color: "#fff",
     fontSize: 17,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
     lineHeight: 26,
-    textAlignVertical: 'top',
-    outlineStyle: 'none' as any,
+    textAlignVertical: "top",
+    outlineStyle: "none" as any,
   },
   composerFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 16,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: "rgba(255,255,255,0.05)",
     paddingTop: 16,
   },
   charCount: {
-    color: 'rgba(255,255,255,0.2)',
+    color: "rgba(255,255,255,0.2)",
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: "Inter_400Regular",
   },
   glassMicBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(6,182,212,0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(6,182,212,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: 'rgba(6,182,212,0.1)',
+    borderColor: "rgba(6,182,212,0.1)",
   },
   primaryAction: {
     backgroundColor: Colors.accentBlue,
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 60,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 12,
     marginBottom: 16,
   },
   primaryActionText: {
-    color: '#000',
+    color: "#000",
     fontSize: 15,
-    fontWeight: '800',
-    fontFamily: 'Inter_800ExtraBold',
+    fontWeight: "800",
+    fontFamily: "Inter_800ExtraBold",
     letterSpacing: 1.5,
   },
   aiAction: {
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 56,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     gap: 12,
     borderWidth: 1,
-    borderColor: 'rgba(168,85,247,0.3)',
-    backgroundColor: 'rgba(168,85,247,0.03)',
+    borderColor: "rgba(168,85,247,0.3)",
+    backgroundColor: "rgba(168,85,247,0.03)",
   },
   aiActionText: {
     color: Colors.accentPurple,
     fontSize: 13,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 2,
   },
   footer: {
-    backgroundColor: '#161616',
+    backgroundColor: "#161616",
     borderRadius: 24,
     padding: 20,
   },
   footerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 16,
   },
   footerTitle: {
-    color: 'rgba(255,255,255,0.3)',
+    color: "rgba(255,255,255,0.3)",
     fontSize: 10,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontWeight: "700",
+    fontFamily: "Inter_700Bold",
     letterSpacing: 1.5,
   },
   streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(245,158,11,0.1)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(245,158,11,0.1)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
     gap: 6,
   },
   streakText: {
-    color: '#F59E0B',
+    color: "#F59E0B",
     fontSize: 10,
-    fontWeight: '800',
-    fontFamily: 'Inter_800ExtraBold',
+    fontWeight: "800",
+    fontFamily: "Inter_800ExtraBold",
   },
   historyLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: "rgba(255,255,255,0.05)",
   },
   historyLinkText: {
     color: Colors.accentBlue,
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontWeight: "600",
+    fontFamily: "Inter_600SemiBold",
   },
 });

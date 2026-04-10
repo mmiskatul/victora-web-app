@@ -8,13 +8,14 @@ import {
   SafeAreaView,
   Dimensions,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 
-const { width } = Dimensions.get('window');
+// width constant moved inside component for responsiveness
 
 const TABS = [
   { id: 'overview', label: 'OVERVIEW', icon: 'pulse-outline' },
@@ -41,6 +42,7 @@ const HEAL_CATEGORIES = [
 
 export default function LongevityOS() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState('overview');
 
   const handleBack = () => {
@@ -55,7 +57,11 @@ export default function LongevityOS() {
     switch (activeTab) {
       case 'wearables':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.devicesCard}>
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderIcon}>
@@ -72,7 +78,7 @@ export default function LongevityOS() {
                 ].map((dev) => (
                   <TouchableOpacity
                     key={dev.name}
-                    style={[styles.deviceBox, dev.active && styles.activeDeviceBox]}
+                    style={[styles.deviceBox, { width: (width - 110) / 2 }, dev.active && styles.activeDeviceBox]}
                     activeOpacity={0.8}
                   >
                     <View style={styles.deviceIconSection}>
@@ -105,7 +111,11 @@ export default function LongevityOS() {
         );
       case 'heal':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.healHero}>
               <View style={styles.heroBadge}>
                 <Ionicons name="sparkles" size={12} color={Colors.accentBlue} />
@@ -134,7 +144,10 @@ export default function LongevityOS() {
 
             <View style={styles.categoryGrid}>
               {HEAL_CATEGORIES.map((cat) => (
-                <TouchableOpacity key={cat.id} style={styles.categoryBox}>
+                <TouchableOpacity 
+                  key={cat.id} 
+                  style={[styles.categoryBox, { width: (width - 64) / 2 }]}
+                >
                   <View style={styles.categoryIconWrap}>
                     <Ionicons name={cat.icon as any} size={20} color={Colors.accentBlue} />
                   </View>
@@ -153,7 +166,11 @@ export default function LongevityOS() {
         );
       case 'habits':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.habitsHeader}>
               <Text style={styles.tabTitle}>Longevity Habits</Text>
               <View style={styles.streakBadge}>
@@ -191,7 +208,7 @@ export default function LongevityOS() {
               </View>
               <View style={styles.calendarHeader}>
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, d) => (
-                  <Text key={d} style={styles.calDayHeader}>{day}</Text>
+                  <Text key={d} style={[styles.calDayHeader, { width: (width - 130) / 7 }]}>{day}</Text>
                 ))}
               </View>
               <View style={styles.calGrid}>
@@ -201,13 +218,14 @@ export default function LongevityOS() {
                   const isToday = dayNum === new Date().getDate();
                   const isDone = isCurrentMonth && dayNum < new Date().getDate();
 
-                  if (!isCurrentMonth) return <View key={i} style={styles.calEmpty} />;
+                  if (!isCurrentMonth) return <View key={i} style={[styles.calEmpty, { width: (width - 130) / 7, height: (width - 130) / 7 }]} />;
 
                   return (
                     <View
                       key={i}
                       style={[
                         styles.calDay,
+                        { width: (width - 130) / 7, height: (width - 130) / 7 },
                         isDone && styles.activeCalDay,
                         isToday && styles.todayCalDay
                       ]}
@@ -228,7 +246,11 @@ export default function LongevityOS() {
         );
       case 'learn':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <Text style={styles.tabTitle}>Longevity Masterclasses</Text>
             <View style={styles.emptyMasterclass}>
               <Ionicons name="book-outline" size={64} color="rgba(255,255,255,0.1)" />
@@ -239,7 +261,11 @@ export default function LongevityOS() {
         );
       case 'circles':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.habitsHeader}>
               <Text style={styles.tabTitle}>Longevity Circles</Text>
               <TouchableOpacity>
@@ -255,7 +281,11 @@ export default function LongevityOS() {
         );
       case 'overview':
         return (
-          <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.tabContent} 
+            contentContainerStyle={styles.tabContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Victory Age Card */}
             <View style={styles.victoryAgeCard}>
               <View style={styles.cardInfo}>
@@ -302,7 +332,14 @@ export default function LongevityOS() {
                 { label: 'Masterclass', icon: 'book-outline', color: Colors.accentBlue },
                 { label: 'Circles', icon: 'people-outline', color: '#F472B6' },
               ].map((item, idx) => (
-                <TouchableOpacity key={item.label} style={[styles.actionBox, idx === 4 && { width: '100%' }]}>
+                <TouchableOpacity 
+                  key={item.label} 
+                  style={[
+                    styles.actionBox, 
+                    { width: (width - 64) / 2 },
+                    idx === 4 && { width: width - 48 }
+                  ]}
+                >
                   <Ionicons name={item.icon as any} size={24} color={item.color} />
                   <Text style={styles.actionLabel}>{item.label}</Text>
                 </TouchableOpacity>
@@ -490,7 +527,10 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     flex: 1,
+  },
+  tabContentContainer: {
     paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   tabTitle: {
     color: '#fff',
@@ -540,7 +580,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   deviceBox: {
-    width: (width - 110) / 2,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 20,
     padding: 20,
@@ -728,7 +767,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   categoryBox: {
-    width: (width - 64) / 2,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 20,
     padding: 20,
@@ -822,7 +860,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   actionBox: {
-    width: (width - 64) / 2,
     backgroundColor: '#1A1A1A',
     borderRadius: 20,
     padding: 20,
@@ -1020,7 +1057,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.2)',
     fontSize: 10,
     fontFamily: 'Inter_700Bold',
-    width: (width - 130) / 7,
     textAlign: 'center',
   },
   calGrid: {
@@ -1030,8 +1066,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   calDay: {
-    width: (width - 130) / 7,
-    height: (width - 130) / 7,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.03)',
     justifyContent: 'center',
@@ -1040,8 +1074,6 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   calEmpty: {
-    width: (width - 130) / 7,
-    height: (width - 130) / 7,
   },
   todayCalDay: {
     borderColor: Colors.accentBlue,
