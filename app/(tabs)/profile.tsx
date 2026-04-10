@@ -198,7 +198,11 @@ export default function ProfileScreen() {
         {/* ── Administration ── */}
         <View style={styles.menuSection}>
           <Text style={styles.sectionTitle}>ADMINISTRATION</Text>
-          <TouchableOpacity style={styles.adminBtn} activeOpacity={0.85}>
+          <TouchableOpacity 
+            style={styles.adminBtn} 
+            activeOpacity={0.85}
+            onPress={() => router.push('/profile/admin')}
+          >
             <View style={[styles.adminBtnGrad, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
               <Ionicons name="shield-checkmark-outline" size={20} color="#06B6D4" />
               <Text style={styles.adminBtnText}>ADMIN PANEL</Text>
