@@ -24,13 +24,15 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleLogin = () => {
-    // TODO: Implement login logic
+    // TODO: Implement actual auth logic with backend
     console.log('Login:', { email, password });
+    router.replace('/(tabs)');
   };
 
   const handleGoogleSignIn = () => {
-    // TODO: Implement Google sign-in
+    // TODO: Implement Google sign-in auth
     console.log('Google Sign In');
+    router.replace('/(tabs)');
   };
 
   const handleForgotPassword = () => {
