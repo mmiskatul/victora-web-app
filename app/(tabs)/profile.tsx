@@ -394,11 +394,6 @@ const styles = StyleSheet.create({
   /* Divider */
   divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginHorizontal: 16 },
 
-  /* Admin */
-  adminBtn: { borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(6,182,212,0.3)' },
-  adminBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
-  adminBtnText: { color: '#06B6D4', fontSize: 14, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
-
   /* Logout */
   logoutBtn: {
     flexDirection: 'row',
