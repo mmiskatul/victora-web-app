@@ -28,6 +28,7 @@ const MENU_SECTIONS = [
     title: 'Account',
     items: [
       { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
+      { icon: 'document-text-outline', label: 'Application', tint: '#EAB308', route: '/profile/application' },
       { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
       { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
       { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6', route: '/profile/support' },
@@ -158,7 +159,7 @@ export default function ProfileScreen() {
               <Text style={styles.coachName}>LONGEVITY OS</Text>
               <Text style={[styles.coachStatus, { color: '#A855F7' }]}>⚡ Optimizing for you</Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.coachArrow}
               onPress={() => router.push('/profile/longevity-os')}
             >
@@ -194,22 +195,6 @@ export default function ProfileScreen() {
             </View>
           </View>
         ))}
-
-        {/* ── Administration ── */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>ADMINISTRATION</Text>
-          <TouchableOpacity 
-            style={styles.adminBtn} 
-            activeOpacity={0.85}
-            onPress={() => router.push('/profile/admin')}
-          >
-            <View style={[styles.adminBtnGrad, { backgroundColor: 'rgba(6,182,212,0.1)' }]}>
-              <Ionicons name="shield-checkmark-outline" size={20} color="#06B6D4" />
-              <Text style={styles.adminBtnText}>ADMIN PANEL</Text>
-              <Ionicons name="chevron-forward" size={16} color="#06B6D4" style={{ marginLeft: 'auto' }} />
-            </View>
-          </TouchableOpacity>
-        </View>
 
         {/* ── Log Out ── */}
         <TouchableOpacity

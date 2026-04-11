@@ -259,7 +259,7 @@ export default function ChallengesScreen() {
                 </TouchableOpacity>
 
                 {/* Tier Dropdown */}
-                <View style={styles.tierDropdownWrapper}>
+                {/* <View style={styles.tierDropdownWrapper}>
                   <TouchableOpacity
                     style={styles.tierSelector}
                     onPress={() => setTierDropdownOpen(!tierDropdownOpen)}
@@ -299,7 +299,7 @@ export default function ChallengesScreen() {
                       ))}
                     </View>
                   )}
-                </View>
+                </View> */}
 
                 <TouchableOpacity style={styles.postBtn}>
                   <Text style={styles.postBtnText}>Post</Text>

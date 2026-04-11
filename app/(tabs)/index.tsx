@@ -23,7 +23,7 @@ export default function HomeScreen() {
         <MoodSection />
         <WorkoutSection />
         <ChallengesSection />
-        <AccountabilitySection />
+        {/* <AccountabilitySection /> */}
         <InviteFriendsCard />
         <View style={{ height: 20 }} />
       </ScrollView>
