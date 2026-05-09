@@ -9,15 +9,16 @@ import {
   Platform,
   TouchableOpacity,
   Dimensions,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { apiRequest, AuthResponse, getValidAuthTokens, setAuthTokens } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 const { height } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,8 +55,12 @@ export default function LoginScreen() {
   }, [router]);
 
   const handleLogin = async () => {
-    if (!email.trim() || !password) {
-      Alert.alert('Missing information', 'Please enter your email and password.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail || !password) {
+      setErrorDialog({
+        title: 'Missing Information',
+        message: 'Please enter your email and password.',
+      });
       return;
     }
 
@@ -62,12 +68,12 @@ export default function LoginScreen() {
     try {
       const auth = await apiRequest<AuthResponse>('/auth/login', {
         method: 'POST',
-        body: { email, password },
+        body: { email: normalizedEmail, password },
       });
       await setAuthTokens(auth);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Login failed', error instanceof Error ? error.message : 'Please try again.');
+      setErrorDialog(formatAppError(error));
     } finally {
       setLoading(false);
     }
@@ -107,6 +113,12 @@ export default function LoginScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
+        <ErrorPopupModal
+          visible={Boolean(errorDialog)}
+          title={errorDialog?.title ?? 'Error'}
+          message={errorDialog?.message ?? ''}
+          onClose={() => setErrorDialog(null)}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -150,7 +162,7 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <AuthButton title="Log In" onPress={handleLogin} />
+              <AuthButton title="Log In" onPress={handleLogin} disabled={loading} />
             </View>
 
             {/* Register Link */}

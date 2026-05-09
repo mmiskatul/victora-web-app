@@ -26,6 +26,18 @@ type RequestOptions = {
   body?: unknown;
 };
 
+export class ApiError extends Error {
+  status: number;
+  detail: string;
+
+  constructor(status: number, detail: string) {
+    super(detail || 'Request failed');
+    this.name = 'ApiError';
+    this.status = status;
+    this.detail = detail || this.message;
+  }
+}
+
 type AuthTokens = {
   access_token: string;
   session_token: string;
@@ -224,10 +236,33 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw new Error(data.detail || 'Request failed');
+    throw new ApiError(response.status, extractErrorDetail(data) || 'Request failed');
   }
 
   return data as T;
+}
+
+function extractErrorDetail(data: unknown): string {
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  if (data && typeof data === 'object') {
+    const detail = (data as { detail?: unknown }).detail;
+    if (typeof detail === 'string') {
+      return detail;
+    }
+
+    if (detail && typeof detail === 'object') {
+      try {
+        return JSON.stringify(detail);
+      } catch {
+        return '';
+      }
+    }
+  }
+
+  return '';
 }
 
 export type AuthResponse = {

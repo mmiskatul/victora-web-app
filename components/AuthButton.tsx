@@ -13,6 +13,7 @@ interface AuthButtonProps {
   onPress: () => void;
   style?: ViewStyle;
   loading?: boolean;
+  disabled?: boolean;
 }
 
 export const AuthButton: React.FC<AuthButtonProps> = ({
@@ -20,13 +21,15 @@ export const AuthButton: React.FC<AuthButtonProps> = ({
   onPress,
   style,
   loading = false,
+  disabled = false,
 }) => {
+  const isDisabled = loading || disabled;
   return (
     <TouchableOpacity
-      style={[styles.button, style]}
+      style={[styles.button, isDisabled && styles.buttonDisabled, style]}
       onPress={onPress}
       activeOpacity={0.85}
-      disabled={loading}
+      disabled={isDisabled}
     >
       {loading ? (
         <ActivityIndicator color={Colors.background} />
@@ -58,5 +61,8 @@ const styles = StyleSheet.create({
     color: Colors.background,
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
 });

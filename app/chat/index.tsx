@@ -14,7 +14,9 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { apiRequest } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 interface Message {
   id: string;
@@ -43,6 +45,7 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,9 +65,10 @@ export default function ChatScreen() {
         }));
 
         setMessages(mapped.length > 0 ? mapped : INITIAL_MESSAGES);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setMessages(INITIAL_MESSAGES);
+          setErrorDialog(formatAppError(error));
         }
       } finally {
         if (!cancelled) {
@@ -109,12 +113,7 @@ export default function ChatScreen() {
       };
       setMessages((current) => [...current, coachMessage]);
     } catch (error) {
-      const coachMessage: Message = {
-        id: `${Date.now()}-error`,
-        text: 'Coach Victor is unavailable right now. Please try again in a moment.',
-        sender: 'coach',
-      };
-      setMessages((current) => [...current, coachMessage]);
+      setErrorDialog(formatAppError(error, 'Coach Victor is unavailable right now. Please try again in a moment.'));
     } finally {
       setSending(false);
     }
@@ -146,6 +145,12 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ErrorPopupModal
+        visible={Boolean(errorDialog)}
+        title={errorDialog?.title ?? 'Error'}
+        message={errorDialog?.message ?? ''}
+        onClose={() => setErrorDialog(null)}
+      />
       
       {/* Custom Header */}
       <View style={styles.header}>

@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   ImageBackground,
   KeyboardAvoidingView,
@@ -14,8 +13,10 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AuthButton } from '../../components/AuthButton';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { Colors } from '../../constants/Colors';
 import { apiRequest, AuthResponse, setAuthTokens } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 const { height } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ export default function VerificationScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendSeconds, setResendSeconds] = useState(45);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     if (resendSeconds === 0) {
@@ -42,7 +44,10 @@ export default function VerificationScreen() {
 
   const handleVerify = async () => {
     if (!email || !/^\d{4}$/.test(code)) {
-      Alert.alert('Invalid code', 'Enter the 4 digit verification code from your email.');
+      setErrorDialog({
+        title: 'Verification Error',
+        message: 'Enter the 4 digit verification code from your email.',
+      });
       return;
     }
 
@@ -55,7 +60,7 @@ export default function VerificationScreen() {
       await setAuthTokens(auth);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Verification failed', error instanceof Error ? error.message : 'Please try again.');
+      setErrorDialog(formatAppError(error));
     } finally {
       setLoading(false);
     }
@@ -63,11 +68,17 @@ export default function VerificationScreen() {
 
   const handleResend = () => {
     if (!email) {
-      Alert.alert('Missing email', 'Go back and register again to resend the code.');
+      setErrorDialog({
+        title: 'Missing Email',
+        message: 'Go back and register again to resend the code.',
+      });
       return;
     }
 
-    Alert.alert('Resend unavailable', 'Please register again to receive a new code.');
+    setErrorDialog({
+      title: 'Resend Unavailable',
+      message: 'Please register again to receive a new code.',
+    });
   };
 
   return (
@@ -77,6 +88,12 @@ export default function VerificationScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
+        <ErrorPopupModal
+          visible={Boolean(errorDialog)}
+          title={errorDialog?.title ?? 'Error'}
+          message={errorDialog?.message ?? ''}
+          onClose={() => setErrorDialog(null)}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}

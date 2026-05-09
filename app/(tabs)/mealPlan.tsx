@@ -14,8 +14,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 const TOTAL_STEPS = 8;
 
@@ -93,7 +95,7 @@ function OptionList({
 
 /* ── Meal Plan Data ── */
 const PLAN_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const PLAN_TABS = ['My Plan', 'Tracker', 'Meal Analysis'];
+const PLAN_TABS = ['My Plan', 'Tracker', 'Meal Analysis', 'Plan JSON'];
 
 type MealEntry = { name: string; desc: string; kcal: number; p: number; c: number; f: number; ingredients: string[]; instructions?: string[]; };
 type DayPlan = { breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry; };
@@ -116,7 +118,33 @@ type NutritionPlanApiResponse = {
   goal_label: string;
   days: Array<{ day: string; breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry }>;
   shopping_list: Array<{ category: string; items: Array<{ name: string; qty: string }> }>;
+  profile?: Record<string, unknown> | null;
 };
+
+function mapPlanProfile(plan: NutritionPlanApiResponse | null): NutritionProfile | null {
+  const rawProfile = plan?.profile;
+  if (!rawProfile) {
+    return null;
+  }
+
+  const healthConditions = Array.isArray(rawProfile.health_conditions)
+    ? rawProfile.health_conditions.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  return {
+    goal: typeof rawProfile.goal === 'string' ? rawProfile.goal : null,
+    cuisine: typeof rawProfile.cuisine === 'string' ? rawProfile.cuisine : '',
+    favoriteMeal: typeof rawProfile.favorite_meal === 'string' ? rawProfile.favorite_meal : '',
+    selectedDiet: typeof rawProfile.diet === 'string' ? rawProfile.diet : null,
+    allergies: typeof rawProfile.allergies === 'string' ? rawProfile.allergies : '',
+    selectedActivity: typeof rawProfile.activity_level === 'string' ? rawProfile.activity_level : null,
+    age: typeof rawProfile.age === 'string' ? rawProfile.age : '',
+    gender: typeof rawProfile.gender === 'string' ? rawProfile.gender : 'Please select...',
+    height: typeof rawProfile.height === 'string' ? rawProfile.height : '',
+    weight: typeof rawProfile.weight === 'string' ? rawProfile.weight : '',
+    healthConditions,
+  };
+}
 
 const MEAL_PLAN: Record<string, DayPlan> = {
   Mon: {
@@ -238,9 +266,11 @@ const SHOPPING_LIST = [
 function MealPlanResult({
   profile,
   initialPlan,
+  onCreateNewPlan,
 }: {
   profile: NutritionProfile;
   initialPlan?: NutritionPlanApiResponse | null;
+  onCreateNewPlan: () => void;
 }) {
   const [planTab, setPlanTab] = useState('My Plan');
   const [activeDay, setActiveDay] = useState('Mon');
@@ -334,6 +364,21 @@ function MealPlanResult({
       : profile.goal === 'g3' ? 'Weight Maintenance'
         : profile.goal === 'g4' ? 'Flexibility'
           : 'Endurance');
+  const planJson = generatedPlan
+    ? JSON.stringify(generatedPlan, null, 2)
+    : JSON.stringify(
+        {
+          summary: 'No generated plan is loaded yet.',
+          goal_label: goalLabel,
+          days: PLAN_DAYS.map((planDay) => ({
+            day: planDay,
+            ...MEAL_PLAN[planDay],
+          })),
+          shopping_list: SHOPPING_LIST,
+        },
+        null,
+        2
+      );
 
   const handleGetSuggestions = async () => {
     setLoadingAdvice(true);
@@ -534,7 +579,7 @@ function MealPlanResult({
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.newPlanBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.newPlanBtn} activeOpacity={0.7} onPress={onCreateNewPlan}>
               <Text style={styles.newPlanBtnText}>Create New Plan</Text>
             </TouchableOpacity>
           </View>
@@ -631,6 +676,18 @@ function MealPlanResult({
           </View>
         )}
 
+        {planTab === 'Plan JSON' && (
+          <View style={styles.planContent}>
+            <Text style={styles.planTitle}>Generated Plan JSON</Text>
+            <Text style={styles.planDesc}>
+              Complete nutrition plan data received by the app, including every day, meal, macro, ingredient, instruction, and shopping list item.
+            </Text>
+            <View style={styles.jsonCard}>
+              <Text selectable style={styles.jsonText}>{planJson}</Text>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 60 }} />
       </ScrollView>
     </View>
@@ -642,8 +699,9 @@ export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
-  const [generationError, setGenerationError] = useState('');
   const [done, setDone] = useState(false);
+  const [loadingSavedPlan, setLoadingSavedPlan] = useState(true);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const successScale = useState(new Animated.Value(0))[0];
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
 
@@ -659,6 +717,52 @@ export default function JournalScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [healthConditions, setHealthConditions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLatestPlan = async () => {
+      setLoadingSavedPlan(true);
+      try {
+        const latestPlan = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
+        if (cancelled) {
+          return;
+        }
+
+        setGeneratedPlan(latestPlan);
+        const mappedProfile = mapPlanProfile(latestPlan);
+        if (mappedProfile) {
+          setSelectedGoal(mappedProfile.goal);
+          setCuisine(mappedProfile.cuisine);
+          setFavoriteMeal(mappedProfile.favoriteMeal);
+          setSelectedDiet(mappedProfile.selectedDiet);
+          setAllergies(mappedProfile.allergies);
+          setSelectedActivity(mappedProfile.selectedActivity);
+          setAge(mappedProfile.age);
+          setGender(mappedProfile.gender);
+          setHeight(mappedProfile.height);
+          setWeight(mappedProfile.weight);
+          setHealthConditions(new Set(mappedProfile.healthConditions));
+        }
+        setDone(true);
+      } catch {
+        if (!cancelled) {
+          setDone(false);
+          setGeneratedPlan(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSavedPlan(false);
+        }
+      }
+    };
+
+    void loadLatestPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const toggleHealth = (id: string) => {
     setHealthConditions((prev) => {
@@ -689,7 +793,7 @@ export default function JournalScreen() {
 
     setGenerating(true);
     setGenerationSuccess(false);
-    setGenerationError('');
+    setErrorDialog(null);
 
     try {
       const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
@@ -709,7 +813,14 @@ export default function JournalScreen() {
         },
       });
 
-      setGeneratedPlan(response.plan);
+      let savedPlan = response.plan;
+      try {
+        savedPlan = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
+      } catch {
+        savedPlan = response.plan;
+      }
+
+      setGeneratedPlan(savedPlan);
 
       setGenerating(false);
       setGenerationSuccess(true);
@@ -729,19 +840,25 @@ export default function JournalScreen() {
     } catch (error) {
       setGenerating(false);
       setGenerationSuccess(false);
-      setGenerationError(formatNutritionPlanError(error));
+      setErrorDialog(formatNutritionPlanError(error));
     }
   };
 
   const formatNutritionPlanError = (error: unknown) => {
-    const message = error instanceof Error ? error.message : '';
-    if (message.includes('Nutrition plan refused')) {
-      return 'The nutrition request was refused. Adjust your inputs and try again.';
+    const formatted = formatAppError(error, 'Unable to generate a nutrition plan right now.');
+    if (formatted.message.toLowerCase().includes('nutrition plan refused')) {
+      return {
+        title: 'Nutrition Error',
+        message: 'The nutrition request was refused. Adjust your inputs and try again.',
+      };
     }
-    if (message.includes('Nutrition plan unavailable')) {
-      return 'The nutrition service is unavailable right now. Try again in a moment.';
+    if (formatted.message.toLowerCase().includes('nutrition plan unavailable')) {
+      return {
+        title: 'Nutrition Service Error',
+        message: 'The nutrition service is unavailable right now. Try again in a moment.',
+      };
     }
-    return 'Unable to generate a nutrition plan right now.';
+    return formatted;
   };
 
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
@@ -766,6 +883,15 @@ export default function JournalScreen() {
     );
   }
 
+  if (loadingSavedPlan) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
+        <Text style={styles.quoteText}>Loading your saved plan...</Text>
+      </View>
+    );
+  }
+
   if (done) {
     return (
       <MealPlanResult
@@ -783,12 +909,25 @@ export default function JournalScreen() {
           healthConditions: Array.from(healthConditions),
         }}
         initialPlan={generatedPlan}
+        onCreateNewPlan={() => {
+          setDone(false);
+          setStep(1);
+          setErrorDialog(null);
+        }}
       />
     );
   }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ErrorPopupModal
+        visible={Boolean(errorDialog)}
+        title={errorDialog?.title ?? 'Error'}
+        message={errorDialog?.message ?? ''}
+        onClose={() => setErrorDialog(null)}
+        onRetry={errorDialog ? generatePlan : undefined}
+        retryLabel="Try Again"
+      />
       <VictoryHeader />
 
       {/* Progress Bar */}
@@ -912,15 +1051,6 @@ export default function JournalScreen() {
           </View>
         )}
 
-        {generationError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{generationError}</Text>
-            <TouchableOpacity onPress={generatePlan} activeOpacity={0.85} style={styles.errorRetryBtn}>
-              <Text style={styles.errorRetryText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
         <View style={{ height: 110 }} />
       </ScrollView>
 
@@ -998,11 +1128,6 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
-  errorBox: { paddingHorizontal: 24, paddingTop: 8, alignItems: 'center', gap: 10 },
-  errorText: { color: '#FCA5A5', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12, textAlign: 'center' },
-  errorRetryBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(168,85,247,0.16)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)' },
-  errorRetryText: { color: '#E9D5FF', fontSize: 13, fontFamily: 'Inter_700Bold' },
-
   /* Wizard Header */
   wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
   wizardBrandTitle: { fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 8, fontFamily: 'Inter_700Bold' },
@@ -1100,6 +1225,21 @@ const styles = StyleSheet.create({
   analysisEmptySub: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
 
   /* ── Shopping List ── */
+  jsonCard: {
+    backgroundColor: '#0D0D1E',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 14,
+    marginBottom: 20,
+  },
+  jsonText: {
+    color: '#D1D5DB',
+    fontSize: 11,
+    lineHeight: 17,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+
   slHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 56, paddingBottom: 16, backgroundColor: Colors.background },
   slBackBtn: { padding: 4 },
   slTitle: { fontSize: 16, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold' },
