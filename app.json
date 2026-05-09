@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "victory-fitness-app",
+    "name": "victory-fitness",
     "slug": "victory-fitness-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -23,14 +23,22 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.victoryfitnessapp"
+      "package": "com.victory.fitness"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
     },
     "plugins": [
       "expo-router",
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e1666444-f0cb-4ca6-acb0-21a4c0ec72eb"
+      }
+    }
   }
 }
