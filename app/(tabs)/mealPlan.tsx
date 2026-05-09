@@ -852,6 +852,12 @@ export default function JournalScreen() {
         message: 'The nutrition request was refused. Adjust your inputs and try again.',
       };
     }
+    if (formatted.message.toLowerCase().includes('did not return valid plan json')) {
+      return {
+        title: 'Nutrition JSON Error',
+        message: 'The AI response was not valid plan JSON. Try again and the system will request a cleaner structured plan.',
+      };
+    }
     if (formatted.message.toLowerCase().includes('nutrition plan unavailable')) {
       return {
         title: 'Nutrition Service Error',
