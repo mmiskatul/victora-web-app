@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
+import { getAuthTokens } from '../lib/api';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +40,27 @@ const ONBOARDING_DATA = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectIfAuthenticated = async () => {
+      const authTokens = await getAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (authTokens?.access_token || authTokens?.session_token) {
+        router.replace('/(tabs)');
+      }
+    };
+
+    void redirectIfAuthenticated();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleNext = () => {
     if (activeStep < ONBOARDING_DATA.length - 1) {
