@@ -235,20 +235,34 @@ const SHOPPING_LIST = [
 ];
 
 /* ── MealPlanResult Component ── */
-function MealPlanResult({ profile }: { profile: NutritionProfile }) {
+function MealPlanResult({
+  profile,
+  initialPlan,
+}: {
+  profile: NutritionProfile;
+  initialPlan?: NutritionPlanApiResponse | null;
+}) {
   const [planTab, setPlanTab] = useState('My Plan');
   const [activeDay, setActiveDay] = useState('Mon');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [mealSearch, setMealSearch] = useState('');
   const [showShopping, setShowShopping] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-  const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
+  const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(initialPlan ?? null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [nutritionAdvice, setNutritionAdvice] = useState('');
   const [loadingAdvice, setLoadingAdvice] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+
+    if (initialPlan) {
+      setGeneratedPlan(initialPlan);
+      setLoadingPlan(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const loadPlan = async () => {
       setLoadingPlan(true);
@@ -274,6 +288,7 @@ function MealPlanResult({ profile }: { profile: NutritionProfile }) {
       cancelled = true;
     };
   }, [
+    initialPlan,
     profile.goal,
     profile.cuisine,
     profile.favoriteMeal,
@@ -629,6 +644,7 @@ export default function JournalScreen() {
   const [generationSuccess, setGenerationSuccess] = useState(false);
   const [done, setDone] = useState(false);
   const successScale = useState(new Animated.Value(0))[0];
+  const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -674,7 +690,7 @@ export default function JournalScreen() {
     setGenerationSuccess(false);
 
     try {
-      await apiRequest('/ai/nutrition/plan', {
+      const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
         method: 'POST',
         body: {
           goal: selectedGoal,
@@ -690,6 +706,8 @@ export default function JournalScreen() {
           health_conditions: Array.from(healthConditions),
         },
       });
+
+      setGeneratedPlan(response.plan);
 
       setGenerating(false);
       setGenerationSuccess(true);
@@ -750,6 +768,7 @@ export default function JournalScreen() {
           weight,
           healthConditions: Array.from(healthConditions),
         }}
+        initialPlan={generatedPlan}
       />
     );
   }
