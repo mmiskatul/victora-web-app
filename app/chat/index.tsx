@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import Markdown from 'react-native-markdown-display';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import { apiRequest } from '../../lib/api';
@@ -36,6 +37,23 @@ const INITIAL_MESSAGES: Message[] = [
     sender: 'coach',
   },
 ];
+
+const markdownRules = {
+  body: { color: '#D1D5DB', fontSize: 15, lineHeight: 22, fontFamily: 'Inter_400Regular' },
+  heading1: { color: '#FFFFFF', fontSize: 18, lineHeight: 24, fontFamily: 'Inter_700Bold', marginTop: 0, marginBottom: 10 },
+  heading2: { color: '#FFFFFF', fontSize: 17, lineHeight: 23, fontFamily: 'Inter_700Bold', marginTop: 14, marginBottom: 8 },
+  heading3: { color: '#FFFFFF', fontSize: 16, lineHeight: 22, fontFamily: 'Inter_700Bold', marginTop: 12, marginBottom: 6 },
+  paragraph: { marginTop: 0, marginBottom: 10 },
+  strong: { color: '#FFFFFF', fontFamily: 'Inter_700Bold' },
+  bullet_list: { marginBottom: 10 },
+  ordered_list: { marginBottom: 10 },
+  list_item: { color: '#D1D5DB', fontSize: 15, lineHeight: 22, marginBottom: 4 },
+  bullet_list_icon: { color: Colors.accentBlue, marginRight: 8 },
+  ordered_list_icon: { color: Colors.accentBlue, marginRight: 8 },
+  hr: { backgroundColor: 'rgba(255,255,255,0.12)', height: 1, marginTop: 12, marginBottom: 12 },
+  fence: { backgroundColor: '#111820', color: '#D1D5DB', borderRadius: 8, padding: 10 },
+  code_inline: { backgroundColor: '#111820', color: '#FFFFFF', borderRadius: 4, paddingHorizontal: 4 },
+};
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -111,7 +129,7 @@ export default function ChatScreen() {
     } catch (error) {
       const coachMessage: Message = {
         id: `${Date.now()}-error`,
-        text: error instanceof Error ? error.message : 'Coach Victor is unavailable right now.',
+        text: 'Coach Victor is unavailable right now. Please try again in a moment.',
         sender: 'coach',
       };
       setMessages((current) => [...current, coachMessage]);
@@ -135,9 +153,11 @@ export default function ChatScreen() {
             isCoach ? styles.coachBubble : styles.userBubble,
           ]}
         >
-          <Text style={[styles.messageText, isCoach ? styles.coachText : styles.userText]}>
-            {item.text}
-          </Text>
+          {isCoach ? (
+            <Markdown style={markdownRules}>{item.text}</Markdown>
+          ) : (
+            <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
+          )}
         </View>
       </View>
     );
