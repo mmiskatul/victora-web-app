@@ -12,7 +12,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
-import { getValidAuthTokens } from '../lib/api';
+import { apiRequest, clearAuthTokens } from '../lib/api';
 
 const { width } = Dimensions.get('window');
 
@@ -45,13 +45,15 @@ export default function OnboardingScreen() {
     let cancelled = false;
 
     const redirectIfAuthenticated = async () => {
-      const authTokens = await getValidAuthTokens();
-      if (cancelled) {
-        return;
-      }
+      try {
+        await apiRequest('/auth/validate');
+        if (cancelled) {
+          return;
+        }
 
-      if (authTokens) {
         router.replace('/(tabs)');
+      } catch {
+        await clearAuthTokens();
       }
     };
 

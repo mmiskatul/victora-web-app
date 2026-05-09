@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { getValidAuthTokens } from '../lib/api';
+import { apiRequest, clearAuthTokens } from '../lib/api';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -28,19 +28,22 @@ export default function SplashScreen() {
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const resolveNextRoute = async () => {
-      const authTokens = await getValidAuthTokens();
-      if (cancelled) {
-        return;
-      }
-
-      if (authTokens) {
+      try {
+        await apiRequest('/auth/validate');
+        if (cancelled) {
+          return;
+        }
         router.replace('/(tabs)');
-        return;
-      }
+      } catch {
+        if (cancelled) {
+          return;
+        }
 
-      timer = setTimeout(() => {
-        router.replace('/onboarding');
-      }, 2500);
+        await clearAuthTokens();
+        timer = setTimeout(() => {
+          router.replace('/onboarding');
+        }, 2500);
+      }
     };
 
     void resolveNextRoute();
