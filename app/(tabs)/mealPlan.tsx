@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
@@ -109,6 +111,7 @@ type NutritionProfile = {
   healthConditions: string[];
 };
 type NutritionPlanApiResponse = {
+  plan_id?: string | null;
   summary: string;
   goal_label: string;
   days: Array<{ day: string; breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry }>;
@@ -250,22 +253,7 @@ function MealPlanResult({ profile }: { profile: NutritionProfile }) {
     const loadPlan = async () => {
       setLoadingPlan(true);
       try {
-        const response = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan', {
-          method: 'POST',
-          body: {
-            goal: profile.goal,
-            cuisine: profile.cuisine,
-            favorite_meal: profile.favoriteMeal,
-            diet: profile.selectedDiet,
-            allergies: profile.allergies,
-            activity_level: profile.selectedActivity,
-            age: profile.age,
-            gender: profile.gender,
-            height: profile.height,
-            weight: profile.weight,
-            health_conditions: profile.healthConditions,
-          },
-        });
+        const response = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
         if (!cancelled) {
           setGeneratedPlan(response);
         }
@@ -638,7 +626,9 @@ function MealPlanResult({ profile }: { profile: NutritionProfile }) {
 export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
   const [done, setDone] = useState(false);
+  const successScale = useState(new Animated.Value(0))[0];
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -675,9 +665,51 @@ export default function JournalScreen() {
   const goNext = () => { if (step < TOTAL_STEPS) setStep(step + 1); };
   const goBack = () => { if (step > 1) setStep(step - 1); };
 
-  const generatePlan = () => {
+  const generatePlan = async () => {
+    if (generating) {
+      return;
+    }
+
     setGenerating(true);
-    setTimeout(() => { setGenerating(false); setDone(true); }, 150);
+    setGenerationSuccess(false);
+
+    try {
+      await apiRequest('/ai/nutrition/plan', {
+        method: 'POST',
+        body: {
+          goal: selectedGoal,
+          cuisine,
+          favorite_meal: favoriteMeal,
+          diet: selectedDiet,
+          allergies,
+          activity_level: selectedActivity,
+          age,
+          gender,
+          height,
+          weight,
+          health_conditions: Array.from(healthConditions),
+        },
+      });
+
+      setGenerating(false);
+      setGenerationSuccess(true);
+      successScale.setValue(0);
+      Animated.sequence([
+        Animated.timing(successScale, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.back(1.4)),
+          useNativeDriver: true,
+        }),
+        Animated.delay(700),
+      ]).start(() => {
+        setGenerationSuccess(false);
+        setDone(true);
+      });
+    } catch {
+      setGenerating(false);
+      setGenerationSuccess(false);
+    }
   };
 
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
@@ -686,7 +718,18 @@ export default function JournalScreen() {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
-        <Text style={styles.quoteText}>"FITNESS TEACHES PATIENCE MORE THAN POWER."</Text>
+        <Text style={styles.quoteText}>Generating your plan...</Text>
+      </View>
+    );
+  }
+
+  if (generationSuccess) {
+    return (
+      <View style={styles.loadingScreen}>
+        <Animated.View style={[styles.successRing, { transform: [{ scale: successScale }] }]}>
+          <Ionicons name="checkmark" size={42} color="#fff" />
+        </Animated.View>
+        <Text style={styles.quoteText}>Plan saved</Text>
       </View>
     );
   }
@@ -898,6 +941,7 @@ const styles = StyleSheet.create({
 
   loadingScreen: { flex: 1, backgroundColor: '#0D1220', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   quoteText: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 30, letterSpacing: 0.5 },
+  successRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.accentPurple, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   planLoading: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   planLoadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular' },
 
