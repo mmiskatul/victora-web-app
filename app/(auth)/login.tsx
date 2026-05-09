@@ -150,7 +150,7 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <AuthButton title="Log In" onPress={handleLogin} loading={loading} />
+              <AuthButton title="Log In" onPress={handleLogin} />
             </View>
 
             {/* Register Link */}

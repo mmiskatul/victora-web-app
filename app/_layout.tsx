@@ -28,7 +28,7 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: Colors.background },
-          animation: 'fade',
+          animation: 'none',
         }}
       />
     </View>
