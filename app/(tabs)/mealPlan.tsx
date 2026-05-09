@@ -729,8 +729,19 @@ export default function JournalScreen() {
     } catch (error) {
       setGenerating(false);
       setGenerationSuccess(false);
-      setGenerationError(error instanceof Error ? error.message : 'Unable to generate a nutrition plan right now.');
+      setGenerationError(formatNutritionPlanError(error));
     }
+  };
+
+  const formatNutritionPlanError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('Nutrition plan refused')) {
+      return 'The nutrition request was refused. Adjust your inputs and try again.';
+    }
+    if (message.includes('Nutrition plan unavailable')) {
+      return 'The nutrition service is unavailable right now. Try again in a moment.';
+    }
+    return 'Unable to generate a nutrition plan right now.';
   };
 
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
@@ -901,7 +912,14 @@ export default function JournalScreen() {
           </View>
         )}
 
-        {generationError ? <Text style={styles.errorText}>{generationError}</Text> : null}
+        {generationError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{generationError}</Text>
+            <TouchableOpacity onPress={generatePlan} activeOpacity={0.85} style={styles.errorRetryBtn}>
+              <Text style={styles.errorRetryText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         <View style={{ height: 110 }} />
       </ScrollView>
@@ -980,7 +998,10 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
+  errorBox: { paddingHorizontal: 24, paddingTop: 8, alignItems: 'center', gap: 10 },
   errorText: { color: '#FCA5A5', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12, textAlign: 'center' },
+  errorRetryBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(168,85,247,0.16)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)' },
+  errorRetryText: { color: '#E9D5FF', fontSize: 13, fontFamily: 'Inter_700Bold' },
 
   /* Wizard Header */
   wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
