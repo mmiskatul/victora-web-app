@@ -895,8 +895,11 @@ export default function JournalScreen() {
         ) : (
           <TouchableOpacity onPress={generatePlan} activeOpacity={0.85}>
             <View style={[styles.generateBtn, { backgroundColor: Colors.accentPurple }]}>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.generateBtnText}>Curating Your Plan...</Text>
+              {generating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.generateBtnText}>Curate Your Plan</Text>
+              )}
             </View>
           </TouchableOpacity>
         )}
