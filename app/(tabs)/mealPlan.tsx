@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
+import { apiRequest } from '../../lib/api';
 
 const TOTAL_STEPS = 8;
 
@@ -94,6 +97,26 @@ const PLAN_TABS = ['My Plan', 'Tracker', 'Meal Analysis'];
 
 type MealEntry = { name: string; desc: string; kcal: number; p: number; c: number; f: number; ingredients: string[]; instructions?: string[]; };
 type DayPlan = { breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry; };
+type NutritionProfile = {
+  goal: string | null;
+  cuisine: string;
+  favoriteMeal: string;
+  selectedDiet: string | null;
+  allergies: string;
+  selectedActivity: string | null;
+  age: string;
+  gender: string;
+  height: string;
+  weight: string;
+  healthConditions: string[];
+};
+type NutritionPlanApiResponse = {
+  plan_id?: string | null;
+  summary: string;
+  goal_label: string;
+  days: Array<{ day: string; breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry }>;
+  shopping_list: Array<{ category: string; items: Array<{ name: string; qty: string }> }>;
+};
 
 const MEAL_PLAN: Record<string, DayPlan> = {
   Mon: {
@@ -212,13 +235,72 @@ const SHOPPING_LIST = [
 ];
 
 /* ── MealPlanResult Component ── */
-function MealPlanResult({ goal }: { goal: string | null }) {
+function MealPlanResult({
+  profile,
+  initialPlan,
+}: {
+  profile: NutritionProfile;
+  initialPlan?: NutritionPlanApiResponse | null;
+}) {
   const [planTab, setPlanTab] = useState('My Plan');
   const [activeDay, setActiveDay] = useState('Mon');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [mealSearch, setMealSearch] = useState('');
   const [showShopping, setShowShopping] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(initialPlan ?? null);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+  const [nutritionAdvice, setNutritionAdvice] = useState('');
+  const [loadingAdvice, setLoadingAdvice] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (initialPlan) {
+      setGeneratedPlan(initialPlan);
+      setLoadingPlan(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadPlan = async () => {
+      setLoadingPlan(true);
+      try {
+        const response = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
+        if (!cancelled) {
+          setGeneratedPlan(response);
+        }
+      } catch {
+        if (!cancelled) {
+          setGeneratedPlan(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingPlan(false);
+        }
+      }
+    };
+
+    loadPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    initialPlan,
+    profile.goal,
+    profile.cuisine,
+    profile.favoriteMeal,
+    profile.selectedDiet,
+    profile.allergies,
+    profile.selectedActivity,
+    profile.age,
+    profile.gender,
+    profile.height,
+    profile.weight,
+    profile.healthConditions.join(','),
+  ]);
 
   const toggleCheck = (key: string) => {
     setCheckedItems(prev => {
@@ -230,17 +312,53 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
   const toggleExpand = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
-  const day = MEAL_PLAN[activeDay];
+  const activePlan = generatedPlan
+    ? generatedPlan.days.reduce<Record<string, DayPlan>>((acc, day) => {
+        acc[day.day] = {
+          breakfast: day.breakfast,
+          lunch: day.lunch,
+          dinner: day.dinner,
+        };
+        return acc;
+      }, {})
+    : MEAL_PLAN;
+  const activeShoppingList = generatedPlan?.shopping_list ?? SHOPPING_LIST;
+  const day = activePlan[activeDay] ?? MEAL_PLAN[activeDay];
   const totalKcal = day.breakfast.kcal + day.lunch.kcal + day.dinner.kcal;
   const totalP = day.breakfast.p + day.lunch.p + day.dinner.p;
   const totalC = day.breakfast.c + day.lunch.c + day.dinner.c;
   const totalF = day.breakfast.f + day.lunch.f + day.dinner.f;
 
-  const goalLabel = goal === 'g1' ? 'Weight Loss'
-    : goal === 'g2' ? 'Muscle Building'
-      : goal === 'g3' ? 'Weight Maintenance'
-        : goal === 'g4' ? 'Flexibility'
-          : 'Endurance';
+  const goalLabel = generatedPlan?.goal_label ?? (profile.goal === 'g1' ? 'Weight Loss'
+    : profile.goal === 'g2' ? 'Muscle Building'
+      : profile.goal === 'g3' ? 'Weight Maintenance'
+        : profile.goal === 'g4' ? 'Flexibility'
+          : 'Endurance');
+
+  const handleGetSuggestions = async () => {
+    setLoadingAdvice(true);
+    try {
+      const response = await apiRequest<{ reply: string }>('/ai/nutrition/advice', {
+        method: 'POST',
+        body: {
+          goal: profile.goal,
+          meal_query: mealSearch,
+          daily_calories: totalKcal,
+          daily_protein: totalP,
+          daily_carbs: totalC,
+          daily_fat: totalF,
+          cuisine: profile.cuisine,
+          favorite_meal: profile.favoriteMeal,
+          allergies: profile.allergies,
+        },
+      });
+      setNutritionAdvice(response.reply);
+    } catch (error) {
+      setNutritionAdvice(error instanceof Error ? error.message : 'Unable to load nutrition suggestions right now.');
+    } finally {
+      setLoadingAdvice(false);
+    }
+  };
 
   const MealCard = ({ label, meal, expandKey }: { label: string; meal: MealEntry; expandKey: string }) => {
     const ingKey = `${expandKey}-ing`;
@@ -285,7 +403,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 
   /* Shopping List Screen */
   if (showShopping) {
-    const totalItems = SHOPPING_LIST.reduce((s, cat) => s + cat.items.length, 0);
+    const totalItems = activeShoppingList.reduce((s, cat) => s + cat.items.length, 0);
     const checkedCount = checkedItems.size;
     return (
       <View style={styles.container}>
@@ -309,7 +427,7 @@ function MealPlanResult({ goal }: { goal: string | null }) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.slScroll}>
-          {SHOPPING_LIST.map((section) => (
+          {activeShoppingList.map((section) => (
             <View key={section.category}>
               {/* Category Header */}
               <Text style={styles.slCategoryHeader}>{section.category}</Text>
@@ -364,6 +482,13 @@ function MealPlanResult({ goal }: { goal: string | null }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <VictoryHeader />
 
+        {loadingPlan && (
+          <View style={styles.planLoading}>
+            <ActivityIndicator color={Colors.primary} size="large" />
+            <Text style={styles.planLoadingText}>Building your nutrition plan...</Text>
+          </View>
+        )}
+
         {/* Tab Bar */}
         <View style={styles.planTabRow}>
           {PLAN_TABS.map((t) => (
@@ -378,11 +503,11 @@ function MealPlanResult({ goal }: { goal: string | null }) {
         </View>
 
         {/* ── MY PLAN ── */}
-        {planTab === 'My Plan' && (
+        {planTab === 'My Plan' && !loadingPlan && (
           <View style={styles.planContent}>
             <Text style={styles.planTitle}>7-DAY TAILORED {goalLabel.toUpperCase()} PLAN</Text>
             <Text style={styles.planDesc}>
-              A carefully portion-controlled nutrition plan designed for you, ensuring an optimal protein intake of around 18-24g per day and featuring your favourite meal.
+              {generatedPlan?.summary ?? 'A carefully portion-controlled nutrition plan designed for you, with practical meals that match your goal.'}
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayScroll}>
               {PLAN_DAYS.map((d) => (
@@ -448,9 +573,14 @@ function MealPlanResult({ goal }: { goal: string | null }) {
                 <Text style={styles.trackerSectionIcon}>✨</Text>
                 <Text style={styles.trackerSectionTitle}>AI SUGGESTIONS</Text>
               </View>
-              <TouchableOpacity style={styles.getSuggestionsBtn} activeOpacity={0.85}>
-                <Text style={styles.getSuggestionsBtnText}>GET SUGGESTIONS</Text>
+              <TouchableOpacity style={styles.getSuggestionsBtn} activeOpacity={0.85} onPress={handleGetSuggestions} disabled={loadingAdvice}>
+                {loadingAdvice ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.getSuggestionsBtnText}>GET SUGGESTIONS</Text>
+                )}
               </TouchableOpacity>
+              {nutritionAdvice ? <Text style={styles.adviceText}>{nutritionAdvice}</Text> : null}
             </View>
 
             {/* Log a Meal */}
@@ -511,7 +641,11 @@ function MealPlanResult({ goal }: { goal: string | null }) {
 export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
+  const [generationSuccess, setGenerationSuccess] = useState(false);
+  const [generationError, setGenerationError] = useState('');
   const [done, setDone] = useState(false);
+  const successScale = useState(new Animated.Value(0))[0];
+  const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -548,9 +682,66 @@ export default function JournalScreen() {
   const goNext = () => { if (step < TOTAL_STEPS) setStep(step + 1); };
   const goBack = () => { if (step > 1) setStep(step - 1); };
 
-  const generatePlan = () => {
+  const generatePlan = async () => {
+    if (generating) {
+      return;
+    }
+
     setGenerating(true);
-    setTimeout(() => { setGenerating(false); setDone(true); }, 3000);
+    setGenerationSuccess(false);
+    setGenerationError('');
+
+    try {
+      const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
+        method: 'POST',
+        body: {
+          goal: selectedGoal,
+          cuisine,
+          favorite_meal: favoriteMeal,
+          diet: selectedDiet,
+          allergies,
+          activity_level: selectedActivity,
+          age,
+          gender,
+          height,
+          weight,
+          health_conditions: Array.from(healthConditions),
+        },
+      });
+
+      setGeneratedPlan(response.plan);
+
+      setGenerating(false);
+      setGenerationSuccess(true);
+      successScale.setValue(0);
+      Animated.sequence([
+        Animated.timing(successScale, {
+          toValue: 1,
+          duration: 180,
+          easing: Easing.out(Easing.back(1.4)),
+          useNativeDriver: true,
+        }),
+        Animated.delay(700),
+      ]).start(() => {
+        setGenerationSuccess(false);
+        setDone(true);
+      });
+    } catch (error) {
+      setGenerating(false);
+      setGenerationSuccess(false);
+      setGenerationError(formatNutritionPlanError(error));
+    }
+  };
+
+  const formatNutritionPlanError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : '';
+    if (message.includes('Nutrition plan refused')) {
+      return 'The nutrition request was refused. Adjust your inputs and try again.';
+    }
+    if (message.includes('Nutrition plan unavailable')) {
+      return 'The nutrition service is unavailable right now. Try again in a moment.';
+    }
+    return 'Unable to generate a nutrition plan right now.';
   };
 
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
@@ -559,13 +750,41 @@ export default function JournalScreen() {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
-        <Text style={styles.quoteText}>"FITNESS TEACHES PATIENCE MORE THAN POWER."</Text>
+        <Text style={styles.quoteText}>Generating your plan...</Text>
+      </View>
+    );
+  }
+
+  if (generationSuccess) {
+    return (
+      <View style={styles.loadingScreen}>
+        <Animated.View style={[styles.successRing, { transform: [{ scale: successScale }] }]}>
+          <Ionicons name="checkmark" size={42} color="#fff" />
+        </Animated.View>
+        <Text style={styles.quoteText}>Plan saved</Text>
       </View>
     );
   }
 
   if (done) {
-    return <MealPlanResult goal={selectedGoal} />;
+    return (
+      <MealPlanResult
+        profile={{
+          goal: selectedGoal,
+          cuisine,
+          favoriteMeal,
+          selectedDiet,
+          allergies,
+          selectedActivity,
+          age,
+          gender,
+          height,
+          weight,
+          healthConditions: Array.from(healthConditions),
+        }}
+        initialPlan={generatedPlan}
+      />
+    );
   }
 
   return (
@@ -693,6 +912,15 @@ export default function JournalScreen() {
           </View>
         )}
 
+        {generationError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{generationError}</Text>
+            <TouchableOpacity onPress={generatePlan} activeOpacity={0.85} style={styles.errorRetryBtn}>
+              <Text style={styles.errorRetryText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <View style={{ height: 110 }} />
       </ScrollView>
 
@@ -709,8 +937,11 @@ export default function JournalScreen() {
         ) : (
           <TouchableOpacity onPress={generatePlan} activeOpacity={0.85}>
             <View style={[styles.generateBtn, { backgroundColor: Colors.accentPurple }]}>
-              <ActivityIndicator color="#fff" />
-              <Text style={styles.generateBtnText}>Curating Your Plan...</Text>
+              {generating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.generateBtnText}>Curate Your Plan</Text>
+              )}
             </View>
           </TouchableOpacity>
         )}
@@ -755,6 +986,9 @@ const styles = StyleSheet.create({
 
   loadingScreen: { flex: 1, backgroundColor: '#0D1220', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   quoteText: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 30, letterSpacing: 0.5 },
+  successRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.accentPurple, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  planLoading: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  planLoadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular' },
 
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 20, paddingBottom: Platform.OS === 'ios' ? 32 : 20, backgroundColor: Colors.background, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
   backBtn: { paddingHorizontal: 8, paddingVertical: 8 },
@@ -764,6 +998,10 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
+  errorBox: { paddingHorizontal: 24, paddingTop: 8, alignItems: 'center', gap: 10 },
+  errorText: { color: '#FCA5A5', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12, textAlign: 'center' },
+  errorRetryBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(168,85,247,0.16)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)' },
+  errorRetryText: { color: '#E9D5FF', fontSize: 13, fontFamily: 'Inter_700Bold' },
 
   /* Wizard Header */
   wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
@@ -832,6 +1070,7 @@ const styles = StyleSheet.create({
   macroGridUnit: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Inter_400Regular' },
   getSuggestionsBtn: { backgroundColor: '#0D0D1E', borderRadius: 12, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   getSuggestionsBtnText: { color: '#fff', fontSize: 13, fontWeight: '700', fontFamily: 'Inter_700Bold', letterSpacing: 1 },
+  adviceText: { color: '#fff', fontSize: 13, lineHeight: 20, marginTop: 12, fontFamily: 'Inter_400Regular' },
   mealSearchRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   mealSearchInput: {
     backgroundColor: 'rgba(255,255,255,0.05)',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { apiRequest } from '../../lib/api';
 
 interface Message {
   id: string;
@@ -20,20 +22,17 @@ interface Message {
   sender: 'coach' | 'user';
 }
 
+type ChatHistoryItem = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+};
+
 const INITIAL_MESSAGES: Message[] = [
   {
     id: '1',
     text: "Hi Admin! I'm Coach Victor. How can I help you with your fitness journey today?",
-    sender: 'coach',
-  },
-  {
-    id: '2',
-    text: "how can I do some leg workout",
-    sender: 'user',
-  },
-  {
-    id: '3',
-    text: "Hello Admin! It's great to see you focusing on your lower body—it's the foundation of your overall strength and metabolic health.\n\nSince you are at the beginner level, we will focus on mastering form with bodyweight movements. Here is a simple, effective circuit you can do anywhere:\n\n### **The Beginner Leg Foundation**\nPerform these exercises back-to-back, rest for 60 seconds, and repeat for **3 rounds**:\n\n1. **Bodyweight Squats (12 reps):** Keep your chest up and act as if you are sitting back into an invisible chair. Ensure your knees don't cave inward.\n2. **Reverse Lunges (8 reps per leg):** Step backward and lower your back knee toward the floor. Stepping backward is often easier on the knees for beginners than stepping forward.\n3. **Glute Bridges (15 reps):** Lie on your back with knees bent and feet flat. Lift your hips toward the ceiling, squeezing your glutes at the top.\n4. **Calf Raises (15 reps):** Stand tall and rise onto the balls of your feet, then slowly lower back down.\n\n### **Coach Victor's Pro-Tips:**\n* **Form over Speed:** Don't rush. Feel the muscles working.\n* **Nutrition:** To help those leg muscles recover and grow, remember to aim for approximately **1.6 grams of protein per kilogram of your bodyweight** daily.\n* **Mindset:** Your first session might feel tough, but consistency is where the magic happens. Just show up.\n\nDo you have any equipment like dumbbells, or are we sticking to bodyweight for now?",
     sender: 'coach',
   },
 ];
@@ -42,16 +41,82 @@ export default function ChatScreen() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  const sendMessage = () => {
-    if (inputText.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        text: inputText,
-        sender: 'user',
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const response = await apiRequest<{ messages: ChatHistoryItem[] }>('/ai/coach-victor/history');
+        if (cancelled) {
+          return;
+        }
+
+        const mapped: Message[] = response.messages.map((item) => ({
+          id: item.id,
+          text: item.content,
+          sender: item.role === 'assistant' ? 'coach' : 'user',
+        }));
+
+        setMessages(mapped.length > 0 ? mapped : INITIAL_MESSAGES);
+      } catch {
+        if (!cancelled) {
+          setMessages(INITIAL_MESSAGES);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHistory(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const sendMessage = async () => {
+    const trimmed = inputText.trim();
+    if (!trimmed || sending) {
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: trimmed,
+      sender: 'user',
+    };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setInputText('');
+    setSending(true);
+
+    try {
+      const response = await apiRequest<{ reply: string }>('/ai/coach-victor/chat', {
+        method: 'POST',
+        body: { message: trimmed },
+      });
+
+      const coachMessage: Message = {
+        id: `${Date.now()}-coach`,
+        text: response.reply,
+        sender: 'coach',
       };
-      setMessages([...messages, newMessage]);
-      setInputText('');
+      setMessages((current) => [...current, coachMessage]);
+    } catch (error) {
+      const coachMessage: Message = {
+        id: `${Date.now()}-error`,
+        text: error instanceof Error ? error.message : 'Coach Victor is unavailable right now.',
+        sender: 'coach',
+      };
+      setMessages((current) => [...current, coachMessage]);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -79,7 +144,7 @@ export default function ChatScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
       
       {/* Custom Header */}
@@ -120,6 +185,11 @@ export default function ChatScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
+        {loadingHistory && (
+          <View style={styles.historyLoading}>
+            <ActivityIndicator color={Colors.accentBlue} />
+          </View>
+        )}
 
         {/* Input Bar */}
         <View style={styles.inputBar}>
@@ -131,9 +201,14 @@ export default function ChatScreen() {
               value={inputText}
               onChangeText={setInputText}
               multiline
+              editable={!sending}
             />
-            <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={sending}>
+              {sending ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -261,6 +336,13 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
+  historyLoading: {
+    position: 'absolute',
+    top: 70,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,3 +371,5 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 });
+
+

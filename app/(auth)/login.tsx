@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,15 @@ import {
   Platform,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
+import { apiRequest, AuthResponse, getValidAuthTokens, setAuthTokens } from '../../lib/api';
 
 const { height } = Dimensions.get('window');
 
@@ -22,11 +25,52 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
-  const handleLogin = () => {
-    // TODO: Implement actual auth logic with backend
-    console.log('Login:', { email, password });
-    router.replace('/(tabs)');
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectIfAuthenticated = async () => {
+      const tokens = await getValidAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (tokens) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    void redirectIfAuthenticated();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing information', 'Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const auth = await apiRequest<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+      await setAuthTokens(auth);
+      router.replace('/(tabs)');
+    } catch (error) {
+      Alert.alert('Login failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -39,6 +83,22 @@ export default function LoginScreen() {
     // TODO: Implement forgot password
     console.log('Forgot Password');
   };
+
+  if (checkingAuth) {
+    return (
+      <ImageBackground
+        source={require('../../assets/images/gym-bg.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay}>
+          <View style={styles.checkingAuthWrap}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        </View>
+      </ImageBackground>
+    );
+  }
 
   return (
     <ImageBackground
@@ -90,7 +150,7 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <AuthButton title="Log In" onPress={handleLogin} />
+              <AuthButton title="Log In" onPress={handleLogin} loading={loading} />
             </View>
 
             {/* Register Link */}
@@ -120,6 +180,12 @@ export default function LoginScreen() {
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
+
+        {loading && (
+          <View style={styles.loadingOverlay} pointerEvents="auto">
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
       </View>
     </ImageBackground>
   );
@@ -134,6 +200,17 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkingAuthWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   keyboardView: {
     flex: 1,

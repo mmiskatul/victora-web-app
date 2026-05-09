@@ -1,10 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { getValidAuthTokens } from '../../lib/api';
 
 export default function TabsLayout() {
+  const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const guard = async () => {
+      const tokens = await getValidAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (!tokens) {
+        router.replace('/login');
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    void guard();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (checkingAuth) {
+    return null;
+  }
+
   return (
     <Tabs
       screenOptions={{

@@ -9,12 +9,14 @@ import {
   Platform,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
+import { apiRequest } from '../../lib/api';
 
 const { height } = Dimensions.get('window');
 
@@ -23,10 +25,29 @@ export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    // TODO: Implement registration logic
-    console.log('Register:', { name, email, password });
+  const handleRegister = async () => {
+    if (!name.trim() || !email.trim() || !password) {
+      Alert.alert('Missing information', 'Please enter your name, email, and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await apiRequest('/auth/register', {
+        method: 'POST',
+        body: { name, email, password },
+      });
+      router.push({
+        pathname: '/verification',
+        params: { email: email.trim().toLowerCase() },
+      });
+    } catch (error) {
+      Alert.alert('Registration failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -83,7 +104,7 @@ export default function RegisterScreen() {
                 autoComplete="password-new"
               />
 
-              <AuthButton title="Register" onPress={handleRegister} />
+              <AuthButton title="Register" onPress={handleRegister} loading={loading} />
             </View>
 
             {/* Login Link */}

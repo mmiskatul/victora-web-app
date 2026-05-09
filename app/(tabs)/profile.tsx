@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
+import { clearAuthTokens } from '../../lib/api';
 
 const pts = 105;
 const nextRankPts = 500;
@@ -200,7 +201,10 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.logoutBtn}
           activeOpacity={0.7}
-          onPress={() => router.replace('/login')}
+          onPress={async () => {
+            await clearAuthTokens();
+            router.replace('/login');
+          }}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Log Out</Text>
