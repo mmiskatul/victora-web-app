@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
-import { apiRequest, AuthResponse, setAuthTokens } from '../../lib/api';
+import { apiRequest, AuthResponse, getValidAuthTokens, setAuthTokens } from '../../lib/api';
 
 const { height } = Dimensions.get('window');
 
@@ -26,6 +26,31 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectIfAuthenticated = async () => {
+      const tokens = await getValidAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (tokens) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      setCheckingAuth(false);
+    };
+
+    void redirectIfAuthenticated();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -58,6 +83,22 @@ export default function LoginScreen() {
     // TODO: Implement forgot password
     console.log('Forgot Password');
   };
+
+  if (checkingAuth) {
+    return (
+      <ImageBackground
+        source={require('../../assets/images/gym-bg.png')}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.overlay}>
+          <View style={styles.checkingAuthWrap}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        </View>
+      </ImageBackground>
+    );
+  }
 
   return (
     <ImageBackground
@@ -163,6 +204,11 @@ const styles = StyleSheet.create({
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkingAuthWrap: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
