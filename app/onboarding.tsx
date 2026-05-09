@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -6,12 +6,14 @@ import {
   SafeAreaView, 
   TouchableOpacity, 
   Dimensions,
-  Animated 
+  Animated,
+  ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { StatusBar } from 'expo-status-bar';
+import { clearAuthTokens, getValidAuthTokens } from '../lib/api';
 
 const { width } = Dimensions.get('window');
 
@@ -39,14 +41,54 @@ const ONBOARDING_DATA = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const [activeStep, setActiveStep] = useState(0);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const redirectIfAuthenticated = async () => {
+      const tokens = await getValidAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (tokens) {
+        router.replace('/(tabs)');
+      } else {
+        await clearAuthTokens();
+        router.replace('/login');
+      }
+
+      if (!cancelled) {
+        setCheckingAuth(false);
+      }
+    };
+
+    void redirectIfAuthenticated();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleNext = () => {
     if (activeStep < ONBOARDING_DATA.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
-      router.replace('/(auth)/login');
+      router.replace('/login');
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="light" />
+        <View style={styles.checkingAuthWrap}>
+          <ActivityIndicator color="#06B6D4" size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const currentData = ONBOARDING_DATA[activeStep];
 
@@ -55,14 +97,14 @@ export default function OnboardingScreen() {
       <StatusBar style="light" />
       
       {/* Skip Button */}
-      {activeStep < 2 && (
-        <TouchableOpacity 
-          style={styles.skipBtn} 
-          onPress={() => router.replace('/(auth)/login')}
-        >
-          <Text style={styles.skipText}>SKIP</Text>
-        </TouchableOpacity>
-      )}
+        {activeStep < 2 && (
+          <TouchableOpacity 
+            style={styles.skipBtn} 
+            onPress={() => router.replace('/login')}
+          >
+            <Text style={styles.skipText}>SKIP</Text>
+          </TouchableOpacity>
+        )}
 
       <View style={styles.content}>
         {/* Animated Icon Section */}
@@ -198,6 +240,11 @@ const styles = StyleSheet.create({
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 40,
+  },
+  checkingAuthWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   nextBtn: {
     backgroundColor: '#fff',

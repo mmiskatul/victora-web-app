@@ -1,14 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { clearAuthTokens, getValidAuthTokens } from '../lib/api';
 
 export default function SplashScreen() {
   const router = useRouter();
-  const pulseAnim = new Animated.Value(1);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Pulse animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -24,13 +24,35 @@ export default function SplashScreen() {
       ])
     ).start();
 
-    // Redirect after 2.5s
-    const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 2500);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    return () => clearTimeout(timer);
-  }, []);
+    const resolveNextRoute = async () => {
+      const tokens = await getValidAuthTokens();
+      if (cancelled) {
+        return;
+      }
+
+      if (tokens) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      await clearAuthTokens();
+      timer = setTimeout(() => {
+        router.replace('/login');
+      }, 800);
+    };
+
+    void resolveNextRoute();
+
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
+  }, [pulseAnim, router]);
 
   return (
     <View style={styles.container}>

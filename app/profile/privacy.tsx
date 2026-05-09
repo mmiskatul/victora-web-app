@@ -33,7 +33,7 @@ export default function PrivacyScreen() {
         <View style={styles.textSection}>
           <Text style={styles.lastUpdated}>Last Updated: April 9, 2026</Text>
           
-          <Text style={styles.heading}>1. INTRODUCTION</Text>
+          <Text style={styles.heading}>1. INTRODUCTION of victoria app</Text>
           <Text style={styles.bodyText}>
             Welcome to Victory Fitness. We are committed to protecting your personal information and your right to privacy. If you have any questions or concerns about this privacy notice, or our practices with regards to your personal information, please contact us.
           </Text>
