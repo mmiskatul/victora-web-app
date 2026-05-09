@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 declare const process: {
   env?: Record<string, string | undefined>;
@@ -35,19 +36,6 @@ const AUTH_STORAGE_KEY = 'victory-auth-tokens';
 let authTokens: AuthTokens | null = null;
 let authTokensLoaded = false;
 let authTokensLoadPromise: Promise<void> | null = null;
-let secureStoreModule: typeof import('expo-secure-store') | null = null;
-
-async function getSecureStore() {
-  if (Platform.OS === 'web') {
-    return null;
-  }
-
-  if (!secureStoreModule) {
-    secureStoreModule = await import('expo-secure-store');
-  }
-
-  return secureStoreModule;
-}
 
 async function persistAuthTokens(tokens: AuthTokens | null) {
   if (Platform.OS === 'web') {
@@ -63,15 +51,10 @@ async function persistAuthTokens(tokens: AuthTokens | null) {
     return;
   }
 
-  const secureStore = await getSecureStore();
-  if (!secureStore) {
-    return;
-  }
-
   if (tokens) {
-    await secureStore.setItemAsync(AUTH_STORAGE_KEY, JSON.stringify(tokens));
+    await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokens));
   } else {
-    await secureStore.deleteItemAsync(AUTH_STORAGE_KEY);
+    await AsyncStorage.removeItem(AUTH_STORAGE_KEY);
   }
 }
 
@@ -85,12 +68,7 @@ async function loadPersistedAuthTokens(): Promise<AuthTokens | null> {
     return raw ? (JSON.parse(raw) as AuthTokens) : null;
   }
 
-  const secureStore = await getSecureStore();
-  if (!secureStore) {
-    return null;
-  }
-
-  const raw = await secureStore.getItemAsync(AUTH_STORAGE_KEY);
+  const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
   return raw ? (JSON.parse(raw) as AuthTokens) : null;
 }
 
