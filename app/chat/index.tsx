@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -38,6 +38,37 @@ const INITIAL_MESSAGES: Message[] = [
     sender: 'coach',
   },
 ];
+
+const MessageBubble = memo(function MessageBubble({ item }: { item: Message }) {
+  const isCoach = item.sender === 'coach';
+  const coachContent = useMemo(() => {
+    if (!isCoach) {
+      return null;
+    }
+
+    return renderCoachMessage(item.text);
+  }, [isCoach, item.text]);
+
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        isCoach ? styles.coachContainer : styles.userContainer,
+      ]}
+    >
+      <View
+        style={[
+          styles.bubble,
+          isCoach ? styles.coachBubble : styles.userBubble,
+        ]}
+      >
+        {isCoach ? coachContent : (
+          <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
+        )}
+      </View>
+    </View>
+  );
+});
 
 export default function ChatScreen() {
   const router = useRouter();
@@ -119,28 +150,12 @@ export default function ChatScreen() {
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isCoach = item.sender === 'coach';
-    return (
-      <View
-        style={[
-          styles.messageContainer,
-          isCoach ? styles.coachContainer : styles.userContainer,
-        ]}
-      >
-        <View
-          style={[
-            styles.bubble,
-            isCoach ? styles.coachBubble : styles.userBubble,
-          ]}
-        >
-          {isCoach ? renderCoachMessage(item.text) : (
-            <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
-          )}
-        </View>
-      </View>
-    );
-  };
+  const renderMessage = useCallback(
+    ({ item }: { item: Message }) => <MessageBubble item={item} />,
+    []
+  );
+
+  const keyExtractor = useCallback((item: Message) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -186,9 +201,14 @@ export default function ChatScreen() {
         <FlatList
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === 'android'}
         />
         {loadingHistory && (
           <View style={styles.historyLoading}>

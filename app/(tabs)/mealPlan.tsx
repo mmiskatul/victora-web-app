@@ -13,6 +13,7 @@ import {
   Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { Colors } from '../../constants/Colors';
 import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -20,6 +21,31 @@ import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
 
 const TOTAL_STEPS = 8;
+const PLAN_SUCCESS_SOUND = require('../../assets/sounds/plan-saved.wav');
+const PLAN_SUCCESS_HOLD_MS = 2500;
+
+const PLAN_LOADING_MESSAGES = [
+  'Reviewing your goal, food preferences, and activity profile.',
+  'Calculating a weekly calorie target aligned with your objective.',
+  'Balancing protein, carbs, and fats across the full plan.',
+  'Selecting meals that fit your chosen diet style.',
+  'Adjusting portions to better match your daily energy needs.',
+  'Filtering ingredients around your stated allergies and restrictions.',
+  'Organizing breakfast, lunch, and dinner for each day.',
+  'Checking meal variety to keep the plan practical through the week.',
+  'Aligning meal choices with your preferred cuisine.',
+  'Building a shopping list from the planned ingredients.',
+  'Refining macro distribution for more consistent daily totals.',
+  'Shaping meals to support training, recovery, and routine.',
+  'Improving ingredient coverage across the weekly menu.',
+  'Structuring the plan for easier day-by-day follow-through.',
+  'Reviewing the plan for clarity and consistency.',
+  'Preparing a cleaner saved result for your account.',
+  'Validating the final nutrition data and meal structure.',
+  'Assembling your weekly plan into a reusable format.',
+  'Finalizing meals, macros, and shopping details.',
+  'Saving your generated nutrition plan.',
+];
 
 const GOALS = [
   { id: 'g1', emoji: '🔥', label: 'Weight Loss & Fat Burn' },
@@ -184,84 +210,6 @@ const MEAL_PLAN: Record<string, DayPlan> = {
   },
 };
 
-/* ── Weekly Shopping List Data ── */
-const SHOPPING_LIST = [
-  {
-    category: 'Produce',
-    items: [
-      { name: 'Mixed Berries', qty: '30g' },
-      { name: 'Carrots', qty: '2 medium' },
-      { name: 'Celery', qty: '1 bunch' },
-      { name: 'Mixed Stir-fry Veggies', qty: '50g' },
-      { name: 'Apples', qty: '1' },
-      { name: 'Cucumber', qty: '1' },
-      { name: 'Cherry Tomatoes', qty: '1 small box' },
-      { name: 'Sweet Corn', qty: '30g' },
-      { name: 'Tomato', qty: '1' },
-      { name: 'Sweet Potatoes', qty: '2 medium' },
-      { name: 'Mixed Peas and Carrots', qty: '40g' },
-      { name: 'Bananas', qty: '3' },
-      { name: 'Zucchini', qty: '1 large' },
-      { name: 'Bell Pepper', qty: '1' },
-      { name: 'Pear', qty: '1' },
-      { name: 'Potatoes', qty: '1' },
-      { name: 'Broccoli', qty: '1 small head' },
-    ],
-  },
-  {
-    category: 'Dairy & Alternatives',
-    items: [
-      { name: 'Milk (or plant-based)', qty: '200ml' },
-      { name: 'Greek Yogurt', qty: '120g' },
-      { name: 'Cheddar Cheese', qty: '10g' },
-      { name: 'Butter', qty: '10g' },
-      { name: 'Feta Cheese', qty: '20g' },
-      { name: 'Cottage Cheese', qty: '50g' },
-      { name: 'Parmesan Cheese', qty: '10g' },
-      { name: 'Eggs', qty: '2 large' },
-    ],
-  },
-  {
-    category: 'Proteins',
-    items: [
-      { name: 'Firm Tofu', qty: '90g' },
-    ],
-  },
-  {
-    category: 'Pantry & Grains',
-    items: [
-      { name: 'Gluten-free Oats', qty: '60g' },
-      { name: 'Cooked Lentils', qty: '50g' },
-      { name: 'Vegetable Broth', qty: '150ml' },
-      { name: 'White Rice', qty: '150g (uncooked weight equiv)' },
-      { name: 'Olive Oil', qty: '1 small bottle' },
-      { name: 'Soy Sauce', qty: '1 small bottle' },
-      { name: 'Cooked Chickpeas', qty: '50g' },
-      { name: 'Black Beans', qty: '60g' },
-      { name: 'Pinto Beans', qty: '80g' },
-      { name: 'Quinoa', qty: '80g (uncooked weight equiv)' },
-      { name: 'Gluten-free Crackers', qty: '1 box' },
-      { name: 'Coconut Milk', qty: '30ml' },
-      { name: 'Gluten-free Pancake Mix', qty: '30g' },
-      { name: 'Tomato Broth', qty: '150ml' },
-      { name: 'Kidney Beans', qty: '30g' },
-      { name: 'Mixed Beans', qty: '60g' },
-    ],
-  },
-  {
-    category: 'Spices & Condiments',
-    items: [
-      { name: 'Sesame Oil', qty: '1 small bottle' },
-      { name: 'Honey', qty: '1 small jar' },
-      { name: 'Apple Cider Vinegar', qty: '1 small bottle' },
-      { name: 'Lemon Juice', qty: '1 small bottle' },
-      { name: 'Cinnamon', qty: '1 small jar' },
-      { name: 'Mild Curry Powder', qty: '1 small jar' },
-      { name: 'Paprika', qty: '1 small jar' },
-    ],
-  },
-];
-
 /* ── MealPlanResult Component ── */
 function MealPlanResult({
   profile,
@@ -352,7 +300,7 @@ function MealPlanResult({
         return acc;
       }, {})
     : MEAL_PLAN;
-  const activeShoppingList = generatedPlan?.shopping_list ?? SHOPPING_LIST;
+  const activeShoppingList = generatedPlan?.shopping_list ?? [];
   const day = activePlan[activeDay] ?? MEAL_PLAN[activeDay];
   const totalKcal = day.breakfast.kcal + day.lunch.kcal + day.dinner.kcal;
   const totalP = day.breakfast.p + day.lunch.p + day.dinner.p;
@@ -374,7 +322,7 @@ function MealPlanResult({
             day: planDay,
             ...MEAL_PLAN[planDay],
           })),
-          shopping_list: SHOPPING_LIST,
+          shopping_list: [],
         },
         null,
         2
@@ -472,9 +420,8 @@ function MealPlanResult({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.slScroll}>
-          {activeShoppingList.map((section) => (
+          {activeShoppingList.length > 0 ? activeShoppingList.map((section) => (
             <View key={section.category}>
-              {/* Category Header */}
               <Text style={styles.slCategoryHeader}>{section.category}</Text>
               <View style={styles.slSection}>
                 {section.items.map((item, i) => {
@@ -501,7 +448,15 @@ function MealPlanResult({
                 })}
               </View>
             </View>
-          ))}
+          )) : (
+            <View style={styles.analysisEmptyCard}>
+              <Ionicons name="basket-outline" size={32} color="rgba(255,255,255,0.35)" />
+              <Text style={styles.analysisEmptyText}>No shopping list yet</Text>
+              <Text style={styles.analysisEmptySub}>
+                Generate a nutrition plan to load the shopping list from the saved plan data.
+              </Text>
+            </View>
+          )}
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -704,6 +659,7 @@ export default function JournalScreen() {
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const successScale = useState(new Animated.Value(0))[0];
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -763,6 +719,64 @@ export default function JournalScreen() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!generating) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % PLAN_LOADING_MESSAGES.length);
+    }, 2400);
+
+    return () => clearInterval(interval);
+  }, [generating]);
+
+  useEffect(() => {
+    if (!generationSuccess) {
+      return;
+    }
+
+    let sound: Audio.Sound | null = null;
+
+    successScale.setValue(0);
+    Animated.timing(successScale, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.back(1.4)),
+      useNativeDriver: true,
+    }).start();
+
+    const playSuccessSound = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+        const created = await Audio.Sound.createAsync(PLAN_SUCCESS_SOUND, {
+          shouldPlay: true,
+          volume: 0.65,
+        });
+        sound = created.sound;
+      } catch {
+        sound = null;
+      }
+    };
+
+    void playSuccessSound();
+
+    const timer = setTimeout(() => {
+      setGenerationSuccess(false);
+      setDone(true);
+    }, PLAN_SUCCESS_HOLD_MS);
+
+    return () => {
+      clearTimeout(timer);
+      if (sound) {
+        void sound.unloadAsync();
+      }
+    };
+  }, [generationSuccess, successScale]);
 
   const toggleHealth = (id: string) => {
     setHealthConditions((prev) => {
@@ -824,19 +838,6 @@ export default function JournalScreen() {
 
       setGenerating(false);
       setGenerationSuccess(true);
-      successScale.setValue(0);
-      Animated.sequence([
-        Animated.timing(successScale, {
-          toValue: 1,
-          duration: 180,
-          easing: Easing.out(Easing.back(1.4)),
-          useNativeDriver: true,
-        }),
-        Animated.delay(700),
-      ]).start(() => {
-        setGenerationSuccess(false);
-        setDone(true);
-      });
     } catch (error) {
       setGenerating(false);
       setGenerationSuccess(false);
@@ -873,7 +874,8 @@ export default function JournalScreen() {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
-        <Text style={styles.quoteText}>Generating your plan...</Text>
+        <Text style={styles.quoteText}>Generating your plan</Text>
+        <Text style={styles.loadingDetailText}>{PLAN_LOADING_MESSAGES[loadingMessageIndex]}</Text>
       </View>
     );
   }
@@ -1122,6 +1124,7 @@ const styles = StyleSheet.create({
 
   loadingScreen: { flex: 1, backgroundColor: '#0D1220', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   quoteText: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 30, letterSpacing: 0.5 },
+  loadingDetailText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 22, marginTop: 14, maxWidth: 300 },
   successRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.accentPurple, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   planLoading: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   planLoadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular' },
