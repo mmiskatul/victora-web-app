@@ -642,6 +642,7 @@ export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
+  const [generationError, setGenerationError] = useState('');
   const [done, setDone] = useState(false);
   const successScale = useState(new Animated.Value(0))[0];
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
@@ -688,6 +689,7 @@ export default function JournalScreen() {
 
     setGenerating(true);
     setGenerationSuccess(false);
+    setGenerationError('');
 
     try {
       const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
@@ -724,9 +726,10 @@ export default function JournalScreen() {
         setGenerationSuccess(false);
         setDone(true);
       });
-    } catch {
+    } catch (error) {
       setGenerating(false);
       setGenerationSuccess(false);
+      setGenerationError(error instanceof Error ? error.message : 'Unable to generate a nutrition plan right now.');
     }
   };
 
@@ -898,6 +901,8 @@ export default function JournalScreen() {
           </View>
         )}
 
+        {generationError ? <Text style={styles.errorText}>{generationError}</Text> : null}
+
         <View style={{ height: 110 }} />
       </ScrollView>
 
@@ -975,6 +980,7 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
+  errorText: { color: '#FCA5A5', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12, textAlign: 'center' },
 
   /* Wizard Header */
   wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
