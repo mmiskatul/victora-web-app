@@ -44,7 +44,7 @@ export default function OnboardingScreen() {
     if (activeStep < ONBOARDING_DATA.length - 1) {
       setActiveStep(activeStep + 1);
     } else {
-      router.replace('/(auth)/login');
+      router.replace('/(tabs)');
     }
   };
 
@@ -58,7 +58,7 @@ export default function OnboardingScreen() {
       {activeStep < 2 && (
         <TouchableOpacity 
           style={styles.skipBtn} 
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={() => router.replace('/(tabs)')}
         >
           <Text style={styles.skipText}>SKIP</Text>
         </TouchableOpacity>

@@ -9,12 +9,14 @@ import {
   Platform,
   TouchableOpacity,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
+import { apiRequest, AuthResponse, setAuthTokens } from '../../lib/api';
 
 const { height } = Dimensions.get('window');
 
@@ -22,11 +24,27 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: Implement actual auth logic with backend
-    console.log('Login:', { email, password });
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing information', 'Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const auth = await apiRequest<AuthResponse>('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+      await setAuthTokens(auth);
+      router.replace('/(tabs)');
+    } catch (error) {
+      Alert.alert('Login failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -90,7 +108,7 @@ export default function LoginScreen() {
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
 
-              <AuthButton title="Log In" onPress={handleLogin} />
+              <AuthButton title="Log In" onPress={handleLogin} loading={loading} />
             </View>
 
             {/* Register Link */}
