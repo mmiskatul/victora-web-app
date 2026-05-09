@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,13 @@ interface Message {
   sender: 'coach' | 'user';
 }
 
+type ChatHistoryItem = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+};
+
 const INITIAL_MESSAGES: Message[] = [
   {
     id: '1',
@@ -35,17 +42,49 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const response = await apiRequest<{ messages: ChatHistoryItem[] }>('/ai/coach-victor/history');
+        if (cancelled) {
+          return;
+        }
+
+        const mapped: Message[] = response.messages.map((item) => ({
+          id: item.id,
+          text: item.content,
+          sender: item.role === 'assistant' ? 'coach' : 'user',
+        }));
+
+        setMessages(mapped.length > 0 ? mapped : INITIAL_MESSAGES);
+      } catch {
+        if (!cancelled) {
+          setMessages(INITIAL_MESSAGES);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHistory(false);
+        }
+      }
+    };
+
+    void loadHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const sendMessage = async () => {
     const trimmed = inputText.trim();
     if (!trimmed || sending) {
       return;
     }
-
-    const history = messages.map((message) => ({
-      role: message.sender === 'coach' ? 'assistant' : 'user',
-      content: message.text,
-    }));
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -60,10 +99,7 @@ export default function ChatScreen() {
     try {
       const response = await apiRequest<{ reply: string }>('/ai/coach-victor/chat', {
         method: 'POST',
-        body: {
-          message: trimmed,
-          history,
-        },
+        body: { message: trimmed },
       });
 
       const coachMessage: Message = {
@@ -149,6 +185,11 @@ export default function ChatScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
+        {loadingHistory && (
+          <View style={styles.historyLoading}>
+            <ActivityIndicator color={Colors.accentBlue} />
+          </View>
+        )}
 
         {/* Input Bar */}
         <View style={styles.inputBar}>
@@ -294,6 +335,13 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  historyLoading: {
+    position: 'absolute',
+    top: 70,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
