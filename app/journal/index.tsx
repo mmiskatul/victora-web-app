@@ -164,9 +164,6 @@ export default function JournalScreen() {
 
             <View style={styles.composerFooter}>
               <Text style={styles.charCount}>{entry.length} characters</Text>
-              <TouchableOpacity style={styles.glassMicBtn} activeOpacity={0.7}>
-                <Ionicons name="mic" size={22} color={Colors.accentBlue} />
-              </TouchableOpacity>
             </View>
           </View>
           <TouchableOpacity
@@ -335,16 +332,6 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.2)",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-  },
-  glassMicBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(6,182,212,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(6,182,212,0.1)",
   },
   primaryAction: {
     backgroundColor: Colors.accentBlue,
