@@ -13,7 +13,7 @@ import {
   Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Colors } from '../../constants/Colors';
 import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -660,6 +660,7 @@ export default function JournalScreen() {
   const successScale = useState(new Animated.Value(0))[0];
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const successPlayer = useAudioPlayer(PLAN_SUCCESS_SOUND);
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -738,8 +739,6 @@ export default function JournalScreen() {
       return;
     }
 
-    let sound: Audio.Sound | null = null;
-
     successScale.setValue(0);
     Animated.timing(successScale, {
       toValue: 1,
@@ -750,16 +749,13 @@ export default function JournalScreen() {
 
     const playSuccessSound = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
+        await setAudioModeAsync({
+          playsInSilentMode: true,
         });
-        const created = await Audio.Sound.createAsync(PLAN_SUCCESS_SOUND, {
-          shouldPlay: true,
-          volume: 0.65,
-        });
-        sound = created.sound;
+        successPlayer.seekTo(0);
+        successPlayer.play();
       } catch {
-        sound = null;
+        return;
       }
     };
 
@@ -772,11 +768,8 @@ export default function JournalScreen() {
 
     return () => {
       clearTimeout(timer);
-      if (sound) {
-        void sound.unloadAsync();
-      }
     };
-  }, [generationSuccess, successScale]);
+  }, [generationSuccess, successPlayer, successScale]);
 
   const toggleHealth = (id: string) => {
     setHealthConditions((prev) => {
