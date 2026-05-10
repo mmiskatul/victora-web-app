@@ -9,15 +9,16 @@ import {
   Platform,
   TouchableOpacity,
   Dimensions,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
 import { AuthInput } from '../../components/AuthInput';
 import { AuthButton } from '../../components/AuthButton';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { GoogleSignInButton } from '../../components/GoogleSignInButton';
 import { apiRequest } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 const { height } = Dimensions.get('window');
 
@@ -27,10 +28,15 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password) {
-      Alert.alert('Missing information', 'Please enter your name, email, and password.');
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!name.trim() || !normalizedEmail || !password) {
+      setErrorDialog({
+        title: 'Missing Information',
+        message: 'Please enter your name, email, and password.',
+      });
       return;
     }
 
@@ -38,14 +44,14 @@ export default function RegisterScreen() {
     try {
       await apiRequest('/auth/register', {
         method: 'POST',
-        body: { name, email, password },
+        body: { name: name.trim(), email: normalizedEmail, password },
       });
       router.push({
         pathname: '/verification',
-        params: { email: email.trim().toLowerCase() },
+        params: { email: normalizedEmail },
       });
     } catch (error) {
-      Alert.alert('Registration failed', error instanceof Error ? error.message : 'Please try again.');
+      setErrorDialog(formatAppError(error));
     } finally {
       setLoading(false);
     }
@@ -63,6 +69,12 @@ export default function RegisterScreen() {
       resizeMode="cover"
     >
       <View style={styles.overlay}>
+        <ErrorPopupModal
+          visible={Boolean(errorDialog)}
+          title={errorDialog?.title ?? 'Error'}
+          message={errorDialog?.message ?? ''}
+          onClose={() => setErrorDialog(null)}
+        />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -105,7 +117,7 @@ export default function RegisterScreen() {
                 autoComplete="password-new"
               />
 
-              <AuthButton title="Register" onPress={handleRegister} />
+              <AuthButton title="Register" onPress={handleRegister} disabled={loading} />
             </View>
 
             {/* Login Link */}

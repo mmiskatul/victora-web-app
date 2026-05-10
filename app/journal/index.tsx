@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,14 @@ import {
   ScrollView,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../constants/Colors";
+import { ErrorPopupModal } from "../../components/ErrorPopupModal";
+import { apiRequest } from "../../lib/api";
+import { formatAppError } from "../../lib/error";
 
 const MOODS = [
   { emoji: "😡", label: "ANGRY" },
@@ -25,10 +29,69 @@ export default function JournalScreen() {
   const router = useRouter();
   const [mood, setMood] = useState(3); // Default to happy
   const [entry, setEntry] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
+  const selectedMood = useMemo(() => MOODS[mood] ?? MOODS[3], [mood]);
+
+  const handleSecureLog = async () => {
+    const content = entry.trim();
+    if (!content || saving) {
+      return;
+    }
+
+    setSaving(true);
+    setErrorDialog(null);
+    try {
+      await apiRequest("/journal/entries", {
+        method: "POST",
+        body: {
+          mood: selectedMood.label,
+          content,
+        },
+      });
+      setEntry("");
+      router.push("/journal/history");
+    } catch (error) {
+      setErrorDialog(formatAppError(error, "Unable to save your journal entry right now."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAnalyzeWithAi = async () => {
+    const content = entry.trim();
+    if (!content || analyzing) {
+      return;
+    }
+
+    setAnalyzing(true);
+    setErrorDialog(null);
+    try {
+      const response = await apiRequest<{ analysis: string }>("/journal/analyze", {
+        method: "POST",
+        body: {
+          mood: selectedMood.label,
+          content,
+        },
+      });
+      setEntry(response.analysis);
+    } catch (error) {
+      setErrorDialog(formatAppError(error, "Unable to analyze your journal entry right now."));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
+      <ErrorPopupModal
+        visible={Boolean(errorDialog)}
+        title={errorDialog?.title ?? "Error"}
+        message={errorDialog?.message ?? ""}
+        onClose={() => setErrorDialog(null)}
+      />
       <Stack.Screen
         options={{
           headerShown: true,
@@ -101,20 +164,38 @@ export default function JournalScreen() {
 
             <View style={styles.composerFooter}>
               <Text style={styles.charCount}>{entry.length} characters</Text>
-              <TouchableOpacity style={styles.glassMicBtn} activeOpacity={0.7}>
-                <Ionicons name="mic" size={22} color={Colors.accentBlue} />
-              </TouchableOpacity>
             </View>
           </View>
-          <TouchableOpacity style={styles.primaryAction} activeOpacity={0.8}>
-            <Text style={styles.primaryActionText}>SECURE LOG</Text>
-            <Ionicons name="shield-checkmark" size={18} color="#000" />
+          <TouchableOpacity
+            style={[styles.primaryAction, saving && styles.primaryActionDisabled]}
+            activeOpacity={0.8}
+            onPress={handleSecureLog}
+            disabled={!entry.trim() || saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <View style={styles.actionContentRow}>
+                <Text style={styles.primaryActionText}>SECURE LOG</Text>
+                <Ionicons name="shield-checkmark" size={18} color="#000" />
+              </View>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.aiAction} activeOpacity={0.8}>
-            <Ionicons name="sparkles" size={18} color={Colors.accentPurple} />
-            <Text style={styles.aiActionText}>ANALYZE WITH AI</Text>
-          </TouchableOpacity>{" "}
-          glassCard: {},
+          <TouchableOpacity
+            style={[styles.aiAction, analyzing && styles.aiActionDisabled]}
+            activeOpacity={0.8}
+            onPress={handleAnalyzeWithAi}
+            disabled={!entry.trim() || analyzing}
+          >
+            {analyzing ? (
+              <ActivityIndicator color={Colors.accentPurple} />
+            ) : (
+              <View style={styles.actionContentRow}>
+                <Ionicons name="sparkles" size={18} color={Colors.accentPurple} />
+                <Text style={styles.aiActionText}>ANALYZE WITH AI</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
@@ -252,16 +333,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
-  glassMicBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(6,182,212,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(6,182,212,0.1)",
-  },
   primaryAction: {
     backgroundColor: Colors.accentBlue,
     flexDirection: "row",
@@ -271,6 +342,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     marginBottom: 16,
+  },
+  primaryActionDisabled: {
+    opacity: 0.55,
+  },
+  actionContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   primaryActionText: {
     color: "#000",
@@ -289,6 +368,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(168,85,247,0.3)",
     backgroundColor: "rgba(168,85,247,0.03)",
+  },
+  aiActionDisabled: {
+    opacity: 0.55,
   },
   aiActionText: {
     color: Colors.accentPurple,

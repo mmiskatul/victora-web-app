@@ -13,11 +13,39 @@ import {
   Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import { Colors } from '../../constants/Colors';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 const TOTAL_STEPS = 8;
+const PLAN_SUCCESS_SOUND = require('../../assets/sounds/plan-saved.wav');
+const PLAN_SUCCESS_HOLD_MS = 2500;
+
+const PLAN_LOADING_MESSAGES = [
+  'Reviewing your goal, food preferences, and activity profile.',
+  'Calculating a weekly calorie target aligned with your objective.',
+  'Balancing protein, carbs, and fats across the full plan.',
+  'Selecting meals that fit your chosen diet style.',
+  'Adjusting portions to better match your daily energy needs.',
+  'Filtering ingredients around your stated allergies and restrictions.',
+  'Organizing breakfast, lunch, and dinner for each day.',
+  'Checking meal variety to keep the plan practical through the week.',
+  'Aligning meal choices with your preferred cuisine.',
+  'Building a shopping list from the planned ingredients.',
+  'Refining macro distribution for more consistent daily totals.',
+  'Shaping meals to support training, recovery, and routine.',
+  'Improving ingredient coverage across the weekly menu.',
+  'Structuring the plan for easier day-by-day follow-through.',
+  'Reviewing the plan for clarity and consistency.',
+  'Preparing a cleaner saved result for your account.',
+  'Validating the final nutrition data and meal structure.',
+  'Assembling your weekly plan into a reusable format.',
+  'Finalizing meals, macros, and shopping details.',
+  'Saving your generated nutrition plan.',
+];
 
 const GOALS = [
   { id: 'g1', emoji: '🔥', label: 'Weight Loss & Fat Burn' },
@@ -93,7 +121,7 @@ function OptionList({
 
 /* ── Meal Plan Data ── */
 const PLAN_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const PLAN_TABS = ['My Plan', 'Tracker', 'Meal Analysis'];
+const PLAN_TABS = ['My Plan', 'Tracker', 'Meal Analysis', 'Plan JSON'];
 
 type MealEntry = { name: string; desc: string; kcal: number; p: number; c: number; f: number; ingredients: string[]; instructions?: string[]; };
 type DayPlan = { breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry; };
@@ -116,7 +144,33 @@ type NutritionPlanApiResponse = {
   goal_label: string;
   days: Array<{ day: string; breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry }>;
   shopping_list: Array<{ category: string; items: Array<{ name: string; qty: string }> }>;
+  profile?: Record<string, unknown> | null;
 };
+
+function mapPlanProfile(plan: NutritionPlanApiResponse | null): NutritionProfile | null {
+  const rawProfile = plan?.profile;
+  if (!rawProfile) {
+    return null;
+  }
+
+  const healthConditions = Array.isArray(rawProfile.health_conditions)
+    ? rawProfile.health_conditions.filter((item): item is string => typeof item === 'string')
+    : [];
+
+  return {
+    goal: typeof rawProfile.goal === 'string' ? rawProfile.goal : null,
+    cuisine: typeof rawProfile.cuisine === 'string' ? rawProfile.cuisine : '',
+    favoriteMeal: typeof rawProfile.favorite_meal === 'string' ? rawProfile.favorite_meal : '',
+    selectedDiet: typeof rawProfile.diet === 'string' ? rawProfile.diet : null,
+    allergies: typeof rawProfile.allergies === 'string' ? rawProfile.allergies : '',
+    selectedActivity: typeof rawProfile.activity_level === 'string' ? rawProfile.activity_level : null,
+    age: typeof rawProfile.age === 'string' ? rawProfile.age : '',
+    gender: typeof rawProfile.gender === 'string' ? rawProfile.gender : 'Please select...',
+    height: typeof rawProfile.height === 'string' ? rawProfile.height : '',
+    weight: typeof rawProfile.weight === 'string' ? rawProfile.weight : '',
+    healthConditions,
+  };
+}
 
 const MEAL_PLAN: Record<string, DayPlan> = {
   Mon: {
@@ -156,91 +210,15 @@ const MEAL_PLAN: Record<string, DayPlan> = {
   },
 };
 
-/* ── Weekly Shopping List Data ── */
-const SHOPPING_LIST = [
-  {
-    category: 'Produce',
-    items: [
-      { name: 'Mixed Berries', qty: '30g' },
-      { name: 'Carrots', qty: '2 medium' },
-      { name: 'Celery', qty: '1 bunch' },
-      { name: 'Mixed Stir-fry Veggies', qty: '50g' },
-      { name: 'Apples', qty: '1' },
-      { name: 'Cucumber', qty: '1' },
-      { name: 'Cherry Tomatoes', qty: '1 small box' },
-      { name: 'Sweet Corn', qty: '30g' },
-      { name: 'Tomato', qty: '1' },
-      { name: 'Sweet Potatoes', qty: '2 medium' },
-      { name: 'Mixed Peas and Carrots', qty: '40g' },
-      { name: 'Bananas', qty: '3' },
-      { name: 'Zucchini', qty: '1 large' },
-      { name: 'Bell Pepper', qty: '1' },
-      { name: 'Pear', qty: '1' },
-      { name: 'Potatoes', qty: '1' },
-      { name: 'Broccoli', qty: '1 small head' },
-    ],
-  },
-  {
-    category: 'Dairy & Alternatives',
-    items: [
-      { name: 'Milk (or plant-based)', qty: '200ml' },
-      { name: 'Greek Yogurt', qty: '120g' },
-      { name: 'Cheddar Cheese', qty: '10g' },
-      { name: 'Butter', qty: '10g' },
-      { name: 'Feta Cheese', qty: '20g' },
-      { name: 'Cottage Cheese', qty: '50g' },
-      { name: 'Parmesan Cheese', qty: '10g' },
-      { name: 'Eggs', qty: '2 large' },
-    ],
-  },
-  {
-    category: 'Proteins',
-    items: [
-      { name: 'Firm Tofu', qty: '90g' },
-    ],
-  },
-  {
-    category: 'Pantry & Grains',
-    items: [
-      { name: 'Gluten-free Oats', qty: '60g' },
-      { name: 'Cooked Lentils', qty: '50g' },
-      { name: 'Vegetable Broth', qty: '150ml' },
-      { name: 'White Rice', qty: '150g (uncooked weight equiv)' },
-      { name: 'Olive Oil', qty: '1 small bottle' },
-      { name: 'Soy Sauce', qty: '1 small bottle' },
-      { name: 'Cooked Chickpeas', qty: '50g' },
-      { name: 'Black Beans', qty: '60g' },
-      { name: 'Pinto Beans', qty: '80g' },
-      { name: 'Quinoa', qty: '80g (uncooked weight equiv)' },
-      { name: 'Gluten-free Crackers', qty: '1 box' },
-      { name: 'Coconut Milk', qty: '30ml' },
-      { name: 'Gluten-free Pancake Mix', qty: '30g' },
-      { name: 'Tomato Broth', qty: '150ml' },
-      { name: 'Kidney Beans', qty: '30g' },
-      { name: 'Mixed Beans', qty: '60g' },
-    ],
-  },
-  {
-    category: 'Spices & Condiments',
-    items: [
-      { name: 'Sesame Oil', qty: '1 small bottle' },
-      { name: 'Honey', qty: '1 small jar' },
-      { name: 'Apple Cider Vinegar', qty: '1 small bottle' },
-      { name: 'Lemon Juice', qty: '1 small bottle' },
-      { name: 'Cinnamon', qty: '1 small jar' },
-      { name: 'Mild Curry Powder', qty: '1 small jar' },
-      { name: 'Paprika', qty: '1 small jar' },
-    ],
-  },
-];
-
 /* ── MealPlanResult Component ── */
 function MealPlanResult({
   profile,
   initialPlan,
+  onCreateNewPlan,
 }: {
   profile: NutritionProfile;
   initialPlan?: NutritionPlanApiResponse | null;
+  onCreateNewPlan: () => void;
 }) {
   const [planTab, setPlanTab] = useState('My Plan');
   const [activeDay, setActiveDay] = useState('Mon');
@@ -322,7 +300,7 @@ function MealPlanResult({
         return acc;
       }, {})
     : MEAL_PLAN;
-  const activeShoppingList = generatedPlan?.shopping_list ?? SHOPPING_LIST;
+  const activeShoppingList = generatedPlan?.shopping_list ?? [];
   const day = activePlan[activeDay] ?? MEAL_PLAN[activeDay];
   const totalKcal = day.breakfast.kcal + day.lunch.kcal + day.dinner.kcal;
   const totalP = day.breakfast.p + day.lunch.p + day.dinner.p;
@@ -334,6 +312,21 @@ function MealPlanResult({
       : profile.goal === 'g3' ? 'Weight Maintenance'
         : profile.goal === 'g4' ? 'Flexibility'
           : 'Endurance');
+  const planJson = generatedPlan
+    ? JSON.stringify(generatedPlan, null, 2)
+    : JSON.stringify(
+        {
+          summary: 'No generated plan is loaded yet.',
+          goal_label: goalLabel,
+          days: PLAN_DAYS.map((planDay) => ({
+            day: planDay,
+            ...MEAL_PLAN[planDay],
+          })),
+          shopping_list: [],
+        },
+        null,
+        2
+      );
 
   const handleGetSuggestions = async () => {
     setLoadingAdvice(true);
@@ -427,9 +420,8 @@ function MealPlanResult({
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.slScroll}>
-          {activeShoppingList.map((section) => (
+          {activeShoppingList.length > 0 ? activeShoppingList.map((section) => (
             <View key={section.category}>
-              {/* Category Header */}
               <Text style={styles.slCategoryHeader}>{section.category}</Text>
               <View style={styles.slSection}>
                 {section.items.map((item, i) => {
@@ -456,7 +448,15 @@ function MealPlanResult({
                 })}
               </View>
             </View>
-          ))}
+          )) : (
+            <View style={styles.analysisEmptyCard}>
+              <Ionicons name="basket-outline" size={32} color="rgba(255,255,255,0.35)" />
+              <Text style={styles.analysisEmptyText}>No shopping list yet</Text>
+              <Text style={styles.analysisEmptySub}>
+                Generate a nutrition plan to load the shopping list from the saved plan data.
+              </Text>
+            </View>
+          )}
           <View style={{ height: 100 }} />
         </ScrollView>
 
@@ -534,7 +534,7 @@ function MealPlanResult({
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
               </View>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.newPlanBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.newPlanBtn} activeOpacity={0.7} onPress={onCreateNewPlan}>
               <Text style={styles.newPlanBtnText}>Create New Plan</Text>
             </TouchableOpacity>
           </View>
@@ -631,6 +631,18 @@ function MealPlanResult({
           </View>
         )}
 
+        {planTab === 'Plan JSON' && (
+          <View style={styles.planContent}>
+            <Text style={styles.planTitle}>Generated Plan JSON</Text>
+            <Text style={styles.planDesc}>
+              Complete nutrition plan data received by the app, including every day, meal, macro, ingredient, instruction, and shopping list item.
+            </Text>
+            <View style={styles.jsonCard}>
+              <Text selectable style={styles.jsonText}>{planJson}</Text>
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 60 }} />
       </ScrollView>
     </View>
@@ -642,10 +654,13 @@ export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
-  const [generationError, setGenerationError] = useState('');
   const [done, setDone] = useState(false);
+  const [loadingSavedPlan, setLoadingSavedPlan] = useState(true);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const successScale = useState(new Animated.Value(0))[0];
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(null);
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const successPlayer = useAudioPlayer(PLAN_SUCCESS_SOUND);
 
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [cuisine, setCuisine] = useState('');
@@ -659,6 +674,102 @@ export default function JournalScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [healthConditions, setHealthConditions] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLatestPlan = async () => {
+      setLoadingSavedPlan(true);
+      try {
+        const latestPlan = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
+        if (cancelled) {
+          return;
+        }
+
+        setGeneratedPlan(latestPlan);
+        const mappedProfile = mapPlanProfile(latestPlan);
+        if (mappedProfile) {
+          setSelectedGoal(mappedProfile.goal);
+          setCuisine(mappedProfile.cuisine);
+          setFavoriteMeal(mappedProfile.favoriteMeal);
+          setSelectedDiet(mappedProfile.selectedDiet);
+          setAllergies(mappedProfile.allergies);
+          setSelectedActivity(mappedProfile.selectedActivity);
+          setAge(mappedProfile.age);
+          setGender(mappedProfile.gender);
+          setHeight(mappedProfile.height);
+          setWeight(mappedProfile.weight);
+          setHealthConditions(new Set(mappedProfile.healthConditions));
+        }
+        setDone(true);
+      } catch {
+        if (!cancelled) {
+          setDone(false);
+          setGeneratedPlan(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingSavedPlan(false);
+        }
+      }
+    };
+
+    void loadLatestPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!generating) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % PLAN_LOADING_MESSAGES.length);
+    }, 2400);
+
+    return () => clearInterval(interval);
+  }, [generating]);
+
+  useEffect(() => {
+    if (!generationSuccess) {
+      return;
+    }
+
+    successScale.setValue(0);
+    Animated.timing(successScale, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.back(1.4)),
+      useNativeDriver: true,
+    }).start();
+
+    const playSuccessSound = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+        });
+        successPlayer.seekTo(0);
+        successPlayer.play();
+      } catch {
+        return;
+      }
+    };
+
+    void playSuccessSound();
+
+    const timer = setTimeout(() => {
+      setGenerationSuccess(false);
+      setDone(true);
+    }, PLAN_SUCCESS_HOLD_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [generationSuccess, successPlayer, successScale]);
 
   const toggleHealth = (id: string) => {
     setHealthConditions((prev) => {
@@ -689,7 +800,7 @@ export default function JournalScreen() {
 
     setGenerating(true);
     setGenerationSuccess(false);
-    setGenerationError('');
+    setErrorDialog(null);
 
     try {
       const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
@@ -709,39 +820,45 @@ export default function JournalScreen() {
         },
       });
 
-      setGeneratedPlan(response.plan);
+      let savedPlan = response.plan;
+      try {
+        savedPlan = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
+      } catch {
+        savedPlan = response.plan;
+      }
+
+      setGeneratedPlan(savedPlan);
 
       setGenerating(false);
       setGenerationSuccess(true);
-      successScale.setValue(0);
-      Animated.sequence([
-        Animated.timing(successScale, {
-          toValue: 1,
-          duration: 180,
-          easing: Easing.out(Easing.back(1.4)),
-          useNativeDriver: true,
-        }),
-        Animated.delay(700),
-      ]).start(() => {
-        setGenerationSuccess(false);
-        setDone(true);
-      });
     } catch (error) {
       setGenerating(false);
       setGenerationSuccess(false);
-      setGenerationError(formatNutritionPlanError(error));
+      setErrorDialog(formatNutritionPlanError(error));
     }
   };
 
   const formatNutritionPlanError = (error: unknown) => {
-    const message = error instanceof Error ? error.message : '';
-    if (message.includes('Nutrition plan refused')) {
-      return 'The nutrition request was refused. Adjust your inputs and try again.';
+    const formatted = formatAppError(error, 'Unable to generate a nutrition plan right now.');
+    if (formatted.message.toLowerCase().includes('nutrition plan refused')) {
+      return {
+        title: 'Nutrition Error',
+        message: 'The nutrition request was refused. Adjust your inputs and try again.',
+      };
     }
-    if (message.includes('Nutrition plan unavailable')) {
-      return 'The nutrition service is unavailable right now. Try again in a moment.';
+    if (formatted.message.toLowerCase().includes('did not return valid plan json')) {
+      return {
+        title: 'Nutrition JSON Error',
+        message: 'The AI response was not valid plan JSON. Try again and the system will request a cleaner structured plan.',
+      };
     }
-    return 'Unable to generate a nutrition plan right now.';
+    if (formatted.message.toLowerCase().includes('nutrition plan unavailable')) {
+      return {
+        title: 'Nutrition Service Error',
+        message: 'The nutrition service is unavailable right now. Try again in a moment.',
+      };
+    }
+    return formatted;
   };
 
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
@@ -750,7 +867,8 @@ export default function JournalScreen() {
     return (
       <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
-        <Text style={styles.quoteText}>Generating your plan...</Text>
+        <Text style={styles.quoteText}>Generating your plan</Text>
+        <Text style={styles.loadingDetailText}>{PLAN_LOADING_MESSAGES[loadingMessageIndex]}</Text>
       </View>
     );
   }
@@ -762,6 +880,15 @@ export default function JournalScreen() {
           <Ionicons name="checkmark" size={42} color="#fff" />
         </Animated.View>
         <Text style={styles.quoteText}>Plan saved</Text>
+      </View>
+    );
+  }
+
+  if (loadingSavedPlan) {
+    return (
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
+        <Text style={styles.quoteText}>Loading your saved plan...</Text>
       </View>
     );
   }
@@ -783,12 +910,25 @@ export default function JournalScreen() {
           healthConditions: Array.from(healthConditions),
         }}
         initialPlan={generatedPlan}
+        onCreateNewPlan={() => {
+          setDone(false);
+          setStep(1);
+          setErrorDialog(null);
+        }}
       />
     );
   }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <ErrorPopupModal
+        visible={Boolean(errorDialog)}
+        title={errorDialog?.title ?? 'Error'}
+        message={errorDialog?.message ?? ''}
+        onClose={() => setErrorDialog(null)}
+        onRetry={errorDialog ? generatePlan : undefined}
+        retryLabel="Try Again"
+      />
       <VictoryHeader />
 
       {/* Progress Bar */}
@@ -912,15 +1052,6 @@ export default function JournalScreen() {
           </View>
         )}
 
-        {generationError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{generationError}</Text>
-            <TouchableOpacity onPress={generatePlan} activeOpacity={0.85} style={styles.errorRetryBtn}>
-              <Text style={styles.errorRetryText}>Try Again</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
         <View style={{ height: 110 }} />
       </ScrollView>
 
@@ -986,6 +1117,7 @@ const styles = StyleSheet.create({
 
   loadingScreen: { flex: 1, backgroundColor: '#0D1220', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
   quoteText: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 30, letterSpacing: 0.5 },
+  loadingDetailText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 22, marginTop: 14, maxWidth: 300 },
   successRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.accentPurple, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   planLoading: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   planLoadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular' },
@@ -998,11 +1130,6 @@ const styles = StyleSheet.create({
   generateBtn: { paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 },
   nextBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   nextBtnDisabled: { color: 'rgba(255,255,255,0.35)' },
-  errorBox: { paddingHorizontal: 24, paddingTop: 8, alignItems: 'center', gap: 10 },
-  errorText: { color: '#FCA5A5', fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 12, textAlign: 'center' },
-  errorRetryBtn: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(168,85,247,0.16)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.35)' },
-  errorRetryText: { color: '#E9D5FF', fontSize: 13, fontFamily: 'Inter_700Bold' },
-
   /* Wizard Header */
   wizardHeader: { alignItems: 'center', paddingTop: 52, paddingBottom: 16, backgroundColor: Colors.background },
   wizardBrandTitle: { fontSize: 24, fontWeight: '700', color: '#fff', letterSpacing: 8, fontFamily: 'Inter_700Bold' },
@@ -1100,6 +1227,21 @@ const styles = StyleSheet.create({
   analysisEmptySub: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
 
   /* ── Shopping List ── */
+  jsonCard: {
+    backgroundColor: '#0D0D1E',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 14,
+    marginBottom: 20,
+  },
+  jsonText: {
+    color: '#D1D5DB',
+    fontSize: 11,
+    lineHeight: 17,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+
   slHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 56, paddingBottom: 16, backgroundColor: Colors.background },
   slBackBtn: { padding: 4 },
   slTitle: { fontSize: 16, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold' },

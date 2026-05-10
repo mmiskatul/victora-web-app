@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,9 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
+import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { apiRequest } from '../../lib/api';
+import { formatAppError } from '../../lib/error';
 
 interface Message {
   id: string;
@@ -37,12 +39,44 @@ const INITIAL_MESSAGES: Message[] = [
   },
 ];
 
+const MessageBubble = memo(function MessageBubble({ item }: { item: Message }) {
+  const isCoach = item.sender === 'coach';
+  const coachContent = useMemo(() => {
+    if (!isCoach) {
+      return null;
+    }
+
+    return renderCoachMessage(item.text);
+  }, [isCoach, item.text]);
+
+  return (
+    <View
+      style={[
+        styles.messageContainer,
+        isCoach ? styles.coachContainer : styles.userContainer,
+      ]}
+    >
+      <View
+        style={[
+          styles.bubble,
+          isCoach ? styles.coachBubble : styles.userBubble,
+        ]}
+      >
+        {isCoach ? coachContent : (
+          <Text style={[styles.messageText, styles.userText]}>{item.text}</Text>
+        )}
+      </View>
+    </View>
+  );
+});
+
 export default function ChatScreen() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [inputText, setInputText] = useState('');
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,9 +96,10 @@ export default function ChatScreen() {
         }));
 
         setMessages(mapped.length > 0 ? mapped : INITIAL_MESSAGES);
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setMessages(INITIAL_MESSAGES);
+          setErrorDialog(formatAppError(error));
         }
       } finally {
         if (!cancelled) {
@@ -109,43 +144,28 @@ export default function ChatScreen() {
       };
       setMessages((current) => [...current, coachMessage]);
     } catch (error) {
-      const coachMessage: Message = {
-        id: `${Date.now()}-error`,
-        text: error instanceof Error ? error.message : 'Coach Victor is unavailable right now.',
-        sender: 'coach',
-      };
-      setMessages((current) => [...current, coachMessage]);
+      setErrorDialog(formatAppError(error, 'Coach Victor is unavailable right now. Please try again in a moment.'));
     } finally {
       setSending(false);
     }
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isCoach = item.sender === 'coach';
-    return (
-      <View
-        style={[
-          styles.messageContainer,
-          isCoach ? styles.coachContainer : styles.userContainer,
-        ]}
-      >
-        <View
-          style={[
-            styles.bubble,
-            isCoach ? styles.coachBubble : styles.userBubble,
-          ]}
-        >
-          <Text style={[styles.messageText, isCoach ? styles.coachText : styles.userText]}>
-            {item.text}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  const renderMessage = useCallback(
+    ({ item }: { item: Message }) => <MessageBubble item={item} />,
+    []
+  );
+
+  const keyExtractor = useCallback((item: Message) => item.id, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <Stack.Screen options={{ headerShown: false }} />
+      <ErrorPopupModal
+        visible={Boolean(errorDialog)}
+        title={errorDialog?.title ?? 'Error'}
+        message={errorDialog?.message ?? ''}
+        onClose={() => setErrorDialog(null)}
+      />
       
       {/* Custom Header */}
       <View style={styles.header}>
@@ -181,9 +201,14 @@ export default function ChatScreen() {
         <FlatList
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          windowSize={7}
+          removeClippedSubviews={Platform.OS === 'android'}
         />
         {loadingHistory && (
           <View style={styles.historyLoading}>
@@ -215,6 +240,85 @@ export default function ChatScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function renderCoachMessage(text: string) {
+  const lines = text.split(/\r?\n/);
+
+  return (
+    <View>
+      {lines.map((line, index) => {
+        const trimmed = line.trim();
+
+        if (!trimmed) {
+          return <View key={index} style={styles.markdownGap} />;
+        }
+
+        if (trimmed === '---') {
+          return <View key={index} style={styles.markdownDivider} />;
+        }
+
+        const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+        if (heading) {
+          const level = heading[1].length;
+          return (
+            <Text
+              key={index}
+              style={[
+                styles.markdownHeading,
+                level === 1 && styles.markdownHeadingOne,
+                level === 2 && styles.markdownHeadingTwo,
+              ]}
+            >
+              {renderInlineMarkdown(heading[2], `heading-${index}`)}
+            </Text>
+          );
+        }
+
+        const bullet = trimmed.match(/^[-*]\s+(.+)$/);
+        if (bullet) {
+          return (
+            <View key={index} style={styles.markdownListRow}>
+              <Text style={styles.markdownListMarker}>•</Text>
+              <Text style={styles.markdownText}>{renderInlineMarkdown(bullet[1], `bullet-${index}`)}</Text>
+            </View>
+          );
+        }
+
+        const numbered = trimmed.match(/^(\d+)\.\s+(.+)$/);
+        if (numbered) {
+          return (
+            <View key={index} style={styles.markdownListRow}>
+              <Text style={styles.markdownNumberMarker}>{numbered[1]}.</Text>
+              <Text style={styles.markdownText}>{renderInlineMarkdown(numbered[2], `number-${index}`)}</Text>
+            </View>
+          );
+        }
+
+        return (
+          <Text key={index} style={styles.markdownText}>
+            {renderInlineMarkdown(trimmed, `text-${index}`)}
+          </Text>
+        );
+      })}
+    </View>
+  );
+}
+
+function renderInlineMarkdown(text: string, keyPrefix: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <Text key={`${keyPrefix}-${index}`} style={styles.markdownBold}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+
+    return <Text key={`${keyPrefix}-${index}`}>{part}</Text>;
+  });
 }
 
 const styles = StyleSheet.create({
@@ -330,6 +434,61 @@ const styles = StyleSheet.create({
   },
   userText: {
     color: '#000',
+  },
+  markdownText: {
+    color: '#D1D5DB',
+    fontSize: 15,
+    lineHeight: 22,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 8,
+  },
+  markdownBold: {
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  markdownHeading: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    lineHeight: 22,
+    fontFamily: 'Inter_700Bold',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  markdownHeadingOne: {
+    fontSize: 18,
+    lineHeight: 24,
+    marginTop: 0,
+  },
+  markdownHeadingTwo: {
+    fontSize: 17,
+    lineHeight: 23,
+  },
+  markdownListRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  markdownListMarker: {
+    color: Colors.accentBlue,
+    fontSize: 15,
+    lineHeight: 22,
+    width: 18,
+    fontFamily: 'Inter_700Bold',
+  },
+  markdownNumberMarker: {
+    color: Colors.accentBlue,
+    fontSize: 15,
+    lineHeight: 22,
+    minWidth: 26,
+    fontFamily: 'Inter_700Bold',
+  },
+  markdownGap: {
+    height: 6,
+  },
+  markdownDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginVertical: 10,
   },
   inputBar: {
     padding: 16,

@@ -17,7 +17,7 @@ export default function MoodSection() {
 
       <TouchableOpacity
         style={styles.journalActionBtn}
-        onPress={() => router.push('/mealPlan')}
+        onPress={() => router.push('/journal')}
       >
         <Text style={styles.journalActionText}>Write in Journal</Text>
       </TouchableOpacity>
