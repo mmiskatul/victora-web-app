@@ -6,12 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../constants/Colors";
 import { ErrorPopupModal } from "../../components/ErrorPopupModal";
 import { apiRequest } from "../../lib/api";
@@ -428,3 +428,4 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
 });
+
