@@ -445,20 +445,25 @@ function MealPlanResult({
     }
   };
   const handleStartAnalysis = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission needed', 'Please allow photo access to upload a meal image for analysis.');
-      return;
-    }
+    try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission needed', 'Please allow camera access to take a meal photo for analysis.');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.9,
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+        cameraType: ImagePicker.CameraType.back,
+      });
 
-    if (!result.canceled && result.assets.length > 0) {
-      setAnalysisImage(result.assets[0]);
+      if (!result.canceled && result.assets.length > 0) {
+        setAnalysisImage(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Camera error', error instanceof Error ? error.message : 'Unable to open the camera right now.');
     }
   };
 
