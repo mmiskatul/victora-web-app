@@ -37,7 +37,7 @@ export default function EditProfileScreen() {
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrap}>
             <Image
-              source={require('../../assets/a.jpg')}
+              source={require('../../assets/profile-placeholder.png')}
               style={styles.avatarImage}
             />
             <TouchableOpacity style={styles.cameraBtn}>
