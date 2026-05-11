@@ -5,7 +5,7 @@ declare const process: {
   env?: Record<string, string | undefined>;
 };
 
-const RAW_API_URL = process.env?.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000';
+const RAW_API_URL = process.env?.EXPO_PUBLIC_API_URL ?? 'https://victory-fitness-backend.vercel.app';
 
 function resolveApiUrl(url: string): string {
   if (Platform.OS !== 'android') {
