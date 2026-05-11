@@ -43,11 +43,22 @@ type AuthTokens = {
   session_token: string;
 };
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  is_verified: boolean;
+};
+
 const AUTH_STORAGE_KEY = 'victory-auth-tokens';
+const AUTH_USER_STORAGE_KEY = 'victory-auth-user';
 
 let authTokens: AuthTokens | null = null;
 let authTokensLoaded = false;
 let authTokensLoadPromise: Promise<void> | null = null;
+let authUser: AuthUser | null = null;
+let authUserLoaded = false;
+let authUserLoadPromise: Promise<void> | null = null;
 
 function decodeJwtPayload(token: string): { exp?: number } | null {
   const parts = token.split('.');
@@ -99,6 +110,27 @@ async function persistAuthTokens(tokens: AuthTokens | null) {
   }
 }
 
+async function persistAuthUser(user: AuthUser | null) {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (user) {
+      window.localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    } else {
+      window.localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    }
+    return;
+  }
+
+  if (user) {
+    await AsyncStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    await AsyncStorage.removeItem(AUTH_USER_STORAGE_KEY);
+  }
+}
+
 async function loadPersistedAuthTokens(): Promise<AuthTokens | null> {
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined') {
@@ -111,6 +143,20 @@ async function loadPersistedAuthTokens(): Promise<AuthTokens | null> {
 
   const raw = await AsyncStorage.getItem(AUTH_STORAGE_KEY);
   return raw ? (JSON.parse(raw) as AuthTokens) : null;
+}
+
+async function loadPersistedAuthUser(): Promise<AuthUser | null> {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const raw = window.localStorage.getItem(AUTH_USER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  }
+
+  const raw = await AsyncStorage.getItem(AUTH_USER_STORAGE_KEY);
+  return raw ? (JSON.parse(raw) as AuthUser) : null;
 }
 
 async function ensureAuthTokensLoaded() {
@@ -132,21 +178,67 @@ async function ensureAuthTokensLoaded() {
   await authTokensLoadPromise;
 }
 
-export async function setAuthTokens(tokens: AuthTokens) {
+async function ensureAuthUserLoaded() {
+  if (authUserLoaded) {
+    return;
+  }
+
+  if (!authUserLoadPromise) {
+    authUserLoadPromise = loadPersistedAuthUser()
+      .then((stored) => {
+        authUser = stored;
+        authUserLoaded = true;
+      })
+      .finally(() => {
+        authUserLoadPromise = null;
+      });
+  }
+
+  await authUserLoadPromise;
+}
+
+export async function setAuthTokens(tokens: AuthTokens & { user?: AuthUser }) {
   authTokens = tokens;
   authTokensLoaded = true;
   await persistAuthTokens(tokens);
+
+  if (tokens.user) {
+    authUser = tokens.user;
+    authUserLoaded = true;
+    await persistAuthUser(tokens.user);
+  }
 }
 
 export async function clearAuthTokens() {
   authTokens = null;
   authTokensLoaded = true;
   await persistAuthTokens(null);
+  authUser = null;
+  authUserLoaded = true;
+  await persistAuthUser(null);
 }
 
 export async function getAuthTokens() {
   await ensureAuthTokensLoaded();
   return authTokens;
+}
+
+export async function getAuthUser() {
+  await ensureAuthUserLoaded();
+  return authUser;
+}
+
+export async function fetchCurrentUser() {
+  const user = await apiRequest<AuthUser & { role?: string; is_admin?: boolean }>('/me');
+  authUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    is_verified: user.is_verified,
+  };
+  authUserLoaded = true;
+  await persistAuthUser(authUser);
+  return user;
 }
 
 async function refreshWithSessionToken(sessionToken: string): Promise<AuthTokens | null> {
