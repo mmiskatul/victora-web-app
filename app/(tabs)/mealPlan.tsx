@@ -4,8 +4,11 @@ import {
   Text,
   StyleSheet,
   TextInput,
+  Image,
+  Alert,
   TouchableOpacity,
   ScrollView,
+  Modal,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -14,11 +17,18 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
 import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
+import {
+  getNutritionPlanJob,
+  NutritionPlanApiResponse,
+  startNutritionPlanJob,
+  updateNutritionMealCompletion,
+} from '../../lib/nutrition';
 
 const TOTAL_STEPS = 8;
 const PLAN_SUCCESS_SOUND = require('../../assets/sounds/plan-saved.wav');
@@ -138,14 +148,6 @@ type NutritionProfile = {
   weight: string;
   healthConditions: string[];
 };
-type NutritionPlanApiResponse = {
-  plan_id?: string | null;
-  summary: string;
-  goal_label: string;
-  days: Array<{ day: string; breakfast: MealEntry; lunch: MealEntry; dinner: MealEntry }>;
-  shopping_list: Array<{ category: string; items: Array<{ name: string; qty: string }> }>;
-  profile?: Record<string, unknown> | null;
-};
 
 function mapPlanProfile(plan: NutritionPlanApiResponse | null): NutritionProfile | null {
   const rawProfile = plan?.profile;
@@ -223,19 +225,41 @@ function MealPlanResult({
   const [planTab, setPlanTab] = useState('My Plan');
   const [activeDay, setActiveDay] = useState('Mon');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [mealSearch, setMealSearch] = useState('');
   const [showShopping, setShowShopping] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [generatedPlan, setGeneratedPlan] = useState<NutritionPlanApiResponse | null>(initialPlan ?? null);
   const [loadingPlan, setLoadingPlan] = useState(true);
   const [nutritionAdvice, setNutritionAdvice] = useState('');
   const [loadingAdvice, setLoadingAdvice] = useState(false);
+  const [mealCompletions, setMealCompletions] = useState<Record<string, boolean>>({});
+  const [selectedMeal, setSelectedMeal] = useState<{ day: string; mealLabel: string; mealKey: string; meal: MealEntry; expandKey: string } | null>(null);
+  const [mealModalActionState, setMealModalActionState] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [mealModalActionMode, setMealModalActionMode] = useState<'complete' | 'unmark'>('complete');
+  const [analysisImage, setAnalysisImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+
+  const normalizeMealCompletions = (plan: NutritionPlanApiResponse | null | undefined) => {
+    const entries = plan?.meal_completions ?? {};
+    const flat: Record<string, boolean> = {};
+
+    Object.entries(entries).forEach(([day, meals]) => {
+      if (!meals || typeof meals !== 'object') {
+        return;
+      }
+
+      Object.entries(meals).forEach(([mealKey, completed]) => {
+        flat[mealCompletionKey(day, mealKey)] = Boolean(completed);
+      });
+    });
+
+    return flat;
+  };
 
   useEffect(() => {
     let cancelled = false;
 
     if (initialPlan) {
       setGeneratedPlan(initialPlan);
+      setMealCompletions(normalizeMealCompletions(initialPlan));
       setLoadingPlan(false);
       return () => {
         cancelled = true;
@@ -248,10 +272,12 @@ function MealPlanResult({
         const response = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
         if (!cancelled) {
           setGeneratedPlan(response);
+          setMealCompletions(normalizeMealCompletions(response));
         }
       } catch {
         if (!cancelled) {
           setGeneratedPlan(null);
+          setMealCompletions({});
         }
       } finally {
         if (!cancelled) {
@@ -289,9 +315,58 @@ function MealPlanResult({
   };
 
   const toggleExpand = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
+  const mealCompletionKey = (day: string, mealKey: string) => `${day}-${mealKey}`;
+  const isMealComplete = (day: string, mealKey: string) => Boolean(mealCompletions[mealCompletionKey(day, mealKey)]);
+  const setMealCompletion = async (day: string, mealKey: string, completed: boolean) => {
+    try {
+      const updatedPlan = await updateNutritionMealCompletion({
+        day,
+        meal_key: mealKey,
+        completed,
+      });
+      setGeneratedPlan(updatedPlan);
+      setMealCompletions(normalizeMealCompletions(updatedPlan));
+    } catch {
+      setMealCompletions((prev) => ({
+        ...prev,
+        [mealCompletionKey(day, mealKey)]: completed,
+      }));
+    }
+  };
+  const openMealModal = (day: string, mealKey: string, mealLabel: string, meal: MealEntry, expandKey: string) => {
+    const cardKey = mealCompletionKey(day, mealKey);
+    setMealModalActionState('idle');
+    setMealModalActionMode(isMealComplete(day, mealKey) ? 'unmark' : 'complete');
+    setSelectedMeal((prev) =>
+      prev && mealCompletionKey(prev.day, prev.mealKey) === cardKey ? null : { day, mealLabel, mealKey, meal, expandKey }
+    );
+  };
+  const closeMealModal = () => {
+    setSelectedMeal(null);
+    setMealModalActionState('idle');
+    setMealModalActionMode('complete');
+  };
+  const confirmMealCompletion = async (nextCompleted: boolean) => {
+    if (!selectedMeal || mealModalActionState !== 'idle') {
+      return;
+    }
 
-  const activePlan = generatedPlan
-    ? generatedPlan.days.reduce<Record<string, DayPlan>>((acc, day) => {
+    setMealModalActionState('loading');
+    await setMealCompletion(selectedMeal.day, selectedMeal.mealKey, nextCompleted);
+    setMealModalActionState('done');
+
+    setTimeout(() => {
+      closeMealModal();
+    }, 650);
+  };
+
+  const generatedDays = Array.isArray(generatedPlan?.days) ? generatedPlan.days : [];
+  const activePlan = generatedDays.length > 0
+    ? generatedDays.reduce<Record<string, DayPlan>>((acc, day) => {
+        if (!day?.day || !day.breakfast || !day.lunch || !day.dinner) {
+          return acc;
+        }
+
         acc[day.day] = {
           breakfast: day.breakfast,
           lunch: day.lunch,
@@ -300,8 +375,25 @@ function MealPlanResult({
         return acc;
       }, {})
     : MEAL_PLAN;
-  const activeShoppingList = generatedPlan?.shopping_list ?? [];
+  const activeShoppingList = Array.isArray(generatedPlan?.shopping_list) ? generatedPlan.shopping_list : [];
   const day = activePlan[activeDay] ?? MEAL_PLAN[activeDay];
+  const dayMealStatuses = [
+    { key: 'breakfast', label: 'Breakfast', meal: day.breakfast, completed: isMealComplete(activeDay, 'breakfast') },
+    { key: 'lunch', label: 'Lunch', meal: day.lunch, completed: isMealComplete(activeDay, 'lunch') },
+    { key: 'dinner', label: 'Dinner', meal: day.dinner, completed: isMealComplete(activeDay, 'dinner') },
+  ];
+  const completedMealsCount = dayMealStatuses.filter((item) => item.completed).length;
+  const completedDayTotals = dayMealStatuses
+    .filter((item) => item.completed)
+    .reduce(
+      (acc, item) => ({
+        kcal: acc.kcal + item.meal.kcal,
+        p: acc.p + item.meal.p,
+        c: acc.c + item.meal.c,
+        f: acc.f + item.meal.f,
+      }),
+      { kcal: 0, p: 0, c: 0, f: 0 }
+    );
   const totalKcal = day.breakfast.kcal + day.lunch.kcal + day.dinner.kcal;
   const totalP = day.breakfast.p + day.lunch.p + day.dinner.p;
   const totalC = day.breakfast.c + day.lunch.c + day.dinner.c;
@@ -335,7 +427,7 @@ function MealPlanResult({
         method: 'POST',
         body: {
           goal: profile.goal,
-          meal_query: mealSearch,
+          meal_query: '',
           daily_calories: totalKcal,
           daily_protein: totalP,
           daily_carbs: totalC,
@@ -352,44 +444,61 @@ function MealPlanResult({
       setLoadingAdvice(false);
     }
   };
+  const handleStartAnalysis = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please allow photo access to upload a meal image for analysis.');
+      return;
+    }
 
-  const MealCard = ({ label, meal, expandKey }: { label: string; meal: MealEntry; expandKey: string }) => {
-    const ingKey = `${expandKey}-ing`;
-    const instKey = `${expandKey}-inst`;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.9,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      setAnalysisImage(result.assets[0]);
+    }
+  };
+
+  const MealCard = ({
+    dayLabel,
+    mealKey,
+    label,
+    meal,
+    expandKey,
+  }: {
+    dayLabel: string;
+    mealKey: string;
+    label: string;
+    meal: MealEntry;
+    expandKey: string;
+  }) => {
+    const completed = isMealComplete(dayLabel, mealKey);
+
     return (
-      <View style={styles.mealCard}>
-        <Text style={styles.mealLabel}>{label}</Text>
-        <Text style={styles.mealName}>{meal.name}</Text>
-        <Text style={styles.mealDesc}>{meal.desc}</Text>
-        <View style={styles.mealMacroRow}>
-          <View style={styles.macroChip}><Text>🔥</Text><Text style={[styles.macroChipText, { color: '#F97316' }]}>{meal.kcal} kcal</Text></View>
-          <View style={styles.macroChip}><Text>💪</Text><Text style={[styles.macroChipText, { color: '#4F8EF7' }]}>{meal.p}g P</Text></View>
-          <View style={styles.macroChip}><Text>🌾</Text><Text style={[styles.macroChipText, { color: '#22C55E' }]}>{meal.c}g C</Text></View>
-          <View style={styles.macroChip}><Text>🫒</Text><Text style={[styles.macroChipText, { color: '#F59E0B' }]}>{meal.f}g F</Text></View>
-        </View>
-        <TouchableOpacity style={styles.expandRow} onPress={() => toggleExpand(ingKey)}>
-          <Text style={styles.expandLabel}>Ingredients</Text>
-          <Ionicons name={expanded[ingKey] ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(255,255,255,0.5)" />
-        </TouchableOpacity>
-        {expanded[ingKey] && (
-          <View style={styles.expandContent}>
-            {meal.ingredients.map((ing, i) => <Text key={i} style={styles.expandItem}>• {ing}</Text>)}
+      <View style={styles.mealCardWrap}>
+        <TouchableOpacity
+          style={styles.mealCard}
+          onPress={() => openMealModal(dayLabel, mealKey, label, meal, expandKey)}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.mealLabel}>{label}</Text>
+          {completed ? <Text style={styles.mealCompleteBadge}>COMPLETED</Text> : null}
+          <Text style={styles.mealName}>{meal.name}</Text>
+          <Text style={styles.mealDesc}>{meal.desc}</Text>
+          <View style={styles.mealMacroRow}>
+            <View style={styles.macroChip}><Text>🔥</Text><Text style={[styles.macroChipText, { color: '#F97316' }]}>{meal.kcal} kcal</Text></View>
+            <View style={styles.macroChip}><Text>💪</Text><Text style={[styles.macroChipText, { color: '#4F8EF7' }]}>{meal.p}g P</Text></View>
+            <View style={styles.macroChip}><Text>🌾</Text><Text style={[styles.macroChipText, { color: '#22C55E' }]}>{meal.c}g C</Text></View>
+            <View style={styles.macroChip}><Text>🥑</Text><Text style={[styles.macroChipText, { color: '#F59E0B' }]}>{meal.f}g F</Text></View>
           </View>
-        )}
-        {meal.instructions && meal.instructions.length > 0 && (
-          <>
-            <View style={styles.expandDivider} />
-            <TouchableOpacity style={styles.expandRow} onPress={() => toggleExpand(instKey)}>
-              <Text style={styles.expandLabel}>Instructions</Text>
-              <Ionicons name={expanded[instKey] ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(255,255,255,0.5)" />
-            </TouchableOpacity>
-            {expanded[instKey] && (
-              <View style={styles.expandContent}>
-                {meal.instructions.map((inst, i) => <Text key={i} style={styles.expandItem}>{i + 1}. {inst}</Text>)}
-              </View>
-            )}
-          </>
-        )}
+          <View style={styles.mealHintRow}>
+            <Text style={styles.mealHintText}>Tap card for actions</Text>
+            <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.5)" />
+          </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -526,9 +635,9 @@ function MealPlanResult({
                 <View style={styles.totalsItem}><Text style={styles.totalsIcon}>🫒</Text><Text style={styles.totalsVal}>{totalF}g F</Text></View>
               </View>
             </View>
-            <MealCard label="Breakfast" meal={day.breakfast} expandKey={`${activeDay}-b`} />
-            <MealCard label="Lunch" meal={day.lunch} expandKey={`${activeDay}-l`} />
-            <MealCard label="Dinner" meal={day.dinner} expandKey={`${activeDay}-d`} />
+            <MealCard dayLabel={activeDay} mealKey="breakfast" label="Breakfast" meal={day.breakfast} expandKey={`${activeDay}-b`} />
+            <MealCard dayLabel={activeDay} mealKey="lunch" label="Lunch" meal={day.lunch} expandKey={`${activeDay}-l`} />
+            <MealCard dayLabel={activeDay} mealKey="dinner" label="Dinner" meal={day.dinner} expandKey={`${activeDay}-d`} />
             <TouchableOpacity style={styles.shoppingBtn} activeOpacity={0.85} onPress={() => setShowShopping(true)}>
               <View style={[styles.shoppingBtnGrad, { backgroundColor: Colors.accentPurple }]}>
                 <Text style={styles.shoppingBtnText}>Weekly Shopping List</Text>
@@ -549,22 +658,31 @@ function MealPlanResult({
                 <Text style={styles.trackerSectionIcon}>📊</Text>
                 <Text style={styles.trackerSectionTitle}>DAILY SUMMARY</Text>
               </View>
-              <View style={styles.macroGrid}>
-                {[
-                  { label: 'CALORIES', val: '0', unit: 'kcal' },
-                  { label: 'PROTEIN', val: '0', unit: 'g' },
-                  { label: 'CARBS', val: '0', unit: 'g' },
-                  { label: 'FAT', val: '0', unit: 'g' },
-                ].map((m) => (
-                  <View key={m.label} style={styles.macroGridCell}>
-                    <Text style={styles.macroGridLabel}>{m.label}</Text>
-                    <View style={styles.macroGridValRow}>
-                      <Text style={styles.macroGridVal}>{m.val}</Text>
-                      <Text style={styles.macroGridUnit}> {m.unit}</Text>
-                    </View>
-                  </View>
-                ))}
+              <View style={styles.dailyMetricGrid}>
+                <View style={styles.dailyMetricCard}>
+                  <Text style={styles.dailyMetricEmoji}>🔥</Text>
+                  <Text style={styles.dailyMetricLabel}>Calories</Text>
+                  <Text style={styles.dailyMetricValue}>{completedDayTotals.kcal} / {totalKcal} kcal</Text>
+                </View>
+                <View style={styles.dailyMetricCard}>
+                  <Text style={styles.dailyMetricEmoji}>💪</Text>
+                  <Text style={styles.dailyMetricLabel}>Protein</Text>
+                  <Text style={styles.dailyMetricValue}>{completedDayTotals.p} / {totalP}g P</Text>
+                </View>
+                <View style={styles.dailyMetricCard}>
+                  <Text style={styles.dailyMetricEmoji}>🌾</Text>
+                  <Text style={styles.dailyMetricLabel}>Carbs</Text>
+                  <Text style={styles.dailyMetricValue}>{completedDayTotals.c} / {totalC}g C</Text>
+                </View>
+                <View style={styles.dailyMetricCard}>
+                  <Text style={styles.dailyMetricEmoji}>🥑</Text>
+                  <Text style={styles.dailyMetricLabel}>Fat</Text>
+                  <Text style={styles.dailyMetricValue}>{completedDayTotals.f} / {totalF}g F</Text>
+                </View>
               </View>
+              <Text style={styles.trackerProgressText}>
+                {completedMealsCount} of {dayMealStatuses.length} meals complete for {activeDay}.
+              </Text>
             </View>
 
             {/* AI Suggestions */}
@@ -583,29 +701,6 @@ function MealPlanResult({
               {nutritionAdvice ? <Text style={styles.adviceText}>{nutritionAdvice}</Text> : null}
             </View>
 
-            {/* Log a Meal */}
-            <View style={styles.trackerSection}>
-              <View style={styles.trackerSectionHeader}>
-                <Text style={styles.trackerSectionIcon}>🍽️</Text>
-                <Text style={styles.trackerSectionTitle}>LOG A MEAL</Text>
-              </View>
-              <View style={styles.mealSearchRow}>
-                <TextInput
-                  style={styles.mealSearchInput}
-                  placeholder="Search for meals (e.g. Jollof"
-                  placeholderTextColor="rgba(255,255,255,0.35)"
-                  value={mealSearch}
-                  onChangeText={setMealSearch}
-                />
-                <TouchableOpacity style={styles.mealSearchBtn} activeOpacity={0.85}>
-                  <Text style={styles.mealSearchBtnText}>SEARCH</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.todayLogsLabel}>TODAY'S LOGS</Text>
-              <Text style={styles.todayLogsEmpty}>
-                No meals logged yet today. Honor your body with good fuel!
-              </Text>
-            </View>
           </View>
         )}
 
@@ -616,10 +711,22 @@ function MealPlanResult({
               <Ionicons name="analytics-outline" size={40} color="#fff" style={{ opacity: 0.3, marginBottom: 12 }} />
               <Text style={styles.analysisTitle}>AI MEAL ANALYSIS</Text>
               <Text style={styles.analysisDesc}>Take a photo of your meal to get instant macro tracking and health feedback.</Text>
-              <TouchableOpacity style={styles.analysisBtn}>
+              <TouchableOpacity style={styles.analysisBtn} onPress={handleStartAnalysis} activeOpacity={0.85}>
                 <Text style={styles.analysisBtnText}>Start Analysis</Text>
               </TouchableOpacity>
             </View>
+
+            {analysisImage ? (
+              <View style={styles.analysisPreviewCard}>
+                <Image source={{ uri: analysisImage.uri }} style={styles.analysisPreviewImage} />
+                <View style={styles.analysisPreviewMeta}>
+                  <Text style={styles.analysisPreviewLabel}>Selected image</Text>
+                  <Text style={styles.analysisPreviewText} numberOfLines={1}>
+                    {analysisImage.fileName ?? 'Meal photo'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             <View style={styles.analysisEmptyCard}>
               <Ionicons name="camera-outline" size={40} color="rgba(255,255,255,0.2)" />
@@ -645,6 +752,123 @@ function MealPlanResult({
 
         <View style={{ height: 60 }} />
       </ScrollView>
+
+      <Modal
+        visible={Boolean(selectedMeal)}
+        animationType="slide"
+        transparent
+        onRequestClose={closeMealModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            {mealModalActionState !== 'idle' && (
+              <View style={styles.modalActionOverlay}>
+                <View style={styles.modalActionOverlayCard}>
+                  {mealModalActionState === 'loading' ? (
+                    <ActivityIndicator color={Colors.primary} size="large" />
+                  ) : (
+                    <Ionicons name="checkmark-circle" size={44} color="#22C55E" />
+                  )}
+                  <Text style={styles.modalActionOverlayText}>
+                    {mealModalActionState === 'loading' ? 'Updating meal...' : 'Saved'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            <Text style={styles.modalEyebrow}>MEAL DETAILS</Text>
+            <Text style={styles.modalTitle}>{selectedMeal?.mealLabel ?? 'Meal'}</Text>
+            <Text style={styles.modalSubtitle}>
+              Tap complete after you finish this meal. The daily summary updates automatically.
+            </Text>
+
+            {selectedMeal ? (
+              <View style={styles.modalMealCard}>
+                <Text style={styles.modalMealName}>{selectedMeal.meal.name}</Text>
+                <Text style={styles.modalMealDesc}>{selectedMeal.meal.desc}</Text>
+                <View style={styles.mealMacroRow}>
+                  <View style={styles.macroChip}><Text>🔥</Text><Text style={[styles.macroChipText, { color: '#F97316' }]}>{selectedMeal.meal.kcal} kcal</Text></View>
+                  <View style={styles.macroChip}><Text>💪</Text><Text style={[styles.macroChipText, { color: '#4F8EF7' }]}>{selectedMeal.meal.p}g P</Text></View>
+                  <View style={styles.macroChip}><Text>🌾</Text><Text style={[styles.macroChipText, { color: '#22C55E' }]}>{selectedMeal.meal.c}g C</Text></View>
+                  <View style={styles.macroChip}><Text>🥑</Text><Text style={[styles.macroChipText, { color: '#F59E0B' }]}>{selectedMeal.meal.f}g F</Text></View>
+                </View>
+                <TouchableOpacity style={styles.expandRow} onPress={() => toggleExpand(`${selectedMeal.expandKey}-ing`)}>
+                  <Text style={styles.expandLabel}>Ingredients</Text>
+                  <Ionicons name={expanded[`${selectedMeal.expandKey}-ing`] ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(255,255,255,0.5)" />
+                </TouchableOpacity>
+                {expanded[`${selectedMeal.expandKey}-ing`] && (
+                  <View style={styles.expandContent}>
+                    {selectedMeal.meal.ingredients.map((ing, i) => <Text key={i} style={styles.expandItem}>• {ing}</Text>)}
+                  </View>
+                )}
+                {selectedMeal.meal.instructions && selectedMeal.meal.instructions.length > 0 && (
+                  <>
+                    <View style={styles.expandDivider} />
+                    <TouchableOpacity style={styles.expandRow} onPress={() => toggleExpand(`${selectedMeal.expandKey}-inst`)}>
+                      <Text style={styles.expandLabel}>Instructions</Text>
+                      <Ionicons name={expanded[`${selectedMeal.expandKey}-inst`] ? 'chevron-up' : 'chevron-down'} size={16} color="rgba(255,255,255,0.5)" />
+                    </TouchableOpacity>
+                    {expanded[`${selectedMeal.expandKey}-inst`] && (
+                      <View style={styles.expandContent}>
+                        {selectedMeal.meal.instructions.map((inst, i) => <Text key={i} style={styles.expandItem}>{i + 1}. {inst}</Text>)}
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            ) : null}
+
+            {selectedMeal && isMealComplete(selectedMeal.day, selectedMeal.mealKey) ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.modalCompleteBtn, styles.modalCompleteBtnDone]}
+                  activeOpacity={0.9}
+                  disabled
+                >
+                  <Ionicons name="checkmark-circle" size={18} color="#050816" />
+                  <Text style={[styles.modalCompleteBtnText, styles.modalCompleteBtnTextDone]}>
+                    Already complete
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.modalSecondaryActionBtn}
+                  activeOpacity={0.85}
+                  onPress={() => confirmMealCompletion(false)}
+                  disabled={mealModalActionState !== 'idle'}
+                >
+                  {mealModalActionState === 'loading' && mealModalActionMode === 'unmark' ? (
+                    <ActivityIndicator color={Colors.textMuted} />
+                  ) : mealModalActionState === 'done' && mealModalActionMode === 'unmark' ? (
+                    <Ionicons name="checkmark" size={18} color="#22C55E" />
+                  ) : (
+                    <Text style={styles.modalSecondaryActionText}>Unmark meal</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.modalCompleteBtn}
+                activeOpacity={0.9}
+                onPress={() => confirmMealCompletion(true)}
+                disabled={mealModalActionState !== 'idle'}
+              >
+                {mealModalActionState === 'loading' && mealModalActionMode === 'complete' ? (
+                  <ActivityIndicator color="#050816" />
+                ) : mealModalActionState === 'done' && mealModalActionMode === 'complete' ? (
+                  <Ionicons name="checkmark" size={20} color="#050816" />
+                ) : (
+                  <Text style={styles.modalCompleteBtnText}>Mark complete</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.8} onPress={closeMealModal}>
+              <Text style={styles.modalCancelBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -654,7 +878,10 @@ export default function JournalScreen() {
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
+  const [generationStage, setGenerationStage] = useState<'queued' | 'processing' | null>(null);
   const [done, setDone] = useState(false);
+  const [hasSavedPlan, setHasSavedPlan] = useState(false);
+  const [creatingNewPlan, setCreatingNewPlan] = useState(false);
   const [loadingSavedPlan, setLoadingSavedPlan] = useState(true);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const successScale = useState(new Animated.Value(0))[0];
@@ -687,6 +914,7 @@ export default function JournalScreen() {
         }
 
         setGeneratedPlan(latestPlan);
+        setHasSavedPlan(true);
         const mappedProfile = mapPlanProfile(latestPlan);
         if (mappedProfile) {
           setSelectedGoal(mappedProfile.goal);
@@ -705,6 +933,7 @@ export default function JournalScreen() {
       } catch {
         if (!cancelled) {
           setDone(false);
+          setHasSavedPlan(false);
           setGeneratedPlan(null);
         }
       } finally {
@@ -763,6 +992,8 @@ export default function JournalScreen() {
 
     const timer = setTimeout(() => {
       setGenerationSuccess(false);
+      setCreatingNewPlan(false);
+      setHasSavedPlan(true);
       setDone(true);
     }, PLAN_SUCCESS_HOLD_MS);
 
@@ -791,7 +1022,47 @@ export default function JournalScreen() {
   };
 
   const goNext = () => { if (step < TOTAL_STEPS) setStep(step + 1); };
-  const goBack = () => { if (step > 1) setStep(step - 1); };
+  const goBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      return;
+    }
+
+    if (hasSavedPlan) {
+      setCreatingNewPlan(false);
+      setDone(true);
+      setGenerationStage(null);
+      setErrorDialog(null);
+    }
+  };
+
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const pollNutritionPlanJob = async (jobId: string) => {
+    const deadline = Date.now() + 180000;
+
+    while (true) {
+      const job = await getNutritionPlanJob(jobId);
+
+      if (job.status === 'queued' || job.status === 'processing') {
+        setGenerationStage(job.status);
+      }
+
+      if (job.status === 'completed') {
+        return job;
+      }
+
+      if (job.status === 'failed') {
+        throw new Error(job.error || 'Nutrition plan generation failed');
+      }
+
+      if (Date.now() >= deadline) {
+        throw new Error('Nutrition plan generation timed out');
+      }
+
+      await sleep(1800);
+    }
+  };
 
   const generatePlan = async () => {
     if (generating) {
@@ -800,39 +1071,43 @@ export default function JournalScreen() {
 
     setGenerating(true);
     setGenerationSuccess(false);
+    setGenerationStage('queued');
+    setCreatingNewPlan(true);
     setErrorDialog(null);
 
     try {
-      const response = await apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
-        method: 'POST',
-        body: {
-          goal: selectedGoal,
-          cuisine,
-          favorite_meal: favoriteMeal,
-          diet: selectedDiet,
-          allergies,
-          activity_level: selectedActivity,
-          age,
-          gender,
-          height,
-          weight,
-          health_conditions: Array.from(healthConditions),
-        },
+      const response = await startNutritionPlanJob({
+        goal: selectedGoal,
+        cuisine,
+        favorite_meal: favoriteMeal,
+        diet: selectedDiet,
+        allergies,
+        activity_level: selectedActivity,
+        age,
+        gender,
+        height,
+        weight,
+        health_conditions: Array.from(healthConditions),
       });
 
-      let savedPlan = response.plan;
-      try {
-        savedPlan = await apiRequest<NutritionPlanApiResponse>('/ai/nutrition/plan/latest');
-      } catch {
-        savedPlan = response.plan;
+      let savedPlan = response.plan ?? null;
+      if (response.status !== 'completed') {
+        const job = await pollNutritionPlanJob(response.job_id);
+        savedPlan = job.plan ?? null;
+      }
+
+      if (!savedPlan) {
+        throw new Error('Nutrition plan generation did not return a saved plan');
       }
 
       setGeneratedPlan(savedPlan);
 
       setGenerating(false);
+      setGenerationStage(null);
       setGenerationSuccess(true);
     } catch (error) {
       setGenerating(false);
+      setGenerationStage(null);
       setGenerationSuccess(false);
       setErrorDialog(formatNutritionPlanError(error));
     }
@@ -864,11 +1139,25 @@ export default function JournalScreen() {
   const progressFraction = (step - 1) / (TOTAL_STEPS - 1);
 
   if (generating) {
+    const isQueued = generationStage === 'queued';
+    const progressWidth = isQueued ? '28%' : '66%';
+    const stageLabel = isQueued ? 'Queued' : 'Processing';
+    const stageMessage = isQueued
+      ? 'Your plan request is waiting for the generation worker.'
+      : 'The backend is building your meal plan now.';
+
     return (
       <View style={styles.loadingScreen}>
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginBottom: 40 }} />
-        <Text style={styles.quoteText}>Generating your plan</Text>
-        <Text style={styles.loadingDetailText}>{PLAN_LOADING_MESSAGES[loadingMessageIndex]}</Text>
+        <View style={styles.jobCard}>
+          <Text style={styles.jobStage}>{stageLabel}</Text>
+          <Text style={styles.quoteText}>Generating your plan</Text>
+          <Text style={styles.loadingDetailText}>{stageMessage}</Text>
+          <View style={styles.jobProgressTrack}>
+            <View style={[styles.jobProgressFill, { width: progressWidth }]} />
+          </View>
+          <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 18 }} />
+          <Text style={styles.loadingDetailText}>{PLAN_LOADING_MESSAGES[loadingMessageIndex]}</Text>
+        </View>
       </View>
     );
   }
@@ -893,7 +1182,7 @@ export default function JournalScreen() {
     );
   }
 
-  if (done) {
+  if ((hasSavedPlan || done) && !creatingNewPlan) {
     return (
       <MealPlanResult
         profile={{
@@ -911,9 +1200,10 @@ export default function JournalScreen() {
         }}
         initialPlan={generatedPlan}
         onCreateNewPlan={() => {
-          setDone(false);
+          setCreatingNewPlan(true);
           setStep(1);
           setErrorDialog(null);
+          setGenerationStage(null);
         }}
       />
     );
@@ -1056,8 +1346,8 @@ export default function JournalScreen() {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} disabled={step === 1}>
-          <Text style={[styles.backBtnText, step === 1 && styles.backBtnDisabled]}>Back</Text>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} disabled={step === 1 && !hasSavedPlan}>
+          <Text style={[styles.backBtnText, step === 1 && !hasSavedPlan && styles.backBtnDisabled]}>Back</Text>
         </TouchableOpacity>
         {step < TOTAL_STEPS ? (
           <TouchableOpacity onPress={goNext} disabled={!canNext()} activeOpacity={0.85}>
@@ -1116,8 +1406,38 @@ const styles = StyleSheet.create({
   genderOptionTextActive: { color: '#A855F7', fontWeight: '700', fontFamily: 'Inter_700Bold' },
 
   loadingScreen: { flex: 1, backgroundColor: '#0D1220', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
+  jobCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#13132A',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 24,
+  },
+  jobStage: {
+    alignSelf: 'flex-start',
+    color: Colors.primary,
+    fontSize: 11,
+    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
   quoteText: { color: '#fff', fontSize: 20, fontWeight: '800', fontFamily: 'Inter_700Bold', textAlign: 'center', lineHeight: 30, letterSpacing: 0.5 },
-  loadingDetailText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 22, marginTop: 14, maxWidth: 300 },
+  loadingDetailText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 22, marginTop: 14, maxWidth: 300, alignSelf: 'center' },
+  jobProgressTrack: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+    marginTop: 20,
+  },
+  jobProgressFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+  },
   successRing: { width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.accentPurple, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   planLoading: { paddingVertical: 24, alignItems: 'center', justifyContent: 'center', gap: 12 },
   planLoadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Inter_400Regular' },
@@ -1164,19 +1484,373 @@ const styles = StyleSheet.create({
   totalsIcon: { fontSize: 18 },
   totalsVal: { fontSize: 13, fontWeight: '700', color: '#fff', fontFamily: 'Inter_700Bold' },
 
-  mealCard: { backgroundColor: '#13132A', borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  dailyMetricGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
+  dailyMetricCard: {
+    width: '47%',
+    backgroundColor: '#0D0D1E',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    gap: 6,
+  },
+  dailyMetricEmoji: {
+    fontSize: 20,
+  },
+  dailyMetricLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    fontFamily: 'Inter_700Bold',
+  },
+  dailyMetricValue: {
+    color: '#fff',
+    fontSize: 20,
+    fontFamily: 'Inter_700Bold',
+  },
+  trackerProgressText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    marginTop: 10,
+  },
+
+  summaryCard: {
+    backgroundColor: '#0D0D1E',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    gap: 14,
+  },
+  summaryTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  summaryLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    color: '#fff',
+    fontSize: 22,
+    fontFamily: 'Inter_700Bold',
+  },
+  summaryPill: {
+    backgroundColor: 'rgba(168,85,247,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  summaryPillText: {
+    color: '#D8B4FE',
+    fontSize: 11,
+    letterSpacing: 1.2,
+    fontFamily: 'Inter_700Bold',
+  },
+  summaryMealList: {
+    gap: 10,
+  },
+  summaryMealRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  summaryMealLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  summaryMealName: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    maxWidth: 210,
+  },
+  summaryStatusChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  summaryStatusChipDone: {
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderColor: 'rgba(34,197,94,0.26)',
+  },
+  summaryStatusText: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  summaryStatusTextDone: {
+    color: '#22C55E',
+  },
+
+  mealCardWrap: {
+    marginBottom: 14,
+  },
+  mealCard: { backgroundColor: '#13132A', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  mealCardActive: {
+    borderColor: 'rgba(168,85,247,0.45)',
+    backgroundColor: '#171733',
+  },
   mealLabel: { fontSize: 13, fontWeight: '700', color: '#A855F7', fontFamily: 'Inter_700Bold', marginBottom: 6, letterSpacing: 0.3 },
+  mealCompleteBadge: {
+    alignSelf: 'flex-start',
+    color: '#22C55E',
+    fontSize: 10,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 1.4,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
   mealName: { fontSize: 16, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', marginBottom: 4 },
   mealDesc: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Inter_400Regular', lineHeight: 19, marginBottom: 12 },
   mealMacroRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
   macroChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   macroChipText: { fontSize: 12, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  mealHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 2,
+  },
+  mealHintText: {
+    color: 'rgba(255,255,255,0.48)',
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  mealActionPanel: {
+    marginTop: -4,
+    marginBottom: 14,
+    paddingHorizontal: 12,
+    paddingTop: 2,
+  },
+  mealActionTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  mealActionSub: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 12,
+  },
 
   expandRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10 },
   expandLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 14 },
   expandContent: { paddingBottom: 8, paddingLeft: 4 },
   expandItem: { color: Colors.textMuted, fontSize: 13, lineHeight: 22 },
   expandDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 2 },
+  completeMealBtn: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  completeMealBtnDone: {
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderColor: 'rgba(34,197,94,0.3)',
+  },
+  completeMealBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: 'Inter_700Bold',
+  },
+  completeMealBtnTextDone: {
+    color: '#22C55E',
+  },
+  mealActionSecondary: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  mealActionSecondaryText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontFamily: 'Inter_500Medium',
+  },
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(5,8,22,0.82)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: '#13132A',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    position: 'relative',
+  },
+  modalActionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  modalActionOverlayCard: {
+    minWidth: 160,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(5,8,22,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    gap: 12,
+  },
+  modalActionOverlayText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.4,
+  },
+  modalHandle: {
+    alignSelf: 'center',
+    width: 54,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginBottom: 16,
+  },
+  modalEyebrow: {
+    color: Colors.primary,
+    fontSize: 11,
+    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 16,
+  },
+  modalMealCard: {
+    backgroundColor: '#0D0D1E',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    padding: 16,
+    marginBottom: 16,
+  },
+  modalMealName: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 6,
+  },
+  modalMealDesc: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 14,
+  },
+  modalMealSection: {
+    color: Colors.primary,
+    fontSize: 12,
+    letterSpacing: 1.1,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  modalMealItem: {
+    color: '#fff',
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 6,
+  },
+  modalCompleteBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  modalCompleteBtnDone: {
+    backgroundColor: 'rgba(34,197,94,0.16)',
+  },
+  modalCompleteBtnText: {
+    color: '#050816',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+  },
+  modalCompleteBtnTextDone: {
+    color: '#22C55E',
+  },
+  modalSecondaryActionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  modalSecondaryActionText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
+  modalCancelBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  modalCancelBtnText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
 
   shoppingBtn: { marginTop: 8, marginBottom: 12 },
   shoppingBtnGrad: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
@@ -1220,6 +1894,39 @@ const styles = StyleSheet.create({
   analysisCard: { backgroundColor: '#13132A', borderRadius: 16, padding: 20, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   analysisTitle: { fontSize: 22, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', lineHeight: 30, marginBottom: 10 },
   analysisDesc: { fontSize: 14, color: Colors.textMuted, fontFamily: 'Inter_400Regular', lineHeight: 21, marginBottom: 20 },
+  analysisPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#13132A',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+  },
+  analysisPreviewImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  analysisPreviewMeta: {
+    flex: 1,
+  },
+  analysisPreviewLabel: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.9,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  analysisPreviewText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+  },
   analysisUploadGrad: { borderRadius: 14, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   analysisUploadText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   analysisEmptyCard: { backgroundColor: '#13132A', borderRadius: 16, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
@@ -1313,5 +2020,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
 
 

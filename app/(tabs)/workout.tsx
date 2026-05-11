@@ -9,6 +9,7 @@ import {
   Dimensions,
   TextInput,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -109,6 +110,19 @@ export default function WorkoutScreen() {
     });
   };
 
+  const openCategory = (category: WorkoutLibraryCategory) => {
+    router.push({
+      pathname: '/workout-library/category/[name]',
+      params: {
+        name: category.name,
+      },
+    });
+  };
+
+  const openAllCategories = () => {
+    router.push('/workout-library/categories');
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -202,7 +216,10 @@ export default function WorkoutScreen() {
               ))}
             </ScrollView>
 
-            <Text style={[styles.sectionTitle, { marginTop: 28 }]}>CATEGORIES</Text>
+            <Pressable onPress={openAllCategories} style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>CATEGORIES</Text>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+            </Pressable>
             <View style={styles.categoryGrid}>
               {categoryRows.map((row, rowIndex) => (
                 <View key={rowIndex} style={styles.categoryRow}>
@@ -211,7 +228,7 @@ export default function WorkoutScreen() {
                       key={category.id}
                       style={styles.categoryCard}
                       activeOpacity={0.85}
-                      onPress={() => setSearchQuery(category.name)}
+                      onPress={() => openCategory(category)}
                     >
                       <Image source={{ uri: category.image }} style={styles.categoryImage} />
                       <View style={styles.categoryOverlay} />
@@ -381,8 +398,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 1.2,
+  },
+  sectionHeader: {
     paddingHorizontal: 16,
     marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   popularScroll: {
     paddingLeft: 16,
