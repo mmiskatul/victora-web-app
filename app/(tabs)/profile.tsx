@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
@@ -55,36 +56,40 @@ export default function ProfileScreen() {
     is_verified: boolean;
     role?: string;
     is_admin?: boolean;
+    country?: string;
+    profileImage?: string;
   } | null>(null);
   const [loadingMe, setLoadingMe] = React.useState(true);
 
-  React.useEffect(() => {
-    let cancelled = false;
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
 
-    const loadMe = async () => {
-      setLoadingMe(true);
-      try {
-        const response = await fetchCurrentUser();
-        if (!cancelled) {
-          setMe(response);
+      const loadMe = async () => {
+        setLoadingMe(true);
+        try {
+          const response = await fetchCurrentUser();
+          if (!cancelled) {
+            setMe(response);
+          }
+        } catch {
+          if (!cancelled) {
+            setMe(null);
+          }
+        } finally {
+          if (!cancelled) {
+            setLoadingMe(false);
+          }
         }
-      } catch {
-        if (!cancelled) {
-          setMe(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingMe(false);
-        }
-      }
-    };
+      };
 
-    loadMe();
+      loadMe();
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
 
   const displayName = me?.name ?? 'Loading...';
   const displayEmail = me?.email ?? 'Fetching /me data';
@@ -102,7 +107,11 @@ export default function ProfileScreen() {
           {/* Avatar */}
           <View style={styles.avatarWrap}>
             <Image
-              source={require('../../assets/profile-placeholder.png')}
+              source={
+                me?.profileImage
+                  ? { uri: me.profileImage }
+                  : require('../../assets/profile-placeholder.png')
+              }
               style={styles.avatarImage}
             />
           </View>
