@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
-import { apiRequest } from '../../lib/api';
+import { apiRequest, getAuthUser } from '../../lib/api';
 
 const { width } = Dimensions.get('window');
 
@@ -74,6 +74,11 @@ type CommunityComment = {
   content: string;
   created_at: string;
 };
+
+type CurrentCommunityUser = {
+  name: string;
+  profileImage: string;
+};
 function formatCommunityPostTime(value: string) {
   const createdAt = new Date(value);
   if (Number.isNaN(createdAt.getTime())) {
@@ -115,6 +120,32 @@ export default function ChallengesScreen() {
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
   const [reactionSubmitting, setReactionSubmitting] = useState<Record<string, boolean>>({});
   const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
+  const [currentCommunityUser, setCurrentCommunityUser] = useState<CurrentCommunityUser>({
+    name: 'You',
+    profileImage: '',
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCurrentCommunityUser = async () => {
+      const authUser = await getAuthUser();
+      if (!isMounted || !authUser) {
+        return;
+      }
+
+      setCurrentCommunityUser({
+        name: authUser.name || 'You',
+        profileImage: authUser.profileImage || '',
+      });
+    };
+
+    loadCurrentCommunityUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -210,10 +241,33 @@ export default function ChallengesScreen() {
     }
   };
 
+  const updatePostInState = (postId: string, updater: (post: CommunityPost) => CommunityPost) => {
+    setCommunityPosts((current) => current.map((post) => (post.id === postId ? updater(post) : post)));
+    setSelectedCommunityPost((current) => {
+      if (!current || current.id !== postId) {
+        return current;
+      }
+      return updater(current);
+    });
+  };
+
   const handleToggleReaction = async (postId: string) => {
     if (reactionSubmitting[postId]) {
       return;
     }
+
+    let previousLikeCount = 0;
+    let previousViewerHasLiked = false;
+    updatePostInState(postId, (post) => {
+      previousLikeCount = post.like_count;
+      previousViewerHasLiked = post.viewer_has_liked;
+      const nextViewerHasLiked = !post.viewer_has_liked;
+      return {
+        ...post,
+        viewer_has_liked: nextViewerHasLiked,
+        like_count: Math.max(0, post.like_count + (nextViewerHasLiked ? 1 : -1)),
+      };
+    });
 
     setReactionSubmitting((current) => ({ ...current, [postId]: true }));
     try {
@@ -221,18 +275,17 @@ export default function ChallengesScreen() {
         `/community/posts/${encodeURIComponent(postId)}/reactions/toggle`,
         { method: 'POST' }
       );
-      setCommunityPosts((current) =>
-        current.map((post) =>
-          post.id === postId
-            ? {
-                ...post,
-                like_count: response.like_count,
-                viewer_has_liked: response.viewer_has_liked,
-              }
-            : post
-        )
-      );
+      updatePostInState(postId, (post) => ({
+        ...post,
+        like_count: response.like_count,
+        viewer_has_liked: response.viewer_has_liked,
+      }));
     } catch (error) {
+      updatePostInState(postId, (post) => ({
+        ...post,
+        like_count: previousLikeCount,
+        viewer_has_liked: previousViewerHasLiked,
+      }));
       setCommunityError(error instanceof Error ? error.message : 'Failed to update reaction');
     } finally {
       setReactionSubmitting((current) => ({ ...current, [postId]: false }));
@@ -245,29 +298,44 @@ export default function ChallengesScreen() {
       return;
     }
 
+    const optimisticComment: CommunityComment = {
+      id: `temp-${Date.now()}`,
+      post_id: postId,
+      author_name: currentCommunityUser.name,
+      author_role: 'user',
+      author_profile_image: currentCommunityUser.profileImage,
+      content,
+      created_at: new Date().toISOString(),
+    };
+
+    setCommentDrafts((current) => ({ ...current, [postId]: '' }));
+    setExpandedComments((current) => ({ ...current, [postId]: true }));
+    updatePostInState(postId, (post) => {
+      const nextComments = [...(post.comments || []), optimisticComment];
+      return {
+        ...post,
+        comment_count: post.comment_count + 1,
+        comments: nextComments.slice(-3),
+      };
+    });
+
     setCommentSubmitting((current) => ({ ...current, [postId]: true }));
     try {
       const response = await apiRequest<CommunityComment>(`/community/posts/${encodeURIComponent(postId)}/comments`, {
         method: 'POST',
         body: { content },
       });
-      setCommentDrafts((current) => ({ ...current, [postId]: '' }));
-      setExpandedComments((current) => ({ ...current, [postId]: true }));
-      setCommunityPosts((current) =>
-        current.map((post) => {
-          if (post.id !== postId) {
-            return post;
-          }
-
-          const nextComments = [...(post.comments || []), response];
-          return {
-            ...post,
-            comment_count: post.comment_count + 1,
-            comments: nextComments.slice(-3),
-          };
-        })
-      );
+      updatePostInState(postId, (post) => ({
+        ...post,
+        comments: (post.comments || []).map((comment) => (comment.id === optimisticComment.id ? response : comment)),
+      }));
     } catch (error) {
+      setCommentDrafts((current) => ({ ...current, [postId]: content }));
+      updatePostInState(postId, (post) => ({
+        ...post,
+        comment_count: Math.max(0, post.comment_count - 1),
+        comments: (post.comments || []).filter((comment) => comment.id !== optimisticComment.id),
+      }));
       setCommunityError(error instanceof Error ? error.message : 'Failed to add comment');
     } finally {
       setCommentSubmitting((current) => ({ ...current, [postId]: false }));
