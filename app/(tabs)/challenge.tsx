@@ -51,6 +51,7 @@ const readyToStart = [
 // ── Community Posts ──
 type CommunityPost = {
   id: string;
+  author_id: string;
   author_name: string;
   author_role: string;
   author_profile_image: string;
@@ -60,7 +61,9 @@ type CommunityPost = {
   like_count: number;
   comment_count: number;
   viewer_has_liked: boolean;
+  can_delete: boolean;
   comments: CommunityComment[];
+  reactions?: CommunityReactionUser[];
   created_at: string;
   updated_at: string;
 };
@@ -78,6 +81,14 @@ type CommunityComment = {
 type CurrentCommunityUser = {
   name: string;
   profileImage: string;
+};
+
+type CommunityReactionUser = {
+  user_id: string;
+  user_name: string;
+  user_role: string;
+  user_profile_image: string;
+  created_at: string;
 };
 function formatCommunityPostTime(value: string) {
   const createdAt = new Date(value);
@@ -119,6 +130,7 @@ export default function ChallengesScreen() {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
   const [reactionSubmitting, setReactionSubmitting] = useState<Record<string, boolean>>({});
+  const [deleteSubmitting, setDeleteSubmitting] = useState<Record<string, boolean>>({});
   const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
   const [currentCommunityUser, setCurrentCommunityUser] = useState<CurrentCommunityUser>({
     name: 'You',
@@ -339,6 +351,26 @@ export default function ChallengesScreen() {
       setCommunityError(error instanceof Error ? error.message : 'Failed to add comment');
     } finally {
       setCommentSubmitting((current) => ({ ...current, [postId]: false }));
+    }
+  };
+
+  const handleDeleteCommunityPost = async (postId: string) => {
+    if (deleteSubmitting[postId]) {
+      return;
+    }
+
+    setDeleteSubmitting((current) => ({ ...current, [postId]: true }));
+    setCommunityError('');
+    try {
+      await apiRequest(`/community/posts/${encodeURIComponent(postId)}`, {
+        method: 'DELETE',
+      });
+      setCommunityPosts((current) => current.filter((post) => post.id !== postId));
+      setSelectedCommunityPost((current) => (current?.id === postId ? null : current));
+    } catch (error) {
+      setCommunityError(error instanceof Error ? error.message : 'Failed to delete post');
+    } finally {
+      setDeleteSubmitting((current) => ({ ...current, [postId]: false }));
     }
   };
 
@@ -638,6 +670,16 @@ export default function ChallengesScreen() {
                     <Ionicons name="chatbubble-outline" size={16} color="rgba(255,255,255,0.5)" />
                     <Text style={styles.postActionText}>{post.comment_count}</Text>
                   </TouchableOpacity>
+                  {post.can_delete ? (
+                    <TouchableOpacity
+                      style={styles.postAction}
+                      onPress={() => handleDeleteCommunityPost(post.id)}
+                      disabled={deleteSubmitting[post.id]}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="rgba(248,113,113,0.85)" />
+                      <Text style={styles.postDeleteText}>{deleteSubmitting[post.id] ? 'Deleting' : 'Delete'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
 
                 {(expandedComments[post.id] || (post.comments?.length ?? 0) > 0) ? (
@@ -1430,6 +1472,11 @@ const styles = StyleSheet.create({
   },
   postActionText: {
     color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  postDeleteText: {
+    color: '#FCA5A5',
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
