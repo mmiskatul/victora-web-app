@@ -271,6 +271,26 @@ export async function updateCurrentUserProfile(payload: {
   return user;
 }
 
+export async function uploadCurrentUserProfileImage(payload: {
+  image_base64: string;
+  mime_type: string;
+  file_name?: string | null;
+}) {
+  const response = await apiRequest<{ image_url: string }>('/me/profile-image', {
+    method: 'POST',
+    body: payload,
+  });
+  if (authUser) {
+    authUser = {
+      ...authUser,
+      profileImage: response.image_url,
+    };
+    authUserLoaded = true;
+    await persistAuthUser(authUser);
+  }
+  return response;
+}
+
 async function refreshWithSessionToken(sessionToken: string): Promise<AuthTokens | null> {
   const response = await fetch(`${API_URL}/auth/refresh`, {
     method: 'POST',
