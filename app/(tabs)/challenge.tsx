@@ -8,8 +8,11 @@ import {
   TextInput,
   Dimensions,
   ActivityIndicator,
+  Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
 import { apiRequest } from '../../lib/api';
 
@@ -93,6 +96,7 @@ export default function ChallengesScreen() {
   const [communityLoading, setCommunityLoading] = useState(false);
   const [communityPosting, setCommunityPosting] = useState(false);
   const [communityError, setCommunityError] = useState('');
+  const [communityImage, setCommunityImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -141,14 +145,50 @@ export default function ChallengesScreen() {
         method: 'POST',
         body: {
           content,
+          image_base64: communityImage?.base64 ?? undefined,
+          mime_type: communityImage?.mimeType ?? 'image/jpeg',
+          file_name: communityImage?.fileName ?? null,
         },
       });
       setCommunityDraft('');
+      setCommunityImage(null);
       setCommunityPosts((current) => [response, ...current]);
     } catch (error) {
       setCommunityError(error instanceof Error ? error.message : 'Failed to publish post');
     } finally {
       setCommunityPosting(false);
+    }
+  };
+
+  const handlePickCommunityImage = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission needed', 'Please allow photo library access to add an image.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.9,
+        base64: true,
+      });
+
+      if (result.canceled || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        throw new Error('The selected image could not be processed for upload.');
+      }
+
+      setCommunityImage(asset);
+      setCommunityError('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to choose an image right now.';
+      Alert.alert('Image unavailable', message);
     }
   };
 
@@ -314,8 +354,8 @@ export default function ChallengesScreen() {
               />
               <View style={styles.composerDivider} />
               <View style={styles.composerActions}>
-                <TouchableOpacity style={styles.composerImgBtn}>
-                  <Ionicons name="image-outline" size={22} color="rgba(255,255,255,0.45)" />
+                <TouchableOpacity style={styles.composerImgBtn} onPress={handlePickCommunityImage}>
+                  <Ionicons name="image-outline" size={22} color={communityImage ? Colors.primary : 'rgba(255,255,255,0.45)'} />
                 </TouchableOpacity>
 
                 {/* Tier Dropdown */}
@@ -371,6 +411,15 @@ export default function ChallengesScreen() {
               </View>
             </View>
 
+            {communityImage?.uri ? (
+              <View style={styles.communityPreviewCard}>
+                <Image source={{ uri: communityImage.uri }} style={styles.communityPreviewImage} />
+                <TouchableOpacity onPress={() => setCommunityImage(null)} style={styles.communityPreviewRemove}>
+                  <Text style={styles.communityPreviewRemoveText}>Remove image</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             {communityError ? (
               <View style={styles.communityErrorCard}>
                 <Text style={styles.communityErrorText}>{communityError}</Text>
@@ -406,7 +455,7 @@ export default function ChallengesScreen() {
                 {/* Post Body */}
                 <Text style={styles.postBody}>{post.content}</Text>
                 {post.image_url ? (
-                  <Text style={styles.postImageLink}>{post.image_url}</Text>
+                  <Image source={{ uri: post.image_url }} style={styles.postImage} />
                 ) : null}
 
                 {/* Post Footer */}
@@ -1002,6 +1051,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
+  communityPreviewCard: {
+    backgroundColor: '#13132A',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 10,
+    marginBottom: 12,
+  },
+  communityPreviewImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    resizeMode: 'cover',
+    marginBottom: 10,
+  },
+  communityPreviewRemove: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  communityPreviewRemoveText: {
+    color: '#FCA5A5',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
 
   /* Post Card */
   postCard: {
@@ -1072,10 +1146,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 14,
   },
-  postImageLink: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+  postImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 14,
+    resizeMode: 'cover',
     marginBottom: 14,
   },
   postFooter: {
