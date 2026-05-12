@@ -58,8 +58,20 @@ type CommunityPost = {
   image_url: string;
   like_count: number;
   comment_count: number;
+  viewer_has_liked: boolean;
+  comments: CommunityComment[];
   created_at: string;
   updated_at: string;
+};
+
+type CommunityComment = {
+  id: string;
+  post_id: string;
+  author_name: string;
+  author_role: string;
+  author_profile_image: string;
+  content: string;
+  created_at: string;
 };
 function formatCommunityPostTime(value: string) {
   const createdAt = new Date(value);
@@ -97,6 +109,10 @@ export default function ChallengesScreen() {
   const [communityPosting, setCommunityPosting] = useState(false);
   const [communityError, setCommunityError] = useState('');
   const [communityImage, setCommunityImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
+  const [reactionSubmitting, setReactionSubmitting] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -189,6 +205,70 @@ export default function ChallengesScreen() {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to choose an image right now.';
       Alert.alert('Image unavailable', message);
+    }
+  };
+
+  const handleToggleReaction = async (postId: string) => {
+    if (reactionSubmitting[postId]) {
+      return;
+    }
+
+    setReactionSubmitting((current) => ({ ...current, [postId]: true }));
+    try {
+      const response = await apiRequest<{ post_id: string; like_count: number; viewer_has_liked: boolean }>(
+        `/community/posts/${encodeURIComponent(postId)}/reactions/toggle`,
+        { method: 'POST' }
+      );
+      setCommunityPosts((current) =>
+        current.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                like_count: response.like_count,
+                viewer_has_liked: response.viewer_has_liked,
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      setCommunityError(error instanceof Error ? error.message : 'Failed to update reaction');
+    } finally {
+      setReactionSubmitting((current) => ({ ...current, [postId]: false }));
+    }
+  };
+
+  const handleSubmitComment = async (postId: string) => {
+    const content = (commentDrafts[postId] || '').trim();
+    if (!content || commentSubmitting[postId]) {
+      return;
+    }
+
+    setCommentSubmitting((current) => ({ ...current, [postId]: true }));
+    try {
+      const response = await apiRequest<CommunityComment>(`/community/posts/${encodeURIComponent(postId)}/comments`, {
+        method: 'POST',
+        body: { content },
+      });
+      setCommentDrafts((current) => ({ ...current, [postId]: '' }));
+      setExpandedComments((current) => ({ ...current, [postId]: true }));
+      setCommunityPosts((current) =>
+        current.map((post) => {
+          if (post.id !== postId) {
+            return post;
+          }
+
+          const nextComments = [...(post.comments || []), response];
+          return {
+            ...post,
+            comment_count: post.comment_count + 1,
+            comments: nextComments.slice(-3),
+          };
+        })
+      );
+    } catch (error) {
+      setCommunityError(error instanceof Error ? error.message : 'Failed to add comment');
+    } finally {
+      setCommentSubmitting((current) => ({ ...current, [postId]: false }));
     }
   };
 
@@ -438,9 +518,13 @@ export default function ChallengesScreen() {
               <View key={post.id} style={styles.postCard}>
                 {/* Post Header */}
                 <View style={styles.postHeader}>
-                  <View style={styles.postAvatar}>
-                    <Text style={styles.postAvatarText}>{(post.author_name || 'U')[0]}</Text>
-                  </View>
+                  {post.author_profile_image ? (
+                    <Image source={{ uri: post.author_profile_image }} style={styles.postAvatarImage} />
+                  ) : (
+                    <View style={styles.postAvatar}>
+                      <Text style={styles.postAvatarText}>{(post.author_name || 'U')[0]}</Text>
+                    </View>
+                  )}
                   <View style={styles.postMeta}>
                     <View style={styles.postMetaRow}>
                       <Text style={styles.postAuthor}>{post.author_name}</Text>
@@ -460,15 +544,75 @@ export default function ChallengesScreen() {
 
                 {/* Post Footer */}
                 <View style={styles.postFooter}>
-                  <TouchableOpacity style={styles.postAction}>
-                    <Ionicons name="thumbs-up-outline" size={16} color="rgba(255,255,255,0.5)" />
-                    <Text style={styles.postActionText}>{post.like_count}</Text>
+                  <TouchableOpacity
+                    style={styles.postAction}
+                    onPress={() => handleToggleReaction(post.id)}
+                    disabled={reactionSubmitting[post.id]}
+                  >
+                    <Ionicons
+                      name={post.viewer_has_liked ? 'heart' : 'heart-outline'}
+                      size={16}
+                      color={post.viewer_has_liked ? '#F87171' : 'rgba(255,255,255,0.5)'}
+                    />
+                    <Text style={[styles.postActionText, post.viewer_has_liked && styles.postActionTextActive]}>{post.like_count}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.postAction}>
+                  <TouchableOpacity
+                    style={styles.postAction}
+                    onPress={() =>
+                      setExpandedComments((current) => ({
+                        ...current,
+                        [post.id]: !current[post.id],
+                      }))
+                    }
+                  >
                     <Ionicons name="chatbubble-outline" size={16} color="rgba(255,255,255,0.5)" />
                     <Text style={styles.postActionText}>{post.comment_count}</Text>
                   </TouchableOpacity>
                 </View>
+
+                {(expandedComments[post.id] || (post.comments?.length ?? 0) > 0) ? (
+                  <View style={styles.commentsWrap}>
+                    {(post.comments || []).map((comment) => (
+                      <View key={comment.id} style={styles.commentRow}>
+                        {comment.author_profile_image ? (
+                          <Image source={{ uri: comment.author_profile_image }} style={styles.commentAvatarImage} />
+                        ) : (
+                          <View style={styles.commentAvatar}>
+                            <Text style={styles.commentAvatarText}>{(comment.author_name || 'U')[0]}</Text>
+                          </View>
+                        )}
+                        <View style={styles.commentBubble}>
+                          <View style={styles.commentMetaRow}>
+                            <Text style={styles.commentAuthor}>{comment.author_name}</Text>
+                            <Text style={styles.commentTime}>{formatCommunityPostTime(comment.created_at)}</Text>
+                          </View>
+                          <Text style={styles.commentContent}>{comment.content}</Text>
+                        </View>
+                      </View>
+                    ))}
+
+                    <View style={styles.commentComposer}>
+                      <TextInput
+                        style={styles.commentInput}
+                        placeholder="Write a comment..."
+                        placeholderTextColor="rgba(255,255,255,0.35)"
+                        value={commentDrafts[post.id] || ''}
+                        onChangeText={(text) => setCommentDrafts((current) => ({ ...current, [post.id]: text }))}
+                      />
+                      <TouchableOpacity
+                        style={[styles.commentSendBtn, commentSubmitting[post.id] && { opacity: 0.7 }]}
+                        onPress={() => handleSubmitComment(post.id)}
+                        disabled={commentSubmitting[post.id]}
+                      >
+                        {commentSubmitting[post.id] ? (
+                          <ActivityIndicator size="small" color="#0A0A14" />
+                        ) : (
+                          <Text style={styles.commentSendText}>Send</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : null}
               </View>
             ))}
 
@@ -1100,6 +1244,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  postAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
   postAvatarText: {
     color: '#000',
     fontSize: 18,
@@ -1169,6 +1318,100 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
+  },
+  postActionTextActive: {
+    color: '#FCA5A5',
+  },
+  commentsWrap: {
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    gap: 10,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  commentAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  commentAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  commentAvatarText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  commentMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  commentAuthor: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
+  commentTime: {
+    color: Colors.textMuted,
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+  },
+  commentContent: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
+  },
+  commentComposer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#fff',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    outlineStyle: 'none' as any,
+  },
+  commentSendBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 66,
+  },
+  commentSendText: {
+    color: '#000',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
   },
 
   /* Tier Dropdown */
