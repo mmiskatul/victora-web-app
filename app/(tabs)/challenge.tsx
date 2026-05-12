@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -113,6 +114,7 @@ export default function ChallengesScreen() {
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const [commentSubmitting, setCommentSubmitting] = useState<Record<string, boolean>>({});
   const [reactionSubmitting, setReactionSubmitting] = useState<Record<string, boolean>>({});
+  const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -516,31 +518,31 @@ export default function ChallengesScreen() {
             {/* Community Posts */}
             {communityPosts.map((post) => (
               <View key={post.id} style={styles.postCard}>
-                {/* Post Header */}
-                <View style={styles.postHeader}>
-                  {post.author_profile_image ? (
-                    <Image source={{ uri: post.author_profile_image }} style={styles.postAvatarImage} />
-                  ) : (
-                    <View style={styles.postAvatar}>
-                      <Text style={styles.postAvatarText}>{(post.author_name || 'U')[0]}</Text>
-                    </View>
-                  )}
-                  <View style={styles.postMeta}>
-                    <View style={styles.postMetaRow}>
-                      <Text style={styles.postAuthor}>{post.author_name}</Text>
-                      <Text style={styles.postTime}>{formatCommunityPostTime(post.created_at)}</Text>
-                      <View style={[styles.tierBadge, { backgroundColor: post.audience === 'ALL' ? '#22C55E' : '#A855F7' }]}>
-                        <Text style={styles.tierBadgeText}>{post.audience}</Text>
+                <TouchableOpacity activeOpacity={0.92} onPress={() => setSelectedCommunityPost(post)}>
+                  <View style={styles.postHeader}>
+                    {post.author_profile_image ? (
+                      <Image source={{ uri: post.author_profile_image }} style={styles.postAvatarImage} />
+                    ) : (
+                      <View style={styles.postAvatar}>
+                        <Text style={styles.postAvatarText}>{(post.author_name || 'U')[0]}</Text>
+                      </View>
+                    )}
+                    <View style={styles.postMeta}>
+                      <View style={styles.postMetaRow}>
+                        <Text style={styles.postAuthor}>{post.author_name}</Text>
+                        <Text style={styles.postTime}>{formatCommunityPostTime(post.created_at)}</Text>
+                        <View style={[styles.tierBadge, { backgroundColor: post.audience === 'ALL' ? '#22C55E' : '#A855F7' }]}>
+                          <Text style={styles.tierBadgeText}>{post.audience}</Text>
+                        </View>
                       </View>
                     </View>
                   </View>
-                </View>
 
-                {/* Post Body */}
-                <Text style={styles.postBody}>{post.content}</Text>
-                {post.image_url ? (
-                  <Image source={{ uri: post.image_url }} style={styles.postImage} />
-                ) : null}
+                  <Text style={styles.postBody}>{post.content}</Text>
+                  {post.image_url ? (
+                    <Image source={{ uri: post.image_url }} style={styles.postImagePreview} />
+                  ) : null}
+                </TouchableOpacity>
 
                 {/* Post Footer */}
                 <View style={styles.postFooter}>
@@ -620,6 +622,50 @@ export default function ChallengesScreen() {
         )}
 
       </ScrollView>
+
+      <Modal
+        visible={selectedCommunityPost !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedCommunityPost(null)}
+      >
+        <View style={styles.postModalOverlay}>
+          <View style={styles.postModalCard}>
+            <TouchableOpacity style={styles.postModalClose} onPress={() => setSelectedCommunityPost(null)}>
+              <Ionicons name="close" size={22} color="#fff" />
+            </TouchableOpacity>
+
+            {selectedCommunityPost ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.postHeader}>
+                  {selectedCommunityPost.author_profile_image ? (
+                    <Image source={{ uri: selectedCommunityPost.author_profile_image }} style={styles.postAvatarImage} />
+                  ) : (
+                    <View style={styles.postAvatar}>
+                      <Text style={styles.postAvatarText}>{(selectedCommunityPost.author_name || 'U')[0]}</Text>
+                    </View>
+                  )}
+                  <View style={styles.postMeta}>
+                    <View style={styles.postMetaRow}>
+                      <Text style={styles.postAuthor}>{selectedCommunityPost.author_name}</Text>
+                      <Text style={styles.postTime}>{formatCommunityPostTime(selectedCommunityPost.created_at)}</Text>
+                    </View>
+                    <View style={[styles.modalTierBadge, { backgroundColor: selectedCommunityPost.audience === 'ALL' ? '#22C55E' : '#A855F7' }]}>
+                      <Text style={styles.tierBadgeText}>{selectedCommunityPost.audience}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <Text style={styles.postModalBody}>{selectedCommunityPost.content}</Text>
+
+                {selectedCommunityPost.image_url ? (
+                  <Image source={{ uri: selectedCommunityPost.image_url }} style={styles.postModalImage} />
+                ) : null}
+              </ScrollView>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1295,9 +1341,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 14,
   },
-  postImage: {
+  postImagePreview: {
     width: '100%',
-    height: 220,
+    height: 140,
     borderRadius: 14,
     resizeMode: 'cover',
     marginBottom: 14,
@@ -1321,6 +1367,45 @@ const styles = StyleSheet.create({
   },
   postActionTextActive: {
     color: '#FCA5A5',
+  },
+  postModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.82)',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 32,
+  },
+  postModalCard: {
+    backgroundColor: '#13132A',
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    maxHeight: '88%',
+  },
+  postModalClose: {
+    alignSelf: 'flex-end',
+    marginBottom: 8,
+  },
+  modalTierBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  postModalBody: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    lineHeight: 24,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 16,
+  },
+  postModalImage: {
+    width: '100%',
+    height: 320,
+    borderRadius: 16,
+    resizeMode: 'cover',
   },
   commentsWrap: {
     marginTop: 14,
