@@ -345,9 +345,9 @@ export default function ChallengeChatScreen() {
       pathname: '/workout-library/[id]',
       params: {
         id: exercise.workout_id || exercise.id,
-        title: exercise.workout_title || exercise.name,
+        title: exercise.workout_title || `${exercise.name} Demo`,
         vimeoId: exercise.workout_vimeo_id,
-        tag: 'Challenge Exercise',
+        tag: 'Instruction Video',
         thumbnail: exercise.workout_thumbnail || '',
       },
     });
@@ -777,7 +777,7 @@ export default function ChallengeChatScreen() {
                                               >
                                                 <Ionicons name="play-circle" size={15} color="#001311" />
                                                 <Text style={styles.exerciseVideoButtonText}>
-                                                  Watch {exercise.workout_title || 'Workout'}
+                                                  Watch {exercise.workout_title || `${exercise.name} Demo`}
                                                 </Text>
                                               </TouchableOpacity>
                                             ) : null}
