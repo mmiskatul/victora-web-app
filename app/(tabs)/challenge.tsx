@@ -21,32 +21,58 @@ const { width } = Dimensions.get('window');
 
 const TABS = ['CHALLENGES', 'COMMUNITY'];
 
-// ── Active Challenge Chats ──
-const activeChats = [
-  { id: 'c1', name: '30-Day Push-Up Challenge', lastMsg: 'Coach: Day 12 — keep pushing! 💪', time: '2m ago', unread: 3, avatar: '💪' },
-  { id: 'c2', name: '7-Day Morning Run', lastMsg: 'You: Done! 5km in 28 mins 🏃', time: '1h ago', unread: 0, avatar: '🏃' },
-  { id: 'c3', name: '3-Day Screen-Free Dinner', lastMsg: 'Sarah K.: Amazing dinner tonight!', time: '3h ago', unread: 1, avatar: '🍽️' },
-];
+type ChallengeChat = {
+  id: string;
+  challenge_id: string;
+  name: string;
+  last_message: string;
+  last_message_at: string | null;
+  unread_count: number;
+  avatar: string;
+};
 
-// ── Your Active Challenges ──
-const activeChallenges = [
-  { id: 'a1', title: '30-Day Push-Up Challenge', type: 'Strength', daysLeft: 18, totalDays: 30, progress: 0.4, points: 500, color: '#4F8EF7' },
-  { id: 'a2', title: '7-Day Morning Run', type: 'Cardio', daysLeft: 4, totalDays: 7, progress: 0.57, points: 150, color: Colors.primary },
-  { id: 'a3', title: '3-Day Screen-Free Dinner', type: 'Family', daysLeft: 1, totalDays: 3, progress: 0.67, points: 75, color: '#A855F7' },
-];
+type ActiveChallenge = {
+  id: string;
+  challenge_id: string;
+  title: string;
+  type: string;
+  days_left: number;
+  total_days: number;
+  progress: number;
+  points: number;
+  color: string;
+};
 
-// ── Completed Challenges ──
-const completedChallenges = [
-  { id: 'd1', title: '5-Day Meditation Reset', type: 'Mindfulness', earnedPoints: 100, completedDate: 'Mar 28', color: '#22C55E' },
-  { id: 'd2', title: '14-Day Clean Eating', type: 'Nutrition', earnedPoints: 200, completedDate: 'Mar 12', color: '#F59E0B' },
-];
+type CompletedChallenge = {
+  id: string;
+  challenge_id: string;
+  title: string;
+  type: string;
+  earned_points: number;
+  completed_at: string;
+  color: string;
+};
 
-// ── Ready to Start ──
-const readyToStart = [
-  { id: 'r1', title: '21-Day No Sugar Detox', description: 'Eliminate all added sugar for 21 days.', duration: '21 Days', type: 'Nutrition', points: 350, participants: 9, difficulty: 'ADVANCED', difficultyColor: '#EF4444' },
-  { id: 'r2', title: '14-Day Clean Eating', description: 'Whole foods only — no processed snacks.', duration: '14 Days', type: 'Nutrition', points: 200, participants: 22, difficulty: 'INTERMEDIATE', difficultyColor: '#F59E0B' },
-  { id: 'r3', title: '5-Day Meditation Reset', description: 'Meditate 10 minutes every day.', duration: '5 Days', type: 'Mindfulness', points: 100, participants: 18, difficulty: 'BEGINNER', difficultyColor: '#22C55E' },
-];
+type ReadyChallenge = {
+  id: string;
+  title: string;
+  description: string;
+  duration_days: number;
+  type: string;
+  points: number;
+  participants: number;
+  difficulty: string;
+  difficulty_color: string;
+  status: string;
+  thumbnail: string;
+};
+
+type ChallengeOverview = {
+  active_chats: ChallengeChat[];
+  active_challenges: ActiveChallenge[];
+  completed_challenges: CompletedChallenge[];
+  ready_to_start: ReadyChallenge[];
+};
 
 // ── Community Posts ──
 type CommunityPost = {
@@ -118,8 +144,62 @@ function formatCommunityPostTime(value: string) {
   return createdAt.toLocaleDateString();
 }
 
+function formatChallengeTime(value: string | null) {
+  if (!value) {
+    return '';
+  }
+
+  const createdAt = new Date(value);
+  if (Number.isNaN(createdAt.getTime())) {
+    return '';
+  }
+
+  const diffMs = Date.now() - createdAt.getTime();
+  const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
+  if (diffMinutes < 1) {
+    return 'Now';
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  }
+
+  return createdAt.toLocaleDateString();
+}
+
+function formatCompletedDate(value: string) {
+  const completedAt = new Date(value);
+  if (Number.isNaN(completedAt.getTime())) {
+    return '';
+  }
+
+  return completedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function formatDurationLabel(days: number) {
+  return `${days} Day${days === 1 ? '' : 's'}`;
+}
+
 export default function ChallengesScreen() {
   const [activeTab, setActiveTab] = useState('CHALLENGES');
+  const [challengeOverview, setChallengeOverview] = useState<ChallengeOverview>({
+    active_chats: [],
+    active_challenges: [],
+    completed_challenges: [],
+    ready_to_start: [],
+  });
+  const [challengeLoading, setChallengeLoading] = useState(false);
+  const [challengeError, setChallengeError] = useState('');
+  const [challengeStarting, setChallengeStarting] = useState<Record<string, boolean>>({});
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([]);
   const [communityDraft, setCommunityDraft] = useState('');
   const [communityLoading, setCommunityLoading] = useState(false);
@@ -158,6 +238,44 @@ export default function ChallengesScreen() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'CHALLENGES') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadChallengeOverview = async () => {
+      setChallengeLoading(true);
+      setChallengeError('');
+      try {
+        const response = await apiRequest<ChallengeOverview>('/challenges/overview');
+        if (isMounted) {
+          setChallengeOverview({
+            active_chats: Array.isArray(response.active_chats) ? response.active_chats : [],
+            active_challenges: Array.isArray(response.active_challenges) ? response.active_challenges : [],
+            completed_challenges: Array.isArray(response.completed_challenges) ? response.completed_challenges : [],
+            ready_to_start: Array.isArray(response.ready_to_start) ? response.ready_to_start : [],
+          });
+        }
+      } catch (error) {
+        if (isMounted) {
+          setChallengeError(error instanceof Error ? error.message : 'Failed to load challenges');
+        }
+      } finally {
+        if (isMounted) {
+          setChallengeLoading(false);
+        }
+      }
+    };
+
+    loadChallengeOverview();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -354,7 +472,56 @@ export default function ChallengesScreen() {
     }
   };
 
-  const handleDeleteCommunityPost = async (postId: string) => {
+  const handleStartChallenge = async (challenge: ReadyChallenge) => {
+    if (challengeStarting[challenge.id]) {
+      return;
+    }
+
+    setChallengeStarting((current) => ({ ...current, [challenge.id]: true }));
+    setChallengeError('');
+    try {
+      await apiRequest(`/challenges/${encodeURIComponent(challenge.id)}/start`, {
+        method: 'POST',
+      });
+
+      setChallengeOverview((current) => ({
+        active_chats: [
+          {
+            id: `chat-${challenge.id}`,
+            challenge_id: challenge.id,
+            name: challenge.title,
+            last_message: 'Coach: Welcome to the challenge.',
+            last_message_at: new Date().toISOString(),
+            unread_count: 0,
+            avatar: challenge.thumbnail,
+          },
+          ...current.active_chats.filter((item) => item.challenge_id !== challenge.id),
+        ],
+        active_challenges: [
+          {
+            id: challenge.id,
+            challenge_id: challenge.id,
+            title: challenge.title,
+            type: challenge.type,
+            days_left: challenge.duration_days,
+            total_days: challenge.duration_days,
+            progress: 0,
+            points: challenge.points,
+            color: challenge.difficulty_color || Colors.primary,
+          },
+          ...current.active_challenges.filter((item) => item.challenge_id !== challenge.id),
+        ],
+        completed_challenges: current.completed_challenges,
+        ready_to_start: current.ready_to_start.filter((item) => item.id !== challenge.id),
+      }));
+    } catch (error) {
+      setChallengeError(error instanceof Error ? error.message : 'Failed to start challenge');
+    } finally {
+      setChallengeStarting((current) => ({ ...current, [challenge.id]: false }));
+    }
+  };
+
+  const performDeleteCommunityPost = async (postId: string) => {
     if (deleteSubmitting[postId]) {
       return;
     }
@@ -372,6 +539,26 @@ export default function ChallengesScreen() {
     } finally {
       setDeleteSubmitting((current) => ({ ...current, [postId]: false }));
     }
+  };
+
+  const handleDeleteCommunityPost = (postId: string) => {
+    if (deleteSubmitting[postId]) {
+      return;
+    }
+
+    Alert.alert('Delete post', 'Are you sure you want to delete this post?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void performDeleteCommunityPost(postId);
+        },
+      },
+    ]);
   };
 
   return (
@@ -402,26 +589,46 @@ export default function ChallengesScreen() {
         {/* ── CHALLENGES TAB ── */}
         {activeTab === 'CHALLENGES' && (
           <View style={styles.section}>
+            {challengeError ? (
+              <View style={styles.challengeStatusCard}>
+                <Text style={styles.challengeStatusText}>{challengeError}</Text>
+              </View>
+            ) : null}
+            {challengeLoading ? (
+              <View style={styles.challengeLoadingWrap}>
+                <ActivityIndicator color={Colors.primary} />
+                <Text style={styles.challengeLoadingText}>Loading challenges...</Text>
+              </View>
+            ) : null}
 
             {/* ─ Active Challenge Chats ─ */}
             <View style={styles.subSectionHeader}>
               <Ionicons name="chatbubbles" size={16} color={Colors.primary} />
               <Text style={styles.subSectionTitle}>Active Challenge Chats</Text>
             </View>
-            {activeChats.map((chat) => (
+            {challengeOverview.active_chats.length === 0 && !challengeLoading ? (
+              <View style={styles.challengeEmptyCard}>
+                <Text style={styles.challengeEmptyText}>No active challenge chats yet.</Text>
+              </View>
+            ) : null}
+            {challengeOverview.active_chats.map((chat) => (
               <TouchableOpacity key={chat.id} style={styles.chatCard} activeOpacity={0.85}>
                 <View style={styles.chatAvatarWrap}>
-                  <Text style={styles.chatAvatarEmoji}>{chat.avatar}</Text>
+                  {chat.avatar ? (
+                    <Image source={{ uri: chat.avatar }} style={styles.chatAvatarImage} />
+                  ) : (
+                    <Text style={styles.chatAvatarEmoji}>{(chat.name || 'C')[0]}</Text>
+                  )}
                 </View>
                 <View style={styles.chatContent}>
                   <Text style={styles.chatName}>{chat.name}</Text>
-                  <Text style={styles.chatLastMsg} numberOfLines={1}>{chat.lastMsg}</Text>
+                  <Text style={styles.chatLastMsg} numberOfLines={1}>{chat.last_message}</Text>
                 </View>
                 <View style={styles.chatRight}>
-                  <Text style={styles.chatTime}>{chat.time}</Text>
-                  {chat.unread > 0 && (
+                  <Text style={styles.chatTime}>{formatChallengeTime(chat.last_message_at)}</Text>
+                  {chat.unread_count > 0 && (
                     <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadText}>{chat.unread}</Text>
+                      <Text style={styles.unreadText}>{chat.unread_count}</Text>
                     </View>
                   )}
                 </View>
@@ -433,7 +640,12 @@ export default function ChallengesScreen() {
               <Ionicons name="flash" size={16} color={Colors.primary} />
               <Text style={styles.subSectionTitle}>Your Active Challenges</Text>
             </View>
-            {activeChallenges.map((ch) => (
+            {challengeOverview.active_challenges.length === 0 && !challengeLoading ? (
+              <View style={styles.challengeEmptyCard}>
+                <Text style={styles.challengeEmptyText}>You have no active challenges yet.</Text>
+              </View>
+            ) : null}
+            {challengeOverview.active_challenges.map((ch) => (
               <View key={ch.id} style={styles.activeCard}>
                 <View style={styles.activeCardTop}>
                   <View style={[styles.activeColorDot, { backgroundColor: ch.color }]} />
@@ -448,13 +660,13 @@ export default function ChallengesScreen() {
                     <View style={[styles.progressBarFill, { width: `${ch.progress * 100}%` as any, backgroundColor: ch.color }]} />
                   </View>
                   <Text style={styles.progressLabel}>
-                    {Math.round(ch.progress * ch.totalDays)}/{ch.totalDays} days
+                    {Math.round(ch.progress * ch.total_days)}/{ch.total_days} days
                   </Text>
                 </View>
                 <View style={styles.activeCardMeta}>
                   <Text style={styles.activeMetaText}>{ch.type}</Text>
-                  <Text style={[styles.daysLeftText, { color: ch.daysLeft <= 2 ? '#EF4444' : Colors.textMuted }]}>
-                    {ch.daysLeft} days left
+                  <Text style={[styles.daysLeftText, { color: ch.days_left <= 2 ? '#EF4444' : Colors.textMuted }]}>
+                    {ch.days_left} days left
                   </Text>
                 </View>
               </View>
@@ -465,18 +677,23 @@ export default function ChallengesScreen() {
               <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
               <Text style={[styles.subSectionTitle, { color: '#22C55E' }]}>Completed</Text>
             </View>
-            {completedChallenges.map((ch) => (
+            {challengeOverview.completed_challenges.length === 0 && !challengeLoading ? (
+              <View style={styles.challengeEmptyCard}>
+                <Text style={styles.challengeEmptyText}>No completed challenges yet.</Text>
+              </View>
+            ) : null}
+            {challengeOverview.completed_challenges.map((ch) => (
               <View key={ch.id} style={styles.completedCard}>
                 <View style={[styles.completedIcon, { backgroundColor: `${ch.color}22` }]}>
                   <Ionicons name="trophy" size={20} color={ch.color} />
                 </View>
                 <View style={styles.completedInfo}>
                   <Text style={styles.completedTitle}>{ch.title}</Text>
-                  <Text style={styles.completedMeta}>{ch.type} · {ch.completedDate}</Text>
+                  <Text style={styles.completedMeta}>{ch.type} · {formatCompletedDate(ch.completed_at)}</Text>
                 </View>
                 <View style={styles.completedPts}>
                   <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.completedPtsText}>+{ch.earnedPoints} Pts</Text>
+                  <Text style={styles.completedPtsText}>+{ch.earned_points} Pts</Text>
                 </View>
               </View>
             ))}
@@ -486,19 +703,24 @@ export default function ChallengesScreen() {
               <Ionicons name="rocket" size={16} color="#4F8EF7" />
               <Text style={[styles.subSectionTitle, { color: '#4F8EF7' }]}>Ready to Start</Text>
             </View>
-            {readyToStart.map((ch) => (
+            {challengeOverview.ready_to_start.length === 0 && !challengeLoading ? (
+              <View style={styles.challengeEmptyCard}>
+                <Text style={styles.challengeEmptyText}>No new challenges ready right now.</Text>
+              </View>
+            ) : null}
+            {challengeOverview.ready_to_start.map((ch) => (
               <View key={ch.id} style={styles.readyCard}>
                 <View style={styles.readyCardTop}>
                   <Text style={styles.readyTitle}>{ch.title}</Text>
-                  <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficultyColor}22` }]}>
-                    <Text style={[styles.difficultyText, { color: ch.difficultyColor }]}>{ch.difficulty}</Text>
+                  <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
+                    <Text style={[styles.difficultyText, { color: ch.difficulty_color }]}>{ch.difficulty}</Text>
                   </View>
                 </View>
                 <Text style={styles.readyDesc} numberOfLines={2}>{ch.description}</Text>
                 <View style={styles.readyMeta}>
                   <View style={styles.metaItem}>
                     <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{ch.duration}</Text>
+                    <Text style={styles.metaText}>{formatDurationLabel(ch.duration_days)}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
@@ -509,9 +731,20 @@ export default function ChallengesScreen() {
                     <Text style={[styles.metaText, { color: '#F59E0B' }]}>+{ch.points} Pts</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.startBtn} activeOpacity={0.85}>
-                  <Text style={styles.startBtnText}>START CHALLENGE</Text>
-                  <Ionicons name="arrow-forward" size={14} color="#000" />
+                <TouchableOpacity
+                  style={[styles.startBtn, challengeStarting[ch.id] && { opacity: 0.7 }]}
+                  activeOpacity={0.85}
+                  onPress={() => handleStartChallenge(ch)}
+                  disabled={challengeStarting[ch.id]}
+                >
+                  {challengeStarting[ch.id] ? (
+                    <ActivityIndicator size="small" color="#000" />
+                  ) : (
+                    <>
+                      <Text style={styles.startBtnText}>START CHALLENGE</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#000" />
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             ))}
@@ -672,12 +905,16 @@ export default function ChallengesScreen() {
                   </TouchableOpacity>
                   {post.can_delete ? (
                     <TouchableOpacity
-                      style={styles.postAction}
+                      style={styles.postDeleteAction}
                       onPress={() => handleDeleteCommunityPost(post.id)}
                       disabled={deleteSubmitting[post.id]}
+                      accessibilityLabel={deleteSubmitting[post.id] ? 'Deleting post' : 'Delete post'}
                     >
-                      <Ionicons name="trash-outline" size={16} color="rgba(248,113,113,0.85)" />
-                      <Text style={styles.postDeleteText}>{deleteSubmitting[post.id] ? 'Deleting' : 'Delete'}</Text>
+                      {deleteSubmitting[post.id] ? (
+                        <ActivityIndicator size="small" color="#F87171" />
+                      ) : (
+                        <Ionicons name="trash-outline" size={16} color="rgba(248,113,113,0.9)" />
+                      )}
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -896,6 +1133,44 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     fontFamily: 'Inter_700Bold',
   },
+  challengeStatusCard: {
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.28)',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  challengeStatusText: {
+    color: '#FCA5A5',
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  challengeLoadingWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  challengeLoadingText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
+  challengeEmptyCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+  },
+  challengeEmptyText: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
 
   /* Active Challenge Chats */
   chatCard: {
@@ -921,6 +1196,13 @@ const styles = StyleSheet.create({
   },
   chatAvatarEmoji: {
     fontSize: 22,
+    color: '#fff',
+    fontFamily: 'Inter_700Bold',
+  },
+  chatAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
   chatContent: {
     flex: 1,
@@ -1470,13 +1752,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  postDeleteAction: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   postActionText: {
     color: 'rgba(255,255,255,0.5)',
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-  },
-  postDeleteText: {
-    color: '#FCA5A5',
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
