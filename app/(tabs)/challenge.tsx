@@ -219,12 +219,14 @@ export default function ChallengesScreen() {
     profileImage: '',
   });
   const readyToStartChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.status === 'ACTIVE');
+  const upcomingChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.status === 'UPCOMING');
   const hasActiveChats = challengeOverview.active_chats.length > 0;
   const hasActiveChallenges = challengeOverview.active_challenges.length > 0;
   const hasCompletedChallenges = challengeOverview.completed_challenges.length > 0;
   const hasReadyToStartChallenges = readyToStartChallenges.length > 0;
+  const hasUpcomingChallenges = upcomingChallenges.length > 0;
   const hasVisibleChallengeSections =
-    hasReadyToStartChallenges || hasActiveChats || hasActiveChallenges || hasCompletedChallenges;
+    hasReadyToStartChallenges || hasUpcomingChallenges || hasActiveChats || hasActiveChallenges || hasCompletedChallenges;
 
   useEffect(() => {
     let isMounted = true;
@@ -767,6 +769,44 @@ export default function ChallengesScreen() {
                         </>
                       )}
                     </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            ) : null}
+
+            {hasUpcomingChallenges ? (
+              <>
+                <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
+                  <Ionicons name="time-outline" size={16} color="#A78BFA" />
+                  <Text style={[styles.subSectionTitle, { color: '#A78BFA' }]}>Upcoming Challenges</Text>
+                </View>
+                {upcomingChallenges.map((ch) => (
+                  <View key={ch.id} style={styles.readyCard}>
+                    <View style={styles.readyCardTop}>
+                      <Text style={styles.readyTitle}>{ch.title}</Text>
+                      <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
+                        <Text style={[styles.difficultyText, { color: ch.difficulty_color }]}>{ch.difficulty}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.readyDesc} numberOfLines={2}>{ch.description}</Text>
+                    <View style={styles.readyMeta}>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+                        <Text style={styles.metaText}>{formatDurationLabel(ch.duration_days)}</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
+                        <Text style={styles.metaText}>{ch.participants} joined</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="star" size={12} color="#F59E0B" />
+                        <Text style={[styles.metaText, { color: '#F59E0B' }]}>+{ch.points} Pts</Text>
+                      </View>
+                    </View>
+                    <View style={styles.upcomingStatusPill}>
+                      <Ionicons name="lock-closed-outline" size={13} color="#C4B5FD" />
+                      <Text style={styles.upcomingStatusText}>COMING SOON</Text>
+                    </View>
                   </View>
                 ))}
               </>
@@ -1475,6 +1515,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
+  },
+  upcomingStatusPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(167,139,250,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  upcomingStatusText: {
+    color: '#C4B5FD',
+    fontSize: 11,
+    fontWeight: '800',
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.4,
   },
 
 
