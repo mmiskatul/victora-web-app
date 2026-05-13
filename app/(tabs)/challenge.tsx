@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
@@ -65,6 +66,7 @@ type ReadyChallenge = {
   difficulty: string;
   difficulty_color: string;
   status: string;
+  can_start: boolean;
   thumbnail: string;
 };
 
@@ -218,8 +220,8 @@ export default function ChallengesScreen() {
     name: 'You',
     profileImage: '',
   });
-  const readyToStartChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.status === 'ACTIVE');
-  const upcomingChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.status === 'UPCOMING');
+  const readyToStartChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.can_start);
+  const upcomingChallenges = challengeOverview.ready_to_start.filter((challenge) => !challenge.can_start);
   const hasActiveChats = challengeOverview.active_chats.length > 0;
   const hasActiveChallenges = challengeOverview.active_challenges.length > 0;
   const hasCompletedChallenges = challengeOverview.completed_challenges.length > 0;
@@ -287,6 +289,26 @@ export default function ChallengesScreen() {
       isMounted = false;
     };
   }, [activeTab]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === 'CHALLENGES') {
+        void (async () => {
+          try {
+            const response = await apiRequest<ChallengeOverview>('/challenges/overview');
+            setChallengeOverview({
+              active_chats: Array.isArray(response.active_chats) ? response.active_chats : [],
+              active_challenges: Array.isArray(response.active_challenges) ? response.active_challenges : [],
+              completed_challenges: Array.isArray(response.completed_challenges) ? response.completed_challenges : [],
+              ready_to_start: Array.isArray(response.ready_to_start) ? response.ready_to_start : [],
+            });
+          } catch {
+            return;
+          }
+        })();
+      }
+    }, [activeTab])
+  );
 
   useEffect(() => {
     if (activeTab !== 'COMMUNITY') {
@@ -754,11 +776,11 @@ export default function ChallengesScreen() {
                     <TouchableOpacity
                       style={[
                         styles.startBtn,
-                        (challengeStarting[ch.id] || ch.status !== 'ACTIVE') && { opacity: 0.55 },
+                        (challengeStarting[ch.id] || !ch.can_start) && { opacity: 0.55 },
                       ]}
                       activeOpacity={0.85}
                       onPress={() => handleStartChallenge(ch)}
-                      disabled={challengeStarting[ch.id] || ch.status !== 'ACTIVE'}
+                      disabled={challengeStarting[ch.id] || !ch.can_start}
                     >
                       {challengeStarting[ch.id] ? (
                         <ActivityIndicator size="small" color="#000" />
@@ -781,14 +803,18 @@ export default function ChallengesScreen() {
                   <Text style={[styles.subSectionTitle, { color: '#A78BFA' }]}>Upcoming Challenges</Text>
                 </View>
                 {upcomingChallenges.map((ch) => (
-                  <View key={ch.id} style={styles.readyCard}>
+                  <View key={ch.id} style={[styles.readyCard, styles.upcomingCard]}>
                     <View style={styles.readyCardTop}>
                       <Text style={styles.readyTitle}>{ch.title}</Text>
-                      <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
+                      <View style={[styles.difficultyBadge, styles.upcomingDifficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
                         <Text style={[styles.difficultyText, { color: ch.difficulty_color }]}>{ch.difficulty}</Text>
                       </View>
                     </View>
                     <Text style={styles.readyDesc} numberOfLines={2}>{ch.description}</Text>
+                    <View style={styles.upcomingNoticeRow}>
+                      <Ionicons name="lock-closed-outline" size={13} color="#C4B5FD" />
+                      <Text style={styles.upcomingNoticeText}>Locked until the admin changes the status to ACTIVE.</Text>
+                    </View>
                     <View style={styles.readyMeta}>
                       <View style={styles.metaItem}>
                         <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
@@ -803,10 +829,14 @@ export default function ChallengesScreen() {
                         <Text style={[styles.metaText, { color: '#F59E0B' }]}>+{ch.points} Pts</Text>
                       </View>
                     </View>
-                    <View style={styles.upcomingStatusPill}>
-                      <Ionicons name="lock-closed-outline" size={13} color="#C4B5FD" />
-                      <Text style={styles.upcomingStatusText}>COMING SOON</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={[styles.startBtn, styles.upcomingStartBtn]}
+                      activeOpacity={1}
+                      disabled
+                    >
+                      <Ionicons name="lock-closed-outline" size={14} color="#C4B5FD" />
+                      <Text style={[styles.startBtnText, styles.upcomingStartBtnText]}>COMING SOON</Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </>
@@ -1452,6 +1482,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(79,142,247,0.2)',
   },
+  upcomingCard: {
+    backgroundColor: '#161433',
+    borderColor: 'rgba(167,139,250,0.28)',
+  },
   readyCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1494,6 +1528,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
+  upcomingDifficultyBadge: {
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.16)',
+  },
   difficultyText: {
     fontSize: 10,
     fontWeight: '800',
@@ -1516,24 +1554,32 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     letterSpacing: 0.5,
   },
-  upcomingStatusPill: {
-    alignSelf: 'flex-start',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  upcomingStartBtn: {
     backgroundColor: 'rgba(167,139,250,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(167,139,250,0.28)',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
   },
-  upcomingStatusText: {
+  upcomingStartBtnText: {
+    color: '#C4B5FD',
+  },
+  upcomingNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(167,139,250,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.14)',
+  },
+  upcomingNoticeText: {
+    flex: 1,
     color: '#C4B5FD',
     fontSize: 11,
-    fontWeight: '800',
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.4,
+    lineHeight: 16,
+    fontFamily: 'Inter_400Regular',
   },
 
 
