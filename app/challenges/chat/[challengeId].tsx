@@ -52,6 +52,7 @@ type ChallengeChatThread = {
   challenge_id: string;
   title: string;
   description: string;
+  plan_text: string;
   category: string;
   duration_days: number;
   points: number;
@@ -243,6 +244,7 @@ export default function ChallengeChatScreen() {
   const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChallengeChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChallengeChatMessage | null>(null);
+  const [showPlan, setShowPlan] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   const messagesById = useMemo(() => {
@@ -519,6 +521,19 @@ export default function ChallengeChatScreen() {
             <Text style={styles.heroMeta}>{thread.viewer_progress_days_completed}/{thread.duration_days} days</Text>
             <Text style={styles.heroMeta}>+{thread.points} pts</Text>
           </View>
+          {thread.plan_text ? (
+            <View style={styles.planSection}>
+              <TouchableOpacity style={styles.planToggle} onPress={() => setShowPlan((current) => !current)}>
+                <Text style={styles.planToggleText}>{showPlan ? 'Hide 30-Day Plan' : 'View 30-Day Plan'}</Text>
+                <Ionicons name={showPlan ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.primary} />
+              </TouchableOpacity>
+              {showPlan ? (
+                <View style={styles.planCard}>
+                  <Text style={styles.planText}>{thread.plan_text}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -638,6 +653,32 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
+  },
+  planSection: { marginTop: 12 },
+  planToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  planToggleText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontFamily: 'Inter_700Bold',
+  },
+  planCard: {
+    marginTop: 8,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    padding: 12,
+  },
+  planText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
   },
   listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16, gap: 12 },
   systemRow: { alignItems: 'center', marginVertical: 6 },
