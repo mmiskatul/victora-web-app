@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
 import { apiRequest, getAuthUser } from '../../lib/api';
@@ -190,6 +191,7 @@ function formatDurationLabel(days: number) {
 }
 
 export default function ChallengesScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('CHALLENGES');
   const [challengeOverview, setChallengeOverview] = useState<ChallengeOverview>({
     active_chats: [],
@@ -612,7 +614,12 @@ export default function ChallengesScreen() {
               </View>
             ) : null}
             {challengeOverview.active_chats.map((chat) => (
-              <TouchableOpacity key={chat.id} style={styles.chatCard} activeOpacity={0.85}>
+              <TouchableOpacity
+                key={chat.id}
+                style={styles.chatCard}
+                activeOpacity={0.85}
+                onPress={() => router.push(`/challenges/chat/${chat.challenge_id}` as any)}
+              >
                 <View style={styles.chatAvatarWrap}>
                   {chat.avatar ? (
                     <Image source={{ uri: chat.avatar }} style={styles.chatAvatarImage} />
@@ -646,7 +653,12 @@ export default function ChallengesScreen() {
               </View>
             ) : null}
             {challengeOverview.active_challenges.map((ch) => (
-              <View key={ch.id} style={styles.activeCard}>
+              <TouchableOpacity
+                key={ch.id}
+                style={styles.activeCard}
+                activeOpacity={0.88}
+                onPress={() => router.push(`/challenges/chat/${ch.challenge_id}` as any)}
+              >
                 <View style={styles.activeCardTop}>
                   <View style={[styles.activeColorDot, { backgroundColor: ch.color }]} />
                   <Text style={styles.activeCardTitle}>{ch.title}</Text>
@@ -669,7 +681,7 @@ export default function ChallengesScreen() {
                     {ch.days_left} days left
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
 
             {/* ─ Completed ─ */}
