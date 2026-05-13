@@ -27,6 +27,42 @@ type ChallengeReaction = {
   viewer_reacted: boolean;
 };
 
+type ChallengePlanExercise = {
+  id: string;
+  name: string;
+  details: string;
+  notes: string;
+};
+
+type ChallengePlanSection = {
+  id: string;
+  title: string;
+  description: string;
+  estimated_minutes: number;
+  exercises: ChallengePlanExercise[];
+};
+
+type ChallengePlanDay = {
+  day_number: number;
+  title: string;
+  focus: string;
+  notes: string;
+  sections: ChallengePlanSection[];
+};
+
+type ChallengePlanDayProgress = {
+  day_number: number;
+  completed: boolean;
+  completed_section_ids: string[];
+};
+
+type ChallengePlanProgressResponse = {
+  challenge_id: string;
+  viewer_membership_status: string;
+  viewer_progress_days_completed: number;
+  viewer_plan_progress: ChallengePlanDayProgress[];
+};
+
 type ChallengeChatMessage = {
   id: string;
   challenge_id: string;
@@ -53,6 +89,7 @@ type ChallengeChatThread = {
   title: string;
   description: string;
   plan_text: string;
+  plan_days: ChallengePlanDay[];
   category: string;
   duration_days: number;
   points: number;
@@ -62,6 +99,7 @@ type ChallengeChatThread = {
   participant_count: number;
   viewer_membership_status: string;
   viewer_progress_days_completed: number;
+  viewer_plan_progress: ChallengePlanDayProgress[];
   unread_count: number;
   messages: ChallengeChatMessage[];
 };
@@ -245,6 +283,7 @@ export default function ChallengeChatScreen() {
   const [replyingTo, setReplyingTo] = useState<ChallengeChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChallengeChatMessage | null>(null);
   const [showPlan, setShowPlan] = useState(false);
+  const [completionUpdatingKey, setCompletionUpdatingKey] = useState('');
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   const canPostInChallenge = useMemo(
@@ -259,6 +298,14 @@ export default function ChallengeChatScreen() {
     }
     return map;
   }, [thread?.messages]);
+
+  const dayProgressMap = useMemo(() => {
+    const map = new Map<number, ChallengePlanDayProgress>();
+    for (const dayProgress of thread?.viewer_plan_progress || []) {
+      map.set(dayProgress.day_number, dayProgress);
+    }
+    return map;
+  }, [thread?.viewer_plan_progress]);
 
   const loadThread = useCallback(async (showLoader = false) => {
     if (!challengeId) {
@@ -378,6 +425,20 @@ export default function ChallengeChatScreen() {
     setEditingMessage(null);
   };
 
+  const applyPlanProgress = useCallback((response: ChallengePlanProgressResponse) => {
+    setThread((current) => {
+      if (!current || current.challenge_id !== response.challenge_id) {
+        return current;
+      }
+      return {
+        ...current,
+        viewer_membership_status: response.viewer_membership_status,
+        viewer_progress_days_completed: response.viewer_progress_days_completed,
+        viewer_plan_progress: Array.isArray(response.viewer_plan_progress) ? response.viewer_plan_progress : [],
+      };
+    });
+  }, []);
+
   const sendMessage = async () => {
     if (!challengeId) {
       return;
@@ -423,19 +484,75 @@ export default function ChallengeChatScreen() {
 
     setSending(true);
     try {
-      await apiRequest(`/challenges/${encodeURIComponent(challengeId)}/progress`, {
-        method: 'POST',
-        body: {
-          completed_day: Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days),
-          note: `Completed day ${Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days)}.`,
-        },
-      });
+      const nextPlanDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
+      if (nextPlanDay) {
+        const response = await apiRequest<ChallengePlanProgressResponse>(
+          `/challenges/${encodeURIComponent(challengeId)}/plan/days/${nextPlanDay.day_number}/complete`,
+          {
+            method: 'POST',
+            body: { completed: true },
+          }
+        );
+        applyPlanProgress(response);
+      } else {
+        await apiRequest(`/challenges/${encodeURIComponent(challengeId)}/progress`, {
+          method: 'POST',
+          body: {
+            completed_day: Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days),
+            note: `Completed day ${Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days)}.`,
+          },
+        });
+      }
     } catch (error) {
       setErrorDialog(formatAppError(error, 'Failed to share progress.'));
     } finally {
       setSending(false);
     }
   };
+
+  const toggleDayCompletion = useCallback(async (dayNumber: number, completed: boolean) => {
+    if (!challengeId) {
+      return;
+    }
+    const key = `day-${dayNumber}`;
+    setCompletionUpdatingKey(key);
+    try {
+      const response = await apiRequest<ChallengePlanProgressResponse>(
+        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/complete`,
+        {
+          method: 'POST',
+          body: { completed },
+        }
+      );
+      applyPlanProgress(response);
+    } catch (error) {
+      setErrorDialog(formatAppError(error, 'Failed to update day completion.'));
+    } finally {
+      setCompletionUpdatingKey('');
+    }
+  }, [applyPlanProgress, challengeId]);
+
+  const toggleSectionCompletion = useCallback(async (dayNumber: number, sectionId: string, completed: boolean) => {
+    if (!challengeId) {
+      return;
+    }
+    const key = `section-${dayNumber}-${sectionId}`;
+    setCompletionUpdatingKey(key);
+    try {
+      const response = await apiRequest<ChallengePlanProgressResponse>(
+        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/sections/${encodeURIComponent(sectionId)}/complete`,
+        {
+          method: 'POST',
+          body: { completed },
+        }
+      );
+      applyPlanProgress(response);
+    } catch (error) {
+      setErrorDialog(formatAppError(error, 'Failed to update section completion.'));
+    } finally {
+      setCompletionUpdatingKey('');
+    }
+  }, [applyPlanProgress, challengeId]);
 
   const handleDelete = (item: ChallengeChatMessage) => {
     if (!challengeId) {
@@ -486,10 +603,14 @@ export default function ChallengeChatScreen() {
     if (thread.viewer_membership_status !== 'ACTIVE') {
       return 'Posting locked';
     }
+    const nextPlanDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
+    if (nextPlanDay) {
+      return `Mark day ${nextPlanDay.day_number} done`;
+    }
     return thread.viewer_progress_days_completed >= thread.duration_days
       ? 'Challenge completed'
       : `Mark day ${thread.viewer_progress_days_completed + 1} done`;
-  }, [thread]);
+  }, [dayProgressMap, thread]);
 
   if (loading && !thread) {
     return (
@@ -549,15 +670,100 @@ export default function ChallengeChatScreen() {
               </Text>
             </View>
           ) : null}
-          {thread.plan_text ? (
+          {thread.plan_days.length > 0 || thread.plan_text ? (
             <View style={styles.planSection}>
               <TouchableOpacity style={styles.planToggle} onPress={() => setShowPlan((current) => !current)}>
-                <Text style={styles.planToggleText}>{showPlan ? 'Hide 30-Day Plan' : 'View 30-Day Plan'}</Text>
+                <Text style={styles.planToggleText}>{showPlan ? 'Hide Plan' : 'View Plan'}</Text>
                 <Ionicons name={showPlan ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.primary} />
               </TouchableOpacity>
               {showPlan ? (
                 <View style={styles.planCard}>
-                  <Text style={styles.planText}>{thread.plan_text}</Text>
+                  {thread.plan_days.length > 0 ? (
+                    <View style={styles.planDaysWrap}>
+                      {thread.plan_days.map((day) => {
+                        const dayProgress = dayProgressMap.get(day.day_number);
+                        const completedSectionIds = dayProgress?.completed_section_ids || [];
+                        const dayCompleted = Boolean(dayProgress?.completed);
+                        return (
+                          <View key={`plan-day-${day.day_number}`} style={[styles.planDayCard, dayCompleted && styles.planDayCardCompleted]}>
+                            <View style={styles.planDayHeader}>
+                              <View style={styles.planDayHeaderText}>
+                                <Text style={styles.planDayEyebrow}>Day {day.day_number}</Text>
+                                <Text style={styles.planDayTitle}>{day.title}</Text>
+                                <Text style={styles.planDayFocus}>{day.focus}</Text>
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.planDayButton, dayCompleted && styles.planDayButtonCompleted, !canPostInChallenge && styles.buttonDisabled]}
+                                disabled={!canPostInChallenge || completionUpdatingKey === `day-${day.day_number}`}
+                                onPress={() => void toggleDayCompletion(day.day_number, !dayCompleted)}
+                              >
+                                {completionUpdatingKey === `day-${day.day_number}` ? (
+                                  <ActivityIndicator size="small" color={dayCompleted ? '#001311' : Colors.primary} />
+                                ) : (
+                                  <>
+                                    <Ionicons
+                                      name={dayCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                      size={16}
+                                      color={dayCompleted ? '#001311' : Colors.primary}
+                                    />
+                                    <Text style={[styles.planDayButtonText, dayCompleted && styles.planDayButtonTextCompleted]}>
+                                      {dayCompleted ? 'Completed' : 'Complete day'}
+                                    </Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                            {day.notes ? <Text style={styles.planDayNotes}>{day.notes}</Text> : null}
+                            <View style={styles.planSectionsWrap}>
+                              {day.sections.map((section) => {
+                                const sectionCompleted = completedSectionIds.includes(section.id);
+                                return (
+                                  <View key={section.id} style={[styles.planSectionCard, sectionCompleted && styles.planSectionCardCompleted]}>
+                                    <View style={styles.planSectionHeader}>
+                                      <View style={styles.planSectionTextWrap}>
+                                        <Text style={styles.planSectionTitle}>{section.title}</Text>
+                                        {section.description ? <Text style={styles.planSectionDescription}>{section.description}</Text> : null}
+                                      </View>
+                                      <TouchableOpacity
+                                        style={[styles.planSectionButton, sectionCompleted && styles.planSectionButtonCompleted, !canPostInChallenge && styles.buttonDisabled]}
+                                        disabled={!canPostInChallenge || completionUpdatingKey === `section-${day.day_number}-${section.id}`}
+                                        onPress={() => void toggleSectionCompletion(day.day_number, section.id, !sectionCompleted)}
+                                      >
+                                        {completionUpdatingKey === `section-${day.day_number}-${section.id}` ? (
+                                          <ActivityIndicator size="small" color={sectionCompleted ? '#001311' : Colors.primary} />
+                                        ) : (
+                                          <Ionicons
+                                            name={sectionCompleted ? 'checkmark' : 'ellipse-outline'}
+                                            size={16}
+                                            color={sectionCompleted ? '#001311' : Colors.primary}
+                                          />
+                                        )}
+                                      </TouchableOpacity>
+                                    </View>
+                                    <Text style={styles.planSectionMeta}>{section.estimated_minutes} min</Text>
+                                    <View style={styles.planExercisesWrap}>
+                                      {section.exercises.map((exercise) => (
+                                        <View key={exercise.id} style={styles.planExerciseRow}>
+                                          <View style={styles.planExerciseDot} />
+                                          <View style={styles.planExerciseTextWrap}>
+                                            <Text style={styles.planExerciseName}>{exercise.name}</Text>
+                                            <Text style={styles.planExerciseDetails}>{exercise.details}</Text>
+                                            {exercise.notes ? <Text style={styles.planExerciseNotes}>{exercise.notes}</Text> : null}
+                                          </View>
+                                        </View>
+                                      ))}
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={styles.planText}>{thread.plan_text}</Text>
+                  )}
                 </View>
               ) : null}
             </View>
@@ -720,6 +926,97 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
     padding: 12,
   },
+  planDaysWrap: { gap: 12 },
+  planDayCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#0B1220',
+    padding: 12,
+    gap: 10,
+  },
+  planDayCardCompleted: {
+    borderColor: 'rgba(34,197,94,0.28)',
+    backgroundColor: '#0E1A16',
+  },
+  planDayHeader: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  planDayHeaderText: { flex: 1 },
+  planDayEyebrow: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  planDayTitle: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold', marginTop: 2 },
+  planDayFocus: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, fontFamily: 'Inter_400Regular', marginTop: 4 },
+  planDayNotes: { color: Colors.textMuted, fontSize: 12, lineHeight: 18, fontFamily: 'Inter_400Regular' },
+  planDayButton: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(0,240,208,0.24)',
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,240,208,0.08)',
+  },
+  planDayButtonCompleted: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  planDayButtonText: { color: Colors.primary, fontSize: 11, fontFamily: 'Inter_700Bold' },
+  planDayButtonTextCompleted: { color: '#001311' },
+  planSectionsWrap: { gap: 10 },
+  planSectionCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#111827',
+    padding: 10,
+    gap: 8,
+  },
+  planSectionCardCompleted: {
+    borderColor: 'rgba(34,197,94,0.24)',
+    backgroundColor: '#122019',
+  },
+  planSectionHeader: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  planSectionTextWrap: { flex: 1 },
+  planSectionTitle: { color: '#fff', fontSize: 13, fontFamily: 'Inter_700Bold' },
+  planSectionDescription: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  planSectionButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,240,208,0.2)',
+    backgroundColor: 'rgba(0,240,208,0.06)',
+  },
+  planSectionButtonCompleted: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  planSectionMeta: { color: Colors.textMuted, fontSize: 11, fontFamily: 'Inter_400Regular' },
+  planExercisesWrap: { gap: 8 },
+  planExerciseRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  planExerciseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.primary,
+    marginTop: 6,
+  },
+  planExerciseTextWrap: { flex: 1 },
+  planExerciseName: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
+  planExerciseDetails: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_400Regular', marginTop: 1 },
+  planExerciseNotes: { color: Colors.textMuted, fontSize: 11, lineHeight: 16, fontFamily: 'Inter_400Regular', marginTop: 2 },
   planText: {
     color: Colors.textSecondary,
     fontSize: 13,
