@@ -32,6 +32,10 @@ type ChallengePlanExercise = {
   name: string;
   details: string;
   notes: string;
+  workout_id: string;
+  workout_title: string;
+  workout_vimeo_id: string;
+  workout_thumbnail: string;
 };
 
 type ChallengePlanSection = {
@@ -332,6 +336,22 @@ export default function ChallengeChatScreen() {
   useEffect(() => {
     void loadThread(true);
   }, [loadThread]);
+
+  const openLinkedWorkout = useCallback((exercise: ChallengePlanExercise) => {
+    if (!exercise.workout_vimeo_id) {
+      return;
+    }
+    router.push({
+      pathname: '/workout-library/[id]',
+      params: {
+        id: exercise.workout_id || exercise.id,
+        title: exercise.workout_title || exercise.name,
+        vimeoId: exercise.workout_vimeo_id,
+        tag: 'Challenge Exercise',
+        thumbnail: exercise.workout_thumbnail || '',
+      },
+    });
+  }, [router]);
 
   useEffect(() => {
     let closed = false;
@@ -749,6 +769,18 @@ export default function ChallengeChatScreen() {
                                             <Text style={styles.planExerciseName}>{exercise.name}</Text>
                                             <Text style={styles.planExerciseDetails}>{exercise.details}</Text>
                                             {exercise.notes ? <Text style={styles.planExerciseNotes}>{exercise.notes}</Text> : null}
+                                            {exercise.workout_vimeo_id ? (
+                                              <TouchableOpacity
+                                                onPress={() => openLinkedWorkout(exercise)}
+                                                style={styles.exerciseVideoButton}
+                                                activeOpacity={0.85}
+                                              >
+                                                <Ionicons name="play-circle" size={15} color="#001311" />
+                                                <Text style={styles.exerciseVideoButtonText}>
+                                                  Watch {exercise.workout_title || 'Workout'}
+                                                </Text>
+                                              </TouchableOpacity>
+                                            ) : null}
                                           </View>
                                         </View>
                                       ))}
@@ -1017,6 +1049,22 @@ const styles = StyleSheet.create({
   planExerciseName: { color: '#fff', fontSize: 12, fontFamily: 'Inter_700Bold' },
   planExerciseDetails: { color: Colors.textSecondary, fontSize: 12, lineHeight: 17, fontFamily: 'Inter_400Regular', marginTop: 1 },
   planExerciseNotes: { color: Colors.textMuted, fontSize: 11, lineHeight: 16, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  exerciseVideoButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  exerciseVideoButtonText: {
+    color: '#001311',
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+  },
   planText: {
     color: Colors.textSecondary,
     fontSize: 13,
