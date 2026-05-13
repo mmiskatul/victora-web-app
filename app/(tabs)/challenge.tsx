@@ -218,6 +218,13 @@ export default function ChallengesScreen() {
     name: 'You',
     profileImage: '',
   });
+  const readyToStartChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.status === 'ACTIVE');
+  const hasActiveChats = challengeOverview.active_chats.length > 0;
+  const hasActiveChallenges = challengeOverview.active_challenges.length > 0;
+  const hasCompletedChallenges = challengeOverview.completed_challenges.length > 0;
+  const hasReadyToStartChallenges = readyToStartChallenges.length > 0;
+  const hasVisibleChallengeSections =
+    hasReadyToStartChallenges || hasActiveChats || hasActiveChallenges || hasCompletedChallenges;
 
   useEffect(() => {
     let isMounted = true;
@@ -604,97 +611,97 @@ export default function ChallengesScreen() {
             ) : null}
 
             {/* ─ Active Challenge Chats ─ */}
-            <View style={styles.subSectionHeader}>
-              <Ionicons name="chatbubbles" size={16} color={Colors.primary} />
-              <Text style={styles.subSectionTitle}>Active Challenge Chats</Text>
-            </View>
-            {challengeOverview.active_chats.length === 0 && !challengeLoading ? (
-              <View style={styles.challengeEmptyCard}>
-                <Text style={styles.challengeEmptyText}>No active challenge chats yet.</Text>
-              </View>
-            ) : null}
-            {challengeOverview.active_chats.map((chat) => (
-              <TouchableOpacity
-                key={chat.id}
-                style={styles.chatCard}
-                activeOpacity={0.85}
-                onPress={() => router.push(`/challenges/chat/${chat.challenge_id}` as any)}
-              >
-                <View style={styles.chatAvatarWrap}>
-                  {chat.avatar ? (
-                    <Image source={{ uri: chat.avatar }} style={styles.chatAvatarImage} />
-                  ) : (
-                    <Text style={styles.chatAvatarEmoji}>{(chat.name || 'C')[0]}</Text>
-                  )}
+            {hasActiveChats ? (
+              <>
+                <View style={styles.subSectionHeader}>
+                  <Ionicons name="chatbubbles" size={16} color={Colors.primary} />
+                  <Text style={styles.subSectionTitle}>Active Challenge Chats</Text>
                 </View>
-                <View style={styles.chatContent}>
-                  <Text style={styles.chatName}>{chat.name}</Text>
-                  <Text style={styles.chatLastMsg} numberOfLines={1}>{chat.last_message}</Text>
-                </View>
-                <View style={styles.chatRight}>
-                  <Text style={styles.chatTime}>{formatChallengeTime(chat.last_message_at)}</Text>
-                  {chat.unread_count > 0 && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadText}>{chat.unread_count}</Text>
+                {challengeOverview.active_chats.map((chat) => (
+                  <TouchableOpacity
+                    key={chat.id}
+                    style={styles.chatCard}
+                    activeOpacity={0.85}
+                    onPress={() => router.push(`/challenges/chat/${chat.challenge_id}` as any)}
+                  >
+                    <View style={styles.chatAvatarWrap}>
+                      {chat.avatar ? (
+                        <Image source={{ uri: chat.avatar }} style={styles.chatAvatarImage} />
+                      ) : (
+                        <Text style={styles.chatAvatarEmoji}>{(chat.name || 'C')[0]}</Text>
+                      )}
                     </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
+                    <View style={styles.chatContent}>
+                      <Text style={styles.chatName}>{chat.name}</Text>
+                      <Text style={styles.chatLastMsg} numberOfLines={1}>{chat.last_message}</Text>
+                    </View>
+                    <View style={styles.chatRight}>
+                      <Text style={styles.chatTime}>{formatChallengeTime(chat.last_message_at)}</Text>
+                      {chat.unread_count > 0 && (
+                        <View style={styles.unreadBadge}>
+                          <Text style={styles.unreadText}>{chat.unread_count}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
+            ) : null}
 
             {/* ─ Your Active Challenges ─ */}
-            <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
-              <Ionicons name="flash" size={16} color={Colors.primary} />
-              <Text style={styles.subSectionTitle}>Your Active Challenges</Text>
-            </View>
-            {challengeOverview.active_challenges.length === 0 && !challengeLoading ? (
-              <View style={styles.challengeEmptyCard}>
-                <Text style={styles.challengeEmptyText}>You have no active challenges yet.</Text>
-              </View>
+            {hasActiveChallenges ? (
+              <>
+                <View
+                  style={[
+                    styles.subSectionHeader,
+                    hasActiveChats || hasActiveChallenges || hasCompletedChallenges ? { marginTop: 24 } : null,
+                  ]}
+                >
+                  <Ionicons name="flash" size={16} color={Colors.primary} />
+                  <Text style={styles.subSectionTitle}>Your Active Challenges</Text>
+                </View>
+                {challengeOverview.active_challenges.map((ch) => (
+                  <TouchableOpacity
+                    key={ch.id}
+                    style={styles.activeCard}
+                    activeOpacity={0.88}
+                    onPress={() => router.push(`/challenges/chat/${ch.challenge_id}` as any)}
+                  >
+                    <View style={styles.activeCardTop}>
+                      <View style={[styles.activeColorDot, { backgroundColor: ch.color }]} />
+                      <Text style={styles.activeCardTitle}>{ch.title}</Text>
+                      <View style={styles.activePointsBadge}>
+                        <Ionicons name="star" size={11} color="#F59E0B" />
+                        <Text style={styles.activePointsText}>+{ch.points}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.activeProgressRow}>
+                      <View style={styles.progressBarBg}>
+                        <View style={[styles.progressBarFill, { width: `${ch.progress * 100}%` as any, backgroundColor: ch.color }]} />
+                      </View>
+                      <Text style={styles.progressLabel}>
+                        {Math.round(ch.progress * ch.total_days)}/{ch.total_days} days
+                      </Text>
+                    </View>
+                    <View style={styles.activeCardMeta}>
+                      <Text style={styles.activeMetaText}>{ch.type}</Text>
+                      <Text style={[styles.daysLeftText, { color: ch.days_left <= 2 ? '#EF4444' : Colors.textMuted }]}>
+                        {ch.days_left} days left
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
             ) : null}
-            {challengeOverview.active_challenges.map((ch) => (
-              <TouchableOpacity
-                key={ch.id}
-                style={styles.activeCard}
-                activeOpacity={0.88}
-                onPress={() => router.push(`/challenges/chat/${ch.challenge_id}` as any)}
-              >
-                <View style={styles.activeCardTop}>
-                  <View style={[styles.activeColorDot, { backgroundColor: ch.color }]} />
-                  <Text style={styles.activeCardTitle}>{ch.title}</Text>
-                  <View style={styles.activePointsBadge}>
-                    <Ionicons name="star" size={11} color="#F59E0B" />
-                    <Text style={styles.activePointsText}>+{ch.points}</Text>
-                  </View>
-                </View>
-                <View style={styles.activeProgressRow}>
-                  <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${ch.progress * 100}%` as any, backgroundColor: ch.color }]} />
-                  </View>
-                  <Text style={styles.progressLabel}>
-                    {Math.round(ch.progress * ch.total_days)}/{ch.total_days} days
-                  </Text>
-                </View>
-                <View style={styles.activeCardMeta}>
-                  <Text style={styles.activeMetaText}>{ch.type}</Text>
-                  <Text style={[styles.daysLeftText, { color: ch.days_left <= 2 ? '#EF4444' : Colors.textMuted }]}>
-                    {ch.days_left} days left
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
 
             {/* ─ Completed ─ */}
-            <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-              <Text style={[styles.subSectionTitle, { color: '#22C55E' }]}>Completed</Text>
-            </View>
-            {challengeOverview.completed_challenges.length === 0 && !challengeLoading ? (
-              <View style={styles.challengeEmptyCard}>
-                <Text style={styles.challengeEmptyText}>No completed challenges yet.</Text>
-              </View>
-            ) : null}
-            {challengeOverview.completed_challenges.map((ch) => (
+            {hasCompletedChallenges ? (
+              <>
+                <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
+                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                  <Text style={[styles.subSectionTitle, { color: '#22C55E' }]}>Completed</Text>
+                </View>
+                {challengeOverview.completed_challenges.map((ch) => (
               <View key={ch.id} style={styles.completedCard}>
                 <View style={[styles.completedIcon, { backgroundColor: `${ch.color}22` }]}>
                   <Ionicons name="trophy" size={20} color={ch.color} />
@@ -709,60 +716,66 @@ export default function ChallengesScreen() {
                 </View>
               </View>
             ))}
+              </>
+            ) : null}
 
             {/* ─ Ready to Start ─ */}
-            <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
-              <Ionicons name="rocket" size={16} color="#4F8EF7" />
-              <Text style={[styles.subSectionTitle, { color: '#4F8EF7' }]}>Ready to Start</Text>
-            </View>
-            {challengeOverview.ready_to_start.length === 0 && !challengeLoading ? (
+            {hasReadyToStartChallenges ? (
+              <>
+                <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
+                  <Ionicons name="rocket" size={16} color="#4F8EF7" />
+                  <Text style={[styles.subSectionTitle, { color: '#4F8EF7' }]}>Ready to Start</Text>
+                </View>
+                {readyToStartChallenges.map((ch) => (
+                  <View key={ch.id} style={styles.readyCard}>
+                    <View style={styles.readyCardTop}>
+                      <Text style={styles.readyTitle}>{ch.title}</Text>
+                      <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
+                        <Text style={[styles.difficultyText, { color: ch.difficulty_color }]}>{ch.difficulty}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.readyDesc} numberOfLines={2}>{ch.description}</Text>
+                    <View style={styles.readyMeta}>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
+                        <Text style={styles.metaText}>{formatDurationLabel(ch.duration_days)}</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
+                        <Text style={styles.metaText}>{ch.participants} joined</Text>
+                      </View>
+                      <View style={styles.metaItem}>
+                        <Ionicons name="star" size={12} color="#F59E0B" />
+                        <Text style={[styles.metaText, { color: '#F59E0B' }]}>+{ch.points} Pts</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.startBtn,
+                        (challengeStarting[ch.id] || ch.status !== 'ACTIVE') && { opacity: 0.55 },
+                      ]}
+                      activeOpacity={0.85}
+                      onPress={() => handleStartChallenge(ch)}
+                      disabled={challengeStarting[ch.id] || ch.status !== 'ACTIVE'}
+                    >
+                      {challengeStarting[ch.id] ? (
+                        <ActivityIndicator size="small" color="#000" />
+                      ) : (
+                        <>
+                          <Text style={styles.startBtnText}>START CHALLENGE</Text>
+                          <Ionicons name="arrow-forward" size={14} color="#000" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </>
+            ) : null}
+            {!challengeLoading && !hasVisibleChallengeSections ? (
               <View style={styles.challengeEmptyCard}>
-                <Text style={styles.challengeEmptyText}>No new challenges ready right now.</Text>
+                <Text style={styles.challengeEmptyText}>No challenges available right now.</Text>
               </View>
             ) : null}
-            {challengeOverview.ready_to_start.map((ch) => (
-              <View key={ch.id} style={styles.readyCard}>
-                <View style={styles.readyCardTop}>
-                  <Text style={styles.readyTitle}>{ch.title}</Text>
-                  <View style={[styles.difficultyBadge, { backgroundColor: `${ch.difficulty_color}22` }]}>
-                    <Text style={[styles.difficultyText, { color: ch.difficulty_color }]}>{ch.difficulty}</Text>
-                  </View>
-                </View>
-                <Text style={styles.readyDesc} numberOfLines={2}>{ch.description}</Text>
-                <View style={styles.readyMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={12} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{formatDurationLabel(ch.duration_days)}</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{ch.participants} joined</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="star" size={12} color="#F59E0B" />
-                    <Text style={[styles.metaText, { color: '#F59E0B' }]}>+{ch.points} Pts</Text>
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[
-                    styles.startBtn,
-                    (challengeStarting[ch.id] || ch.status !== 'ACTIVE') && { opacity: 0.55 },
-                  ]}
-                  activeOpacity={0.85}
-                  onPress={() => handleStartChallenge(ch)}
-                  disabled={challengeStarting[ch.id] || ch.status !== 'ACTIVE'}
-                >
-                  {challengeStarting[ch.id] ? (
-                    <ActivityIndicator size="small" color="#000" />
-                  ) : (
-                    <>
-                      <Text style={styles.startBtnText}>{ch.status === 'UPCOMING' ? 'COMING SOON' : 'START CHALLENGE'}</Text>
-                      <Ionicons name="arrow-forward" size={14} color="#000" />
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))}
 
           </View>
         )}
