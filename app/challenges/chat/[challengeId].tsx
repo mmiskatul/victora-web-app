@@ -247,6 +247,11 @@ export default function ChallengeChatScreen() {
   const [showPlan, setShowPlan] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
+  const canPostInChallenge = useMemo(
+    () => Boolean(thread && thread.viewer_membership_status === 'ACTIVE' && thread.status === 'ACTIVE'),
+    [thread]
+  );
+
   const messagesById = useMemo(() => {
     const map = new Map<string, ChallengeChatMessage>();
     for (const message of thread?.messages || []) {
@@ -412,7 +417,7 @@ export default function ChallengeChatScreen() {
   };
 
   const shareProgress = async () => {
-    if (!challengeId || !thread || sending) {
+    if (!challengeId || !thread || sending || !canPostInChallenge) {
       return;
     }
 
@@ -472,6 +477,15 @@ export default function ChallengeChatScreen() {
     if (!thread) {
       return 'Share progress';
     }
+    if (thread.status === 'UPCOMING') {
+      return 'Challenge coming soon';
+    }
+    if (thread.status === 'ARCHIVED') {
+      return 'Challenge archived';
+    }
+    if (thread.viewer_membership_status !== 'ACTIVE') {
+      return 'Posting locked';
+    }
     return thread.viewer_progress_days_completed >= thread.duration_days
       ? 'Challenge completed'
       : `Mark day ${thread.viewer_progress_days_completed + 1} done`;
@@ -518,9 +532,23 @@ export default function ChallengeChatScreen() {
           <Text style={styles.heroDescription}>{thread.description}</Text>
           <View style={styles.heroMetaRow}>
             <Text style={styles.heroMeta}>{thread.difficulty}</Text>
+            <Text style={[styles.heroMeta, thread.status !== 'ACTIVE' && styles.heroMetaMuted]}>{thread.status}</Text>
             <Text style={styles.heroMeta}>{thread.viewer_progress_days_completed}/{thread.duration_days} days</Text>
             <Text style={styles.heroMeta}>+{thread.points} pts</Text>
           </View>
+          {!canPostInChallenge ? (
+            <View style={styles.statusNotice}>
+              <Text style={styles.statusNoticeText}>
+                {thread.status === 'UPCOMING'
+                  ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
+                  : thread.status === 'ARCHIVED'
+                    ? 'This challenge has been archived. Chat is read-only.'
+                    : thread.viewer_membership_status !== 'ACTIVE'
+                      ? 'Your membership is no longer active. Chat is read-only.'
+                      : 'This challenge is read-only right now.'}
+              </Text>
+            </View>
+          ) : null}
           {thread.plan_text ? (
             <View style={styles.planSection}>
               <TouchableOpacity style={styles.planToggle} onPress={() => setShowPlan((current) => !current)}>
@@ -561,9 +589,9 @@ export default function ChallengeChatScreen() {
 
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.progressButton, (!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending) && styles.buttonDisabled]}
+            style={[styles.progressButton, (!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge) && styles.buttonDisabled]}
             onPress={shareProgress}
-            disabled={!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending}
+            disabled={!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge}
           >
             <Ionicons name="checkmark-circle" size={16} color="#001311" />
             <Text style={styles.progressButtonText}>{nextDayLabel}</Text>
@@ -594,7 +622,7 @@ export default function ChallengeChatScreen() {
         ) : null}
 
         <View style={styles.inputBar}>
-          <TouchableOpacity onPress={pickImage} style={styles.attachButton} disabled={sending || Boolean(editingMessage)}>
+          <TouchableOpacity onPress={pickImage} style={styles.attachButton} disabled={sending || Boolean(editingMessage) || !canPostInChallenge}>
             <Ionicons name="image-outline" size={20} color={Colors.primary} />
           </TouchableOpacity>
           <View style={styles.inputWrapper}>
@@ -605,10 +633,10 @@ export default function ChallengeChatScreen() {
               value={inputText}
               onChangeText={setInputText}
               multiline
-              editable={!sending}
+              editable={!sending && canPostInChallenge}
             />
           </View>
-          <TouchableOpacity onPress={sendMessage} style={styles.sendButton} disabled={sending}>
+          <TouchableOpacity onPress={sendMessage} style={[styles.sendButton, (!canPostInChallenge || sending) && styles.buttonDisabled]} disabled={sending || !canPostInChallenge}>
             {sending ? <ActivityIndicator color="#001311" size="small" /> : <Ionicons name={editingMessage ? 'checkmark' : 'arrow-up'} size={18} color="#001311" />}
           </TouchableOpacity>
         </View>
@@ -653,6 +681,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 999,
+  },
+  heroMetaMuted: {
+    color: '#F59E0B',
+    backgroundColor: 'rgba(245,158,11,0.12)',
+  },
+  statusNotice: {
+    marginTop: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.16)',
+    padding: 12,
+  },
+  statusNoticeText: {
+    color: '#FCD34D',
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: 'Inter_400Regular',
   },
   planSection: { marginTop: 12 },
   planToggle: {

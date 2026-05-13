@@ -744,16 +744,19 @@ export default function ChallengesScreen() {
                   </View>
                 </View>
                 <TouchableOpacity
-                  style={[styles.startBtn, challengeStarting[ch.id] && { opacity: 0.7 }]}
+                  style={[
+                    styles.startBtn,
+                    (challengeStarting[ch.id] || ch.status !== 'ACTIVE') && { opacity: 0.55 },
+                  ]}
                   activeOpacity={0.85}
                   onPress={() => handleStartChallenge(ch)}
-                  disabled={challengeStarting[ch.id]}
+                  disabled={challengeStarting[ch.id] || ch.status !== 'ACTIVE'}
                 >
                   {challengeStarting[ch.id] ? (
                     <ActivityIndicator size="small" color="#000" />
                   ) : (
                     <>
-                      <Text style={styles.startBtnText}>START CHALLENGE</Text>
+                      <Text style={styles.startBtnText}>{ch.status === 'UPCOMING' ? 'COMING SOON' : 'START CHALLENGE'}</Text>
                       <Ionicons name="arrow-forward" size={14} color="#000" />
                     </>
                   )}
