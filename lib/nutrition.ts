@@ -66,6 +66,13 @@ export async function startNutritionPlanJob(payload: Record<string, unknown>) {
   });
 }
 
+export async function createNutritionPlan(payload: Record<string, unknown>) {
+  return apiRequest<{ plan: NutritionPlanApiResponse }>('/ai/nutrition/plan', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
 export async function getNutritionPlanJob(jobId: string) {
   return apiRequest<NutritionPlanJobResponse>(`/ai/nutrition/plan/jobs/${encodeURIComponent(jobId)}`);
 }

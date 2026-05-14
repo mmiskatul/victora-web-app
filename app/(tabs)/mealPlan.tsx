@@ -25,9 +25,8 @@ import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
 import {
-  getNutritionPlanJob,
+  createNutritionPlan,
   NutritionPlanApiResponse,
-  startNutritionPlanJob,
   analyzeMealImage,
   MealImageAnalysisResponse,
   updateNutritionMealCompletion,
@@ -476,7 +475,7 @@ function MealPlanResult({
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ['images'],
         allowsEditing: false,
-        quality: 0.9,
+        quality: 0.35,
         cameraType: ImagePicker.CameraType.back,
         base64: true,
       });
@@ -1170,34 +1169,6 @@ export default function JournalScreen() {
     }
   };
 
-  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  const pollNutritionPlanJob = async (jobId: string) => {
-    const deadline = Date.now() + 180000;
-
-    while (true) {
-      const job = await getNutritionPlanJob(jobId);
-
-      if (job.status === 'queued' || job.status === 'processing') {
-        setGenerationStage(job.status);
-      }
-
-      if (job.status === 'completed') {
-        return job;
-      }
-
-      if (job.status === 'failed') {
-        throw new Error(job.error || 'Nutrition plan generation failed');
-      }
-
-      if (Date.now() >= deadline) {
-        throw new Error('Nutrition plan generation timed out');
-      }
-
-      await sleep(1800);
-    }
-  };
-
   const generatePlan = async () => {
     if (generating) {
       return;
@@ -1205,12 +1176,12 @@ export default function JournalScreen() {
 
     setGenerating(true);
     setGenerationSuccess(false);
-    setGenerationStage('queued');
+    setGenerationStage('processing');
     setCreatingNewPlan(true);
     setErrorDialog(null);
 
     try {
-      const response = await startNutritionPlanJob({
+      const response = await createNutritionPlan({
         goal: selectedGoal,
         cuisine,
         favorite_meal: favoriteMeal,
@@ -1223,15 +1194,10 @@ export default function JournalScreen() {
         weight,
         health_conditions: Array.from(healthConditions),
       });
-
-      let savedPlan = response.plan ?? null;
-      if (response.status !== 'completed') {
-        const job = await pollNutritionPlanJob(response.job_id);
-        savedPlan = job.plan ?? null;
-      }
+      const savedPlan = response.plan ?? null;
 
       if (!savedPlan) {
-        throw new Error('Nutrition plan generation did not return a saved plan');
+        throw new Error('Nutrition plan generation did not return a plan');
       }
 
       setGeneratedPlan(savedPlan);
