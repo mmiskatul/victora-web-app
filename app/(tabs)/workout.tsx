@@ -298,41 +298,6 @@ export default function WorkoutScreen() {
               <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
             </Pressable>
             <View style={styles.categoryGrid}>
-              {strengthPlan ? (
-                <TouchableOpacity
-                  style={styles.savedPlanCard}
-                  activeOpacity={0.88}
-                  onPress={() => router.push('/workoutplan/strength-plan')}
-                >
-                  <View style={styles.savedPlanTopRow}>
-                    <Text style={styles.savedPlanEyebrow}>CUSTOM STRENGTH PLAN</Text>
-                    <TouchableOpacity style={styles.savedPlanRemoveBtn} onPress={handleRemoveStrengthPlan}>
-                      <Ionicons name="trash-outline" size={16} color="#FCA5A5" />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.savedPlanTitle} numberOfLines={2}>{strengthPlan.summary}</Text>
-                  <Text style={styles.savedPlanMeta}>{strengthPlan.days.length} training day{strengthPlan.days.length === 1 ? '' : 's'}</Text>
-                </TouchableOpacity>
-              ) : null}
-              {videoPlan ? (
-                <TouchableOpacity
-                  style={styles.savedPlanCard}
-                  activeOpacity={0.88}
-                  onPress={() => router.push('/workoutplan/video-plan')}
-                >
-                  <View style={styles.savedPlanTopRow}>
-                    <Text style={styles.savedPlanEyebrow}>7-DAY VIDEO PLAN</Text>
-                    <TouchableOpacity style={styles.savedPlanRemoveBtn} onPress={handleRemoveVideoPlan}>
-                      <Ionicons name="trash-outline" size={16} color="#FCA5A5" />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.savedPlanTitle} numberOfLines={2}>{videoPlan.summary}</Text>
-                  <Text style={styles.savedPlanMeta}>
-                    {videoPlan.days.filter((day) => day.workouts_count > 0).length} active day
-                    {videoPlan.days.filter((day) => day.workouts_count > 0).length === 1 ? '' : 's'}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
               {categoryRows.map((row, rowIndex) => (
                 <View key={rowIndex} style={styles.categoryRow}>
                   {row.map((category) => (
@@ -354,6 +319,49 @@ export default function WorkoutScreen() {
                 </View>
               ))}
             </View>
+
+            {strengthPlan || videoPlan ? (
+              <View style={styles.savedPlansSection}>
+                <Text style={styles.sectionTitle}>YOUR SAVED PLAN</Text>
+                {strengthPlan ? (
+                  <TouchableOpacity
+                    style={styles.savedPlanCard}
+                    activeOpacity={0.88}
+                    onPress={() => router.push('/workoutplan/strength-plan')}
+                  >
+                    <View style={styles.savedPlanTopRow}>
+                      <Text style={styles.savedPlanEyebrow}>CUSTOM STRENGTH PLAN</Text>
+                      <TouchableOpacity style={styles.savedPlanRemoveBtn} onPress={handleRemoveStrengthPlan}>
+                        <Ionicons name="trash-outline" size={16} color="#FCA5A5" />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.savedPlanTitle} numberOfLines={2}>{strengthPlan.summary}</Text>
+                    <Text style={styles.savedPlanMeta}>
+                      {strengthPlan.days.length} training day{strengthPlan.days.length === 1 ? '' : 's'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                {videoPlan ? (
+                  <TouchableOpacity
+                    style={styles.savedPlanCard}
+                    activeOpacity={0.88}
+                    onPress={() => router.push('/workoutplan/video-plan')}
+                  >
+                    <View style={styles.savedPlanTopRow}>
+                      <Text style={styles.savedPlanEyebrow}>7-DAY VIDEO PLAN</Text>
+                      <TouchableOpacity style={styles.savedPlanRemoveBtn} onPress={handleRemoveVideoPlan}>
+                        <Ionicons name="trash-outline" size={16} color="#FCA5A5" />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={styles.savedPlanTitle} numberOfLines={2}>{videoPlan.summary}</Text>
+                    <Text style={styles.savedPlanMeta}>
+                      {videoPlan.days.filter((day) => day.workouts_count > 0).length} active day
+                      {videoPlan.days.filter((day) => day.workouts_count > 0).length === 1 ? '' : 's'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -378,6 +386,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_700Bold',
     paddingHorizontal: 16,
     marginBottom: 16,
+  },
+  savedPlansSection: {
+    paddingHorizontal: 16,
+    marginTop: 28,
+    gap: 12,
   },
   savedPlanCard: {
     backgroundColor: '#161616',
