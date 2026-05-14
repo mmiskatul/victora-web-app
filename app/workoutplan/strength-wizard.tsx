@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
+import { fetchCurrentUser, fetchCurrentUserBodyMetrics } from '../../lib/api';
 import { createStrengthWorkoutPlan } from '../../lib/workout-plans';
 
 const { width } = Dimensions.get('window');
@@ -67,6 +68,40 @@ export default function StrengthWizard() {
     frequency: '4',
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const preloadProfileData = async () => {
+      try {
+        const [user, metrics] = await Promise.all([
+          fetchCurrentUser().catch(() => null),
+          fetchCurrentUserBodyMetrics().catch(() => null),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        setFormData((current: any) => ({
+          ...current,
+          age: current.age || metrics?.age || '',
+          height: current.height || metrics?.height || '',
+          weight: current.weight || metrics?.weight || '',
+          gender: current.gender || metrics?.gender || '',
+          country: current.country || user?.country || '',
+        }));
+      } catch {
+        return;
+      }
+    };
+
+    void preloadProfileData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const resolveGoalLabel = (goalId: string | undefined) => GOALS.find((item) => item.id === goalId)?.title ?? '';
   const resolveSplitLabel = (splitId: string | undefined) => SPLITS.find((item) => item.id === splitId)?.title ?? '';

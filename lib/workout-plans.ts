@@ -69,6 +69,14 @@ export async function fetchLatestStrengthWorkoutPlan() {
   return plan;
 }
 
+export async function deleteLatestStrengthWorkoutPlan() {
+  await apiRequest<{ status: string; message: string }>('/ai/workout-plan/strength/latest', {
+    method: 'DELETE',
+  });
+  latestStrengthPlan = null;
+  await AsyncStorage.removeItem(STRENGTH_PLAN_STORAGE_KEY);
+}
+
 export async function createVideoWorkoutPlan(payload: Record<string, unknown>) {
   const plan = await apiRequest<VideoPlanResponse>('/ai/workout-plan/video', {
     method: 'POST',
@@ -109,4 +117,9 @@ export async function loadLatestVideoWorkoutPlan() {
   }
   latestVideoPlan = JSON.parse(raw) as VideoPlanResponse;
   return latestVideoPlan;
+}
+
+export async function clearLatestVideoWorkoutPlan() {
+  latestVideoPlan = null;
+  await AsyncStorage.removeItem(VIDEO_PLAN_STORAGE_KEY);
 }

@@ -10,6 +10,7 @@ import {
   Modal,
   TextInput,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -78,43 +79,56 @@ export default function ProfileScreen() {
     gender: '',
   });
   const [showGenderModal, setShowGenderModal] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const genderOptions = ['Male', 'Female', 'Other'];
+
+  const loadProfileData = React.useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoadingMe(true);
+    }
+    try {
+      const [response, metricsResponse] = await Promise.all([
+        fetchCurrentUser(),
+        fetchCurrentUserBodyMetrics(),
+      ]);
+      setMe(response);
+      setBodyMetrics(metricsResponse);
+    } catch {
+      setMe(null);
+      setBodyMetrics({ age: '', height: '', weight: '', gender: '' });
+    } finally {
+      if (showLoading) {
+        setLoadingMe(false);
+      }
+    }
+  }, []);
 
   useFocusEffect(
     React.useCallback(() => {
       let cancelled = false;
 
-      const loadMe = async () => {
-        setLoadingMe(true);
-        try {
-          const [response, metricsResponse] = await Promise.all([
-            fetchCurrentUser(),
-            fetchCurrentUserBodyMetrics(),
-          ]);
-          if (!cancelled) {
-            setMe(response);
-            setBodyMetrics(metricsResponse);
-          }
-        } catch {
-          if (!cancelled) {
-            setMe(null);
-            setBodyMetrics({ age: '', height: '', weight: '', gender: '' });
-          }
-        } finally {
-          if (!cancelled) {
-            setLoadingMe(false);
-          }
+      void (async () => {
+        if (cancelled) {
+          return;
         }
-      };
-
-      loadMe();
+        await loadProfileData(true);
+      })();
 
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [loadProfileData]),
   );
+
+  const handleRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await loadProfileData(false);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadProfileData]);
 
   const displayName = me?.name ?? 'Loading...';
   const displayEmail = me?.email ?? 'Fetching /me data';
@@ -151,7 +165,20 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              void handleRefresh();
+            }}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+          />
+        }
+      >
 
         <VictoryHeader />
 

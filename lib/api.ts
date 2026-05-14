@@ -21,6 +21,23 @@ function resolveApiUrl(url: string): string {
 
 const API_URL = resolveApiUrl(RAW_API_URL);
 
+export function resolveRemoteAssetUrl(url: string | null | undefined): string {
+  const normalizedUrl = String(url || '').trim();
+  if (!normalizedUrl) {
+    return '';
+  }
+
+  if (normalizedUrl.startsWith('data:')) {
+    return normalizedUrl;
+  }
+
+  if (normalizedUrl.startsWith('/')) {
+    return `${API_URL}${normalizedUrl}`;
+  }
+
+  return resolveApiUrl(normalizedUrl);
+}
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -57,6 +74,25 @@ export type BodyMetrics = {
   height: string;
   weight: string;
   gender: string;
+};
+
+export type CoachingApplicationPayload = {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number?: string;
+  goal: string;
+  obstacle: string;
+  investment: string;
+  commitment: string;
+  injury: string;
+  additional_notes?: string;
+  agreement_accepted: boolean;
+};
+
+export type SupportMessagePayload = {
+  subject: string;
+  message: string;
 };
 
 const AUTH_STORAGE_KEY = 'victory-auth-tokens';
@@ -310,6 +346,20 @@ export async function fetchCurrentUserBodyMetrics() {
 export async function updateCurrentUserBodyMetrics(payload: Partial<BodyMetrics>) {
   return apiRequest<BodyMetrics>('/me/body-metrics', {
     method: 'PATCH',
+    body: payload,
+  });
+}
+
+export async function submitCoachingApplication(payload: CoachingApplicationPayload) {
+  return apiRequest('/applications', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function submitSupportMessage(payload: SupportMessagePayload) {
+  return apiRequest('/support/messages', {
+    method: 'POST',
     body: payload,
   });
 }
