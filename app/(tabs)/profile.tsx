@@ -19,6 +19,34 @@ import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
 
+function getRankIcon(rank: string) {
+  const normalized = rank.trim().toLowerCase();
+  switch (normalized) {
+    case 'bronze':
+      return '🥉';
+    case 'silver':
+      return '🥈';
+    case 'gold':
+      return '🥇';
+    case 'platinum':
+      return '💠';
+    case 'diamond':
+      return '💎';
+    case 'master':
+      return '👑';
+    case 'champion':
+      return '🏆';
+    case 'titan':
+      return '🛡️';
+    case 'legend':
+      return '🌟';
+    case 'immortal':
+      return '🔥';
+    default:
+      return '🔰';
+  }
+}
+
 const MENU_SECTIONS = [
   {
     title: 'Account',
@@ -39,6 +67,35 @@ const MENU_SECTIONS = [
     ],
   }
 ];
+
+function getDynamicRankIcon(rank: string) {
+  const normalized = rank.trim().toLowerCase();
+
+  switch (normalized) {
+    case 'bronze':
+      return '\u{1F949}';
+    case 'silver':
+      return '\u{1F948}';
+    case 'gold':
+      return '\u{1F947}';
+    case 'platinum':
+      return '\u{1F4A0}';
+    case 'diamond':
+      return '\u{1F48E}';
+    case 'master':
+      return '\u{1F451}';
+    case 'champion':
+      return '\u{1F3C6}';
+    case 'titan':
+      return '\u{1F6E1}\uFE0F';
+    case 'legend':
+      return '\u{1F31F}';
+    case 'immortal':
+      return '\u{1F525}';
+    default:
+      return '\u{1F530}';
+  }
+}
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -134,10 +191,17 @@ export default function ProfileScreen() {
   const workoutsCompleted = me?.workouts_completed ?? 0;
   const workoutsTotal = me?.workouts_total ?? 0;
   const streakDays = me?.streak_days ?? 0;
-  const rank = me?.rank ?? 'Recruit';
+  const rank = me?.rank ?? 'Noob';
   const nextRank = me?.next_rank ?? rank;
   const progressFraction = Math.min(Math.max(me?.rank_progress_fraction ?? 0, 0), 1);
   const pointsToNextRank = Math.max(me?.points_to_next_rank ?? 0, 0);
+  const rankIcon = getDynamicRankIcon(rank);
+  const profileStats = [
+    { label: 'Workouts', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '\u{1F3CB}\uFE0F' },
+    { label: 'Streak', value: `${streakDays}d`, icon: '\u{1F525}' },
+    { label: 'Points', value: String(points), icon: '\u26A1' },
+    { label: 'Rank', value: rank.toUpperCase(), icon: rankIcon },
+  ];
   const stats = [
     { label: 'Workouts', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '🏋️' },
     { label: 'Streak', value: `${streakDays}d`, icon: '🔥' },
@@ -211,7 +275,7 @@ export default function ProfileScreen() {
           <Text style={styles.heroEmail}>{loadingMe ? 'Fetching /me data' : displayEmail}</Text>
           <View style={styles.heroBadgeRow}>
             <View style={styles.rankBadge}>
-              <Text style={styles.rankBadgeText}>🎖️ {loadingMe ? 'MEMBER' : rank.toUpperCase()}</Text>
+              <Text style={styles.rankBadgeText}>{loadingMe ? 'MEMBER' : `${rankIcon} ${rank.toUpperCase()}`}</Text>
             </View>
             <View style={styles.ptsBadge}>
               <Text style={styles.ptsBadgeText}>⚡ {loadingMe ? '...' : points} PTS</Text>
@@ -240,7 +304,7 @@ export default function ProfileScreen() {
 
         {/* ── Stats Grid ── */}
         <View style={styles.statsGrid}>
-          {stats.map((s) => (
+          {profileStats.map((s) => (
             <View key={s.label} style={styles.statCell}>
               <Text style={styles.statEmoji}>{s.icon}</Text>
               <Text style={styles.statValue}>{s.value}</Text>
