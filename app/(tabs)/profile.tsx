@@ -19,15 +19,11 @@ import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
 
-const pts = 105;
-const nextRankPts = 500;
-const progressFraction = pts / nextRankPts;
-
-const STATS = [
-  { label: 'Workouts', value: '12', icon: '🏋️' },
-  { label: 'Streak', value: '0d', icon: '🔥' },
-  { label: 'Points', value: '105', icon: '⚡' },
-  { label: 'Rank', value: 'Recruit', icon: '🎖️' },
+const RANK_TIERS = [
+  { label: 'Recruit', points: 0 },
+  { label: 'Warrior', points: 500 },
+  { label: 'Elite', points: 1500 },
+  { label: 'Legend', points: 3000 },
 ];
 
 const MENU_SECTIONS = [
@@ -62,6 +58,11 @@ export default function ProfileScreen() {
     is_admin?: boolean;
     country?: string;
     profileImage?: string;
+    points?: number;
+    workouts_completed?: number;
+    workouts_total?: number;
+    streak_days?: number;
+    rank?: string;
   } | null>(null);
   const [loadingMe, setLoadingMe] = React.useState(true);
   const [bodyMetrics, setBodyMetrics] = React.useState<BodyMetrics>({
@@ -132,8 +133,25 @@ export default function ProfileScreen() {
 
   const displayName = me?.name ?? 'Loading...';
   const displayEmail = me?.email ?? 'Fetching /me data';
-  const displayRole = me?.is_admin ? 'ADMIN' : (me?.role?.toUpperCase() ?? 'MEMBER');
   const displayVerified = me?.is_verified ? 'Verified' : 'Not verified';
+  const points = me?.points ?? 0;
+  const workoutsCompleted = me?.workouts_completed ?? 0;
+  const workoutsTotal = me?.workouts_total ?? 0;
+  const streakDays = me?.streak_days ?? 0;
+  const rank = me?.rank ?? 'Recruit';
+  const currentRankIndex = Math.max(
+    RANK_TIERS.findIndex((tier) => tier.label.toLowerCase() === rank.toLowerCase()),
+    0,
+  );
+  const nextRankTier = RANK_TIERS[currentRankIndex + 1] ?? null;
+  const progressFraction = nextRankTier ? Math.min(points / nextRankTier.points, 1) : 1;
+  const pointsToNextRank = nextRankTier ? Math.max(nextRankTier.points - points, 0) : 0;
+  const stats = [
+    { label: 'Workouts', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '🏋️' },
+    { label: 'Streak', value: `${streakDays}d`, icon: '🔥' },
+    { label: 'Points', value: String(points), icon: '⚡' },
+    { label: 'Rank', value: rank.toUpperCase(), icon: '🎖️' },
+  ];
 
   const openMetricsModal = () => {
     setMetricsDraft(bodyMetrics);
@@ -201,10 +219,10 @@ export default function ProfileScreen() {
           <Text style={styles.heroEmail}>{loadingMe ? 'Fetching /me data' : displayEmail}</Text>
           <View style={styles.heroBadgeRow}>
             <View style={styles.rankBadge}>
-              <Text style={styles.rankBadgeText}>🎖️ {loadingMe ? 'MEMBER' : displayRole}</Text>
+              <Text style={styles.rankBadgeText}>🎖️ {loadingMe ? 'MEMBER' : rank.toUpperCase()}</Text>
             </View>
             <View style={styles.ptsBadge}>
-              <Text style={styles.ptsBadgeText}>⚡ {loadingMe ? '...' : pts} PTS</Text>
+              <Text style={styles.ptsBadgeText}>⚡ {loadingMe ? '...' : points} PTS</Text>
             </View>
           </View>
           <View style={styles.heroMetaRow}>
@@ -215,8 +233,10 @@ export default function ProfileScreen() {
           {/* Rank Progress */}
           <View style={styles.rankProgressWrap}>
             <View style={styles.rankProgressLabels}>
-              <Text style={styles.rankProgressLabel}>RECRUIT</Text>
-              <Text style={styles.rankProgressLabel}>{nextRankPts - pts} pts to WARRIOR</Text>
+              <Text style={styles.rankProgressLabel}>{rank.toUpperCase()}</Text>
+              <Text style={styles.rankProgressLabel}>
+                {nextRankTier ? `${pointsToNextRank} pts to ${nextRankTier.label.toUpperCase()}` : 'MAX RANK'}
+              </Text>
             </View>
             <View style={styles.rankBarBg}>
               <View
@@ -228,7 +248,7 @@ export default function ProfileScreen() {
 
         {/* ── Stats Grid ── */}
         <View style={styles.statsGrid}>
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <View key={s.label} style={styles.statCell}>
               <Text style={styles.statEmoji}>{s.icon}</Text>
               <Text style={styles.statValue}>{s.value}</Text>

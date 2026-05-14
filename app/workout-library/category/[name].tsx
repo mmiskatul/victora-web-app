@@ -137,9 +137,7 @@ export default function WorkoutCategoryScreen() {
                 <Text style={styles.workoutTitle} numberOfLines={2}>
                   {workout.title}
                 </Text>
-                <Text style={styles.workoutMeta}>
-                  {workout.tag} | Vimeo {workout.vimeoId}
-                </Text>
+                <Text style={styles.workoutMeta}>{workout.tag} | Video ready</Text>
               </View>
             </TouchableOpacity>
           ))}

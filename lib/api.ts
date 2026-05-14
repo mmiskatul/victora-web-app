@@ -67,6 +67,11 @@ export type AuthUser = {
   is_verified: boolean;
   country?: string;
   profileImage?: string;
+  points?: number;
+  workouts_completed?: number;
+  workouts_total?: number;
+  streak_days?: number;
+  rank?: string;
 };
 
 export type BodyMetrics = {
@@ -287,6 +292,11 @@ export async function fetchCurrentUser() {
     is_verified: user.is_verified,
     country: user.country,
     profileImage: user.profileImage,
+    points: user.points,
+    workouts_completed: user.workouts_completed,
+    workouts_total: user.workouts_total,
+    streak_days: user.streak_days,
+    rank: user.rank,
   };
   authUserLoaded = true;
   await persistAuthUser(authUser);
@@ -313,6 +323,11 @@ export async function updateCurrentUserProfile(payload: {
     is_verified: user.is_verified,
     country: user.country,
     profileImage: user.profileImage,
+    points: user.points,
+    workouts_completed: user.workouts_completed,
+    workouts_total: user.workouts_total,
+    streak_days: user.streak_days,
+    rank: user.rank,
   };
   authUserLoaded = true;
   await persistAuthUser(authUser);
@@ -521,5 +536,10 @@ export type AuthResponse = {
     is_verified: boolean;
     country?: string;
     profileImage?: string;
+    points?: number;
+    workouts_completed?: number;
+    workouts_total?: number;
+    streak_days?: number;
+    rank?: string;
   };
 };

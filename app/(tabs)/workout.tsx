@@ -295,7 +295,7 @@ export default function WorkoutScreen() {
                     <Text style={styles.heroBadgeText}>FEATURED WORKOUT</Text>
                   </View>
                   <Text style={styles.heroTitle}>{featuredWorkout.title}</Text>
-                  <Text style={styles.heroMeta}>{featuredWorkout.tag} · Vimeo {featuredWorkout.vimeoId}</Text>
+                  <Text style={styles.heroMeta}>{featuredWorkout.tag} · Video ready</Text>
                 </View>
               </TouchableOpacity>
             ) : (
@@ -322,7 +322,7 @@ export default function WorkoutScreen() {
                   <View style={styles.popularOverlay} />
                   <View style={styles.popularContent}>
                     <Text style={styles.popularTitle} numberOfLines={2}>{workout.title}</Text>
-                    <Text style={styles.popularMeta}>{workout.tag} · Vimeo {workout.vimeoId}</Text>
+                    <Text style={styles.popularMeta}>{workout.tag} · Video ready</Text>
                   </View>
                 </TouchableOpacity>
               ))}
