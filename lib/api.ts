@@ -72,6 +72,9 @@ export type AuthUser = {
   workouts_total?: number;
   streak_days?: number;
   rank?: string;
+  next_rank?: string;
+  points_to_next_rank?: number;
+  rank_progress_fraction?: number;
 };
 
 export type BodyMetrics = {
@@ -297,6 +300,9 @@ export async function fetchCurrentUser() {
     workouts_total: user.workouts_total,
     streak_days: user.streak_days,
     rank: user.rank,
+    next_rank: user.next_rank,
+    points_to_next_rank: user.points_to_next_rank,
+    rank_progress_fraction: user.rank_progress_fraction,
   };
   authUserLoaded = true;
   await persistAuthUser(authUser);
@@ -328,6 +334,9 @@ export async function updateCurrentUserProfile(payload: {
     workouts_total: user.workouts_total,
     streak_days: user.streak_days,
     rank: user.rank,
+    next_rank: user.next_rank,
+    points_to_next_rank: user.points_to_next_rank,
+    rank_progress_fraction: user.rank_progress_fraction,
   };
   authUserLoaded = true;
   await persistAuthUser(authUser);
@@ -541,5 +550,8 @@ export type AuthResponse = {
     workouts_total?: number;
     streak_days?: number;
     rank?: string;
+    next_rank?: string;
+    points_to_next_rank?: number;
+    rank_progress_fraction?: number;
   };
 };

@@ -19,13 +19,6 @@ import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
 
-const RANK_TIERS = [
-  { label: 'Recruit', points: 0 },
-  { label: 'Warrior', points: 500 },
-  { label: 'Elite', points: 1500 },
-  { label: 'Legend', points: 3000 },
-];
-
 const MENU_SECTIONS = [
   {
     title: 'Account',
@@ -63,6 +56,9 @@ export default function ProfileScreen() {
     workouts_total?: number;
     streak_days?: number;
     rank?: string;
+    next_rank?: string;
+    points_to_next_rank?: number;
+    rank_progress_fraction?: number;
   } | null>(null);
   const [loadingMe, setLoadingMe] = React.useState(true);
   const [bodyMetrics, setBodyMetrics] = React.useState<BodyMetrics>({
@@ -139,13 +135,9 @@ export default function ProfileScreen() {
   const workoutsTotal = me?.workouts_total ?? 0;
   const streakDays = me?.streak_days ?? 0;
   const rank = me?.rank ?? 'Recruit';
-  const currentRankIndex = Math.max(
-    RANK_TIERS.findIndex((tier) => tier.label.toLowerCase() === rank.toLowerCase()),
-    0,
-  );
-  const nextRankTier = RANK_TIERS[currentRankIndex + 1] ?? null;
-  const progressFraction = nextRankTier ? Math.min(points / nextRankTier.points, 1) : 1;
-  const pointsToNextRank = nextRankTier ? Math.max(nextRankTier.points - points, 0) : 0;
+  const nextRank = me?.next_rank ?? rank;
+  const progressFraction = Math.min(Math.max(me?.rank_progress_fraction ?? 0, 0), 1);
+  const pointsToNextRank = Math.max(me?.points_to_next_rank ?? 0, 0);
   const stats = [
     { label: 'Workouts', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '🏋️' },
     { label: 'Streak', value: `${streakDays}d`, icon: '🔥' },
@@ -235,7 +227,7 @@ export default function ProfileScreen() {
             <View style={styles.rankProgressLabels}>
               <Text style={styles.rankProgressLabel}>{rank.toUpperCase()}</Text>
               <Text style={styles.rankProgressLabel}>
-                {nextRankTier ? `${pointsToNextRank} pts to ${nextRankTier.label.toUpperCase()}` : 'MAX RANK'}
+                {pointsToNextRank > 0 ? `${pointsToNextRank} pts to ${nextRank.toUpperCase()}` : 'MAX RANK'}
               </Text>
             </View>
             <View style={styles.rankBarBg}>
