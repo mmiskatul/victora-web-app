@@ -28,6 +28,7 @@ import {
   createNutritionPlan,
   NutritionPlanApiResponse,
   analyzeMealImage,
+  getMealAnalysisHistory,
   MealImageAnalysisResponse,
   updateNutritionMealCompletion,
 } from '../../lib/nutrition';
@@ -246,6 +247,8 @@ function MealPlanResult({
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<MealImageAnalysisResponse | null>(null);
   const [analysisError, setAnalysisError] = useState('');
+  const [analysisHistory, setAnalysisHistory] = useState<MealImageAnalysisResponse[]>([]);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<MealImageAnalysisResponse | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -321,6 +324,29 @@ function MealPlanResult({
     profile.weight,
     profile.healthConditions.join(','),
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMealAnalysisHistory = async () => {
+      try {
+        const response = await getMealAnalysisHistory();
+        if (!cancelled) {
+          setAnalysisHistory(Array.isArray(response.analyses) ? response.analyses : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setAnalysisHistory([]);
+        }
+      }
+    };
+
+    loadMealAnalysisHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const toggleCheck = (key: string) => {
     setCheckedItems(prev => {
@@ -498,6 +524,7 @@ function MealPlanResult({
             file_name: asset.fileName ?? null,
           });
           setAnalysisResult(response);
+          setAnalysisHistory((prev) => [response, ...prev.filter((item) => item.analysis_id !== response.analysis_id)]);
         } catch (analysisErr) {
           setAnalysisError(formatAppError(analysisErr).message);
         } finally {
@@ -859,6 +886,37 @@ function MealPlanResult({
               </View>
             ) : null}
 
+            <View style={styles.analysisHistoryCard}>
+              <View style={styles.analysisHistoryHeader}>
+                <Text style={styles.analysisHistoryTitle}>Saved Analyses</Text>
+                <Text style={styles.analysisHistoryCount}>{analysisHistory.length}</Text>
+              </View>
+              {analysisHistory.length > 0 ? (
+                analysisHistory.map((item, index) => (
+                  <TouchableOpacity
+                    key={item.analysis_id ?? `${item.meal_name_guess}-${index}`}
+                    style={styles.analysisHistoryRow}
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedAnalysis(item)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.analysisHistoryRowTitle}>{item.meal_name_guess}</Text>
+                      <Text style={styles.analysisHistoryRowMeta} numberOfLines={1}>
+                        {item.created_at ? new Date(item.created_at).toLocaleString() : item.file_name ?? 'Saved analysis'}
+                      </Text>
+                    </View>
+                    <View style={styles.analysisHistoryRowPill}>
+                      <Text style={styles.analysisHistoryRowPillText}>{item.estimated_calories} kcal</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.analysisEmptySub}>
+                  Your saved meal analyses will appear here after you run them.
+                </Text>
+              )}
+            </View>
+
             {!analysisImage ? (
               <View style={styles.analysisEmptyCard}>
                 <Ionicons name="camera-outline" size={40} color="rgba(255,255,255,0.2)" />
@@ -996,6 +1054,69 @@ function MealPlanResult({
             )}
 
             <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.8} onPress={closeMealModal}>
+              <Text style={styles.modalCancelBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={Boolean(selectedAnalysis)}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedAnalysis(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalEyebrow}>MEAL ANALYSIS</Text>
+            <Text style={styles.modalTitle}>{selectedAnalysis?.meal_name_guess ?? 'Saved Analysis'}</Text>
+            <Text style={styles.modalSubtitle}>
+              {selectedAnalysis?.created_at ? new Date(selectedAnalysis.created_at).toLocaleString() : 'Saved meal analysis'}
+            </Text>
+            {selectedAnalysis ? (
+              <View style={styles.modalMealCard}>
+                <View style={styles.analysisResultHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.analysisResultLabel}>Summary</Text>
+                    <Text style={styles.analysisResultTitle}>{selectedAnalysis.meal_name_guess}</Text>
+                  </View>
+                  <View style={styles.analysisConfidencePill}>
+                    <Text style={styles.analysisConfidenceText}>{selectedAnalysis.confidence}</Text>
+                  </View>
+                </View>
+                <Text style={styles.analysisResultSummary}>{selectedAnalysis.summary}</Text>
+                <View style={styles.analysisResultGrid}>
+                  <View style={styles.analysisResultMetric}>
+                    <Text style={styles.analysisResultMetricLabel}>Calories</Text>
+                    <Text style={styles.analysisResultMetricValue}>{selectedAnalysis.estimated_calories}</Text>
+                  </View>
+                  <View style={styles.analysisResultMetric}>
+                    <Text style={styles.analysisResultMetricLabel}>Protein</Text>
+                    <Text style={styles.analysisResultMetricValue}>{selectedAnalysis.estimated_protein}g</Text>
+                  </View>
+                  <View style={styles.analysisResultMetric}>
+                    <Text style={styles.analysisResultMetricLabel}>Carbs</Text>
+                    <Text style={styles.analysisResultMetricValue}>{selectedAnalysis.estimated_carbs}g</Text>
+                  </View>
+                  <View style={styles.analysisResultMetric}>
+                    <Text style={styles.analysisResultMetricLabel}>Fat</Text>
+                    <Text style={styles.analysisResultMetricValue}>{selectedAnalysis.estimated_fat}g</Text>
+                  </View>
+                </View>
+                {selectedAnalysis.notes.length > 0 ? (
+                  <View style={styles.analysisNotesBlock}>
+                    {selectedAnalysis.notes.map((note, index) => (
+                      <Text key={`${note}-${index}`} style={styles.analysisNoteItem}>
+                        • {note}
+                      </Text>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.8} onPress={() => setSelectedAnalysis(null)}>
               <Text style={styles.modalCancelBtnText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -2204,6 +2325,73 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontFamily: 'Inter_500Medium',
+  },
+  analysisHistoryCard: {
+    backgroundColor: '#13132A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    gap: 12,
+  },
+  analysisHistoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  analysisHistoryTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: 'Inter_700Bold',
+  },
+  analysisHistoryCount: {
+    minWidth: 28,
+    textAlign: 'center',
+    color: '#D8B4FE',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+    backgroundColor: 'rgba(168,85,247,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(168,85,247,0.28)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  analysisHistoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#0D0D1E',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  analysisHistoryRowTitle: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  analysisHistoryRowMeta: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  analysisHistoryRowPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.24)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  analysisHistoryRowPillText: {
+    color: '#86EFAC',
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
   },
   analysisUploadGrad: { borderRadius: 14, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   analysisUploadText: { color: '#fff', fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
