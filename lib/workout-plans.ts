@@ -1,4 +1,5 @@
 import { apiRequest } from './api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type StrengthPlanExercise = {
   id: string;
@@ -48,6 +49,8 @@ export type VideoPlanResponse = {
 
 let latestStrengthPlan: StrengthPlanResponse | null = null;
 let latestVideoPlan: VideoPlanResponse | null = null;
+const STRENGTH_PLAN_STORAGE_KEY = 'victory-strength-workout-plan';
+const VIDEO_PLAN_STORAGE_KEY = 'victory-video-workout-plan';
 
 export async function createStrengthWorkoutPlan(payload: Record<string, unknown>) {
   const plan = await apiRequest<StrengthPlanResponse>('/ai/workout-plan/strength', {
@@ -55,6 +58,14 @@ export async function createStrengthWorkoutPlan(payload: Record<string, unknown>
     body: payload,
   });
   latestStrengthPlan = plan;
+  await AsyncStorage.setItem(STRENGTH_PLAN_STORAGE_KEY, JSON.stringify(plan));
+  return plan;
+}
+
+export async function fetchLatestStrengthWorkoutPlan() {
+  const plan = await apiRequest<StrengthPlanResponse>('/ai/workout-plan/strength/latest');
+  latestStrengthPlan = plan;
+  await AsyncStorage.setItem(STRENGTH_PLAN_STORAGE_KEY, JSON.stringify(plan));
   return plan;
 }
 
@@ -64,6 +75,7 @@ export async function createVideoWorkoutPlan(payload: Record<string, unknown>) {
     body: payload,
   });
   latestVideoPlan = plan;
+  await AsyncStorage.setItem(VIDEO_PLAN_STORAGE_KEY, JSON.stringify(plan));
   return plan;
 }
 
@@ -72,5 +84,29 @@ export function getLatestStrengthWorkoutPlan() {
 }
 
 export function getLatestVideoWorkoutPlan() {
+  return latestVideoPlan;
+}
+
+export async function loadLatestStrengthWorkoutPlan() {
+  if (latestStrengthPlan) {
+    return latestStrengthPlan;
+  }
+  const raw = await AsyncStorage.getItem(STRENGTH_PLAN_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  latestStrengthPlan = JSON.parse(raw) as StrengthPlanResponse;
+  return latestStrengthPlan;
+}
+
+export async function loadLatestVideoWorkoutPlan() {
+  if (latestVideoPlan) {
+    return latestVideoPlan;
+  }
+  const raw = await AsyncStorage.getItem(VIDEO_PLAN_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  latestVideoPlan = JSON.parse(raw) as VideoPlanResponse;
   return latestVideoPlan;
 }

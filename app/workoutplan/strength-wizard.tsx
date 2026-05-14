@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter } from 'expo-router';
@@ -67,6 +68,13 @@ export default function StrengthWizard() {
   });
   const [loading, setLoading] = useState(false);
 
+  const resolveGoalLabel = (goalId: string | undefined) => GOALS.find((item) => item.id === goalId)?.title ?? '';
+  const resolveSplitLabel = (splitId: string | undefined) => SPLITS.find((item) => item.id === splitId)?.title ?? '';
+  const resolveEquipmentLabels = (equipmentIds: string[] | undefined) =>
+    (equipmentIds ?? [])
+      .map((id) => EQUIPMENT.find((item) => item.id === id)?.label ?? '')
+      .filter(Boolean);
+
   const nextStep = () => {
     if (step < TOTAL_STEPS) setStep(step + 1);
     else generatePlan();
@@ -80,15 +88,15 @@ export default function StrengthWizard() {
     setLoading(true);
     try {
       await createStrengthWorkoutPlan({
-        goal: formData.goal,
+        goal: resolveGoalLabel(formData.goal),
         level: formData.level,
-        split: formData.split,
+        split: resolveSplitLabel(formData.split),
         height: formData.height,
         gender: formData.gender,
         bench: formData.bench,
         squat: formData.squat,
         deadlift: formData.deadlift,
-        equipment: formData.equipment,
+        equipment: resolveEquipmentLabels(formData.equipment),
         frequency: formData.frequency,
         days: formData.days,
         age: formData.age,
@@ -98,6 +106,7 @@ export default function StrengthWizard() {
       router.replace('/workoutplan/strength-plan');
     } catch {
       setLoading(false);
+      Alert.alert('Generation failed', 'Unable to create your custom strength plan right now.');
     }
   };
 
