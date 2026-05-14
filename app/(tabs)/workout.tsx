@@ -18,6 +18,7 @@ import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { fetchWorkoutLibrary, WorkoutLibraryCategory, WorkoutLibraryItem } from '../../lib/workouts';
 import { formatAppError } from '../../lib/error';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
   clearLatestVideoWorkoutPlan,
   deleteLatestStrengthWorkoutPlan,
@@ -45,7 +46,9 @@ function pairCategories(categories: WorkoutLibraryCategory[]) {
 
 export default function WorkoutScreen() {
   const router = useRouter();
+  const hasLoadedLibraryRef = React.useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 350);
   const [library, setLibrary] = useState<{
     featuredWorkout: WorkoutLibraryItem | null;
     workouts: WorkoutLibraryItem[];
@@ -57,6 +60,7 @@ export default function WorkoutScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   const [strengthPlan, setStrengthPlan] = useState<StrengthPlanResponse | null>(null);
   const [videoPlan, setVideoPlan] = useState<VideoPlanResponse | null>(null);
@@ -65,14 +69,21 @@ export default function WorkoutScreen() {
     let isMounted = true;
 
     const loadLibrary = async () => {
-      setLoading(true);
+      const shouldShowFullScreenLoader = !hasLoadedLibraryRef.current;
+
+      if (shouldShowFullScreenLoader) {
+        setLoading(true);
+      } else {
+        setSearching(true);
+      }
       setError('');
       try {
-        const response = await fetchWorkoutLibrary(searchQuery);
+        const response = await fetchWorkoutLibrary(debouncedSearchQuery);
         if (!isMounted) {
           return;
         }
         setLibrary(response);
+        hasLoadedLibraryRef.current = true;
       } catch (loadError) {
         if (!isMounted) {
           return;
@@ -86,6 +97,7 @@ export default function WorkoutScreen() {
       } finally {
         if (isMounted) {
           setLoading(false);
+          setSearching(false);
         }
       }
     };
@@ -95,7 +107,7 @@ export default function WorkoutScreen() {
     return () => {
       isMounted = false;
     };
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -125,7 +137,7 @@ export default function WorkoutScreen() {
     setRefreshing(true);
     setError('');
     try {
-      const response = await fetchWorkoutLibrary(searchQuery);
+      const response = await fetchWorkoutLibrary(debouncedSearchQuery);
       setLibrary(response);
     } catch (refreshError) {
       setError(formatAppError(refreshError).message);
@@ -220,8 +232,8 @@ export default function WorkoutScreen() {
             onChangeText={setSearchQuery}
           />
           <View style={styles.searchActions}>
-            <TouchableOpacity style={styles.searchActionBtn} onPress={handleRefresh} disabled={refreshing}>
-              {refreshing ? (
+            <TouchableOpacity style={styles.searchActionBtn} onPress={handleRefresh} disabled={refreshing || searching}>
+              {refreshing || searching ? (
                 <ActivityIndicator size="small" color={Colors.textMuted} />
               ) : (
                 <Ionicons name="refresh-outline" size={20} color={Colors.textMuted} />
@@ -230,6 +242,7 @@ export default function WorkoutScreen() {
             {searchQuery.length > 0 && (
               <TouchableOpacity
                 style={styles.searchActionBtn}
+                disabled={searching}
                 onPress={() => setSearchQuery('')}
               >
                 <Ionicons name="close" size={20} color={Colors.textMuted} />
@@ -292,6 +305,12 @@ export default function WorkoutScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
+            {!searching && newAndPopular.length === 0 && !featuredWorkout ? (
+              <View style={styles.inlineEmptyState}>
+                <Text style={styles.inlineEmptyStateText}>No workouts match your current search.</Text>
+              </View>
+            ) : null}
 
             <Pressable onPress={openAllCategories} style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { marginTop: 28 }]}>CATEGORIES</Text>
@@ -656,5 +675,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.78)',
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
+  },
+  inlineEmptyState: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    backgroundColor: '#10182B',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  inlineEmptyStateText: {
+    color: Colors.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: 'Inter_400Regular',
   },
 });

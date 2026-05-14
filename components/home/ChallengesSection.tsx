@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -85,6 +85,29 @@ function ChallengeCard({
   );
 }
 
+function ChallengeSkeletonCard() {
+  return (
+    <View style={styles.skeletonCard}>
+      <View style={styles.skeletonHeaderRow}>
+        <View style={styles.skeletonTitleBlock} />
+        <View style={styles.skeletonBadgeBlock} />
+      </View>
+      <View style={styles.skeletonStatusRow}>
+        <View style={styles.skeletonStatusDot} />
+        <View style={styles.skeletonStatusText} />
+      </View>
+      <View style={styles.skeletonLineLg} />
+      <View style={styles.skeletonLineMd} />
+      <View style={styles.skeletonLineSm} />
+      <View style={styles.challengeDivider} />
+      <View style={styles.skeletonFooterRow}>
+        <View style={styles.skeletonFooterText} />
+        <View style={styles.skeletonOpenBlock} />
+      </View>
+    </View>
+  );
+}
+
 export default function ChallengesSection() {
   const router = useRouter();
   const [cards, setCards] = React.useState<HomeChallengeCard[]>([]);
@@ -136,10 +159,14 @@ export default function ChallengesSection() {
       </View>
 
       {loading ? (
-        <View style={styles.loadingCard}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading challenges...</Text>
-        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.challengesScroll}
+        >
+          <ChallengeSkeletonCard />
+          <ChallengeSkeletonCard />
+        </ScrollView>
       ) : cards.length === 0 ? (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>No active challenges</Text>
@@ -278,6 +305,89 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
+  },
+  skeletonCard: {
+    backgroundColor: '#1E1E2E',
+    borderRadius: 24,
+    padding: 24,
+    width: width - 64,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  skeletonHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skeletonTitleBlock: {
+    width: '58%',
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  skeletonBadgeBlock: {
+    width: 74,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  skeletonStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  skeletonStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  skeletonStatusText: {
+    width: 68,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  skeletonLineLg: {
+    width: '100%',
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 10,
+  },
+  skeletonLineMd: {
+    width: '88%',
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 10,
+  },
+  skeletonLineSm: {
+    width: '70%',
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 20,
+  },
+  skeletonFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  skeletonFooterText: {
+    width: 90,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  skeletonOpenBlock: {
+    width: 64,
+    height: 32,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   emptyCard: {
     backgroundColor: '#1E1E2E',
