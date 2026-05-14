@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,51 +12,14 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
-
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-const SAMPLE_EXERCISES = [
-  {
-    id: '1',
-    name: 'Barbell Back Squat',
-    sets: 4,
-    reps: '6-8',
-    rest: '180s',
-    weight: '80kg',
-    type: 'Compound',
-  },
-  {
-    id: '2',
-    name: 'Romanian Deadlift',
-    sets: 3,
-    reps: '10-12',
-    rest: '120s',
-    weight: '60kg',
-    type: 'Compound',
-  },
-  {
-    id: '3',
-    name: 'Leg Press',
-    sets: 3,
-    reps: '12-15',
-    rest: '90s',
-    weight: '120kg',
-    type: 'Accessory',
-  },
-  {
-    id: '4',
-    name: 'Leg Extensions',
-    sets: 3,
-    reps: '15',
-    rest: '60s',
-    weight: '40kg',
-    type: 'Isolation',
-  },
-];
+import { getLatestStrengthWorkoutPlan } from '../../lib/workout-plans';
 
 export default function StrengthPlanResult() {
   const router = useRouter();
-  const [selectedDay, setSelectedDay] = useState('Mon');
+  const plan = getLatestStrengthWorkoutPlan();
+  const dayLabels = useMemo(() => (plan?.days?.length ? plan.days.map((day) => day.day) : ['Mon']), [plan]);
+  const [selectedDay, setSelectedDay] = useState(dayLabels[0] ?? 'Mon');
+  const selectedPlanDay = plan?.days?.find((day) => day.day === selectedDay) ?? plan?.days?.[0] ?? null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -76,14 +39,16 @@ export default function StrengthPlanResult() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Section */}
         <View style={styles.topSection}>
-          <Text style={styles.welcomeText}>Your Strength Roadmap</Text>
-          <Text style={styles.dateText}>Day {DAYS.indexOf(selectedDay) + 1}: Lower Body Power</Text>
+          <Text style={styles.welcomeText}>{plan?.summary ?? 'Your Strength Roadmap'}</Text>
+          <Text style={styles.dateText}>
+            {selectedPlanDay ? `Day ${dayLabels.indexOf(selectedPlanDay.day) + 1}: ${selectedPlanDay.title}` : 'No generated plan'}
+          </Text>
         </View>
 
         {/* Day Selector */}
         <View style={styles.daySelectorContainer}>
-          <View style={styles.daySelector}>
-            {DAYS.map((day) => {
+            <View style={styles.daySelector}>
+            {dayLabels.map((day) => {
               const isActive = selectedDay === day;
               return (
                 <TouchableOpacity
@@ -103,24 +68,24 @@ export default function StrengthPlanResult() {
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>EST. TIME</Text>
-            <Text style={styles.statValue}>65 min</Text>
+            <Text style={styles.statValue}>{selectedPlanDay?.est_time ?? '-'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>VOLUME</Text>
-            <Text style={styles.statValue}>8,400 kg</Text>
+            <Text style={styles.statValue}>{selectedPlanDay?.volume ?? '-'}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>INTENSITY</Text>
-            <Text style={styles.statValue}>RPE 8.5</Text>
+            <Text style={styles.statValue}>{selectedPlanDay?.intensity ?? '-'}</Text>
           </View>
         </View>
 
         {/* Exercise List */}
         <Text style={styles.sectionHeader}>TODAY'S EXERCISES</Text>
         <View style={styles.exerciseList}>
-          {SAMPLE_EXERCISES.map((ex) => (
+          {(selectedPlanDay?.exercises ?? []).map((ex) => (
             <View key={ex.id} style={styles.exerciseCard}>
               <View style={styles.exerciseHeader}>
                 <View>

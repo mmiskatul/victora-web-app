@@ -16,6 +16,7 @@ import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
+import { createStrengthWorkoutPlan } from '../../lib/workout-plans';
 
 const { width } = Dimensions.get('window');
 
@@ -75,12 +76,29 @@ export default function StrengthWizard() {
     if (step > 1) setStep(step - 1);
   };
 
-  const generatePlan = () => {
+  const generatePlan = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await createStrengthWorkoutPlan({
+        goal: formData.goal,
+        level: formData.level,
+        split: formData.split,
+        height: formData.height,
+        gender: formData.gender,
+        bench: formData.bench,
+        squat: formData.squat,
+        deadlift: formData.deadlift,
+        equipment: formData.equipment,
+        frequency: formData.frequency,
+        days: formData.days,
+        age: formData.age,
+        weight: formData.weight,
+      });
       setLoading(false);
       router.replace('/workoutplan/strength-plan');
-    }, 3000);
+    } catch {
+      setLoading(false);
+    }
   };
 
   const updateData = (key: string, value: any) => {
