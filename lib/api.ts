@@ -103,6 +103,81 @@ export type SupportMessagePayload = {
   message: string;
 };
 
+export type LongevityOverview = {
+  biological_age: string;
+  chronological_age: string;
+  trending_years_younger: number;
+  recovery_score: number;
+  hrv_ms: number;
+  sleep_score: number;
+};
+
+export type LongevityQuickAction = {
+  id: string;
+  label: string;
+  image: string;
+  color: string;
+};
+
+export type LongevityWearableDevice = {
+  id: string;
+  name: string;
+  status: string;
+  active: boolean;
+  image: string;
+};
+
+export type LongevityWearables = {
+  devices: LongevityWearableDevice[];
+  last_synced_at?: string | null;
+  has_data: boolean;
+  sync_message: string;
+};
+
+export type LongevityHabit = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  done: boolean;
+};
+
+export type LongevityHabits = {
+  streak_days: number;
+  habits: LongevityHabit[];
+};
+
+export type LongevityHealCategory = {
+  id: string;
+  label: string;
+  image: string;
+  color: string;
+};
+
+export type LongevityMasterclass = {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+};
+
+export type LongevityCircle = {
+  id: string;
+  name: string;
+  member_count: number;
+  description: string;
+};
+
+export type LongevityDashboard = {
+  overview: LongevityOverview;
+  quick_actions: LongevityQuickAction[];
+  wearables: LongevityWearables;
+  habits: LongevityHabits;
+  heal_categories: LongevityHealCategory[];
+  masterclasses: LongevityMasterclass[];
+  circles: LongevityCircle[];
+};
+
 const AUTH_STORAGE_KEY = 'victory-auth-tokens';
 const AUTH_USER_STORAGE_KEY = 'victory-auth-user';
 
@@ -385,6 +460,29 @@ export async function submitSupportMessage(payload: SupportMessagePayload) {
   return apiRequest('/support/messages', {
     method: 'POST',
     body: payload,
+  });
+}
+
+export async function fetchLongevityDashboard() {
+  return apiRequest<LongevityDashboard>('/longevity-os/dashboard');
+}
+
+export async function syncLongevityWearables() {
+  return apiRequest<LongevityWearables>('/longevity-os/wearables/sync', {
+    method: 'POST',
+  });
+}
+
+export async function updateLongevityHabit(habitId: string, done: boolean) {
+  return apiRequest<LongevityHabits>(`/longevity-os/habits/${encodeURIComponent(habitId)}`, {
+    method: 'PATCH',
+    body: { done },
+  });
+}
+
+export async function generateLongevityWeeklyPlan() {
+  return apiRequest<{ status: string; message: string; generated_at: string }>('/longevity-os/heal/weekly-plan', {
+    method: 'POST',
   });
 }
 
