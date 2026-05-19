@@ -6,7 +6,6 @@ import {
   Linking,
   Modal,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import {
@@ -29,6 +29,7 @@ import {
   LongevityDashboard,
   LongevityHabit,
   LongevityMasterclass,
+  LongevityWeeklyPlan,
   LongevityWearableDevice,
   WearableProvider,
   syncLongevityWearables,
@@ -38,6 +39,17 @@ import { canAccessFeature } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 const FALLBACK_CARD_IMAGE = 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&q=80';
+
+function formatWeeklyPlanMessage(plan: LongevityWeeklyPlan) {
+  const sections = plan.plan_sections
+    .map((section) => {
+      const actions = section.actions.map((action) => `• ${action}`).join('\n');
+      return `${section.title}\n${section.summary}${actions ? `\n${actions}` : ''}`;
+    })
+    .join('\n\n');
+
+  return sections ? `${plan.message}\n\n${sections}` : plan.message;
+}
 
 function safeImageUri(value: string | null | undefined) {
   const normalized = String(value || '').trim();
@@ -140,7 +152,7 @@ export default function LongevityOS() {
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
       await loadDashboard(false);
-      Alert.alert('Data sync successfully', 'Wearable data has been cached and all Longevity calculations now use the synced data.');
+      Alert.alert('Data sync successfully', 'All Longevity OS calculations are now using the synced data.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to sync wearables.';
       Alert.alert('Sync failed', message);
@@ -189,7 +201,7 @@ export default function LongevityOS() {
     setGeneratingPlan(true);
     try {
       const response = await generateLongevityWeeklyPlan();
-      Alert.alert('Weekly plan ready', response.message);
+      Alert.alert('Weekly plan ready', formatWeeklyPlanMessage(response));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to generate weekly plan.';
       Alert.alert('Generation failed', message);

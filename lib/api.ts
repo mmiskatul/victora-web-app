@@ -198,6 +198,20 @@ export type LongevityHealCategory = {
   color: string;
 };
 
+export type LongevityWeeklyPlanSection = {
+  id: string;
+  title: string;
+  summary: string;
+  actions: string[];
+};
+
+export type LongevityWeeklyPlan = {
+  status: string;
+  message: string;
+  plan_sections: LongevityWeeklyPlanSection[];
+  generated_at: string;
+};
+
 export type LongevityMasterclass = {
   id: string;
   title: string;
@@ -673,7 +687,7 @@ export async function updateLongevityHabit(habitId: string, done: boolean) {
 }
 
 export async function generateLongevityWeeklyPlan() {
-  return apiRequest<{ status: string; message: string; generated_at: string }>('/longevity-os/heal/weekly-plan', {
+  return apiRequest<LongevityWeeklyPlan>('/longevity-os/heal/weekly-plan', {
     method: 'POST',
   });
 }
