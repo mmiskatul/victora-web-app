@@ -197,7 +197,7 @@ export default function ProfileScreen() {
   const pointsToNextRank = Math.max(me?.points_to_next_rank ?? 0, 0);
   const rankIcon = getDynamicRankIcon(rank);
   const profileStats = [
-    { label: 'Workouts', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '\u{1F3CB}\uFE0F' },
+    { label: 'Exercises', value: workoutsTotal > 0 ? `${workoutsCompleted}/${workoutsTotal}` : String(workoutsCompleted), icon: '\u{1F3CB}\uFE0F' },
     { label: 'Streak', value: `${streakDays}d`, icon: '\u{1F525}' },
     { label: 'Points', value: String(points), icon: '\u26A1' },
     { label: 'Rank', value: rank.toUpperCase(), icon: rankIcon },

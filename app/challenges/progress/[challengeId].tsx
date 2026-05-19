@@ -14,6 +14,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../../constants/Colors';
 import { apiRequest } from '../../../lib/api';
@@ -82,6 +83,13 @@ type ChallengeProgressThread = {
 };
 
 type UnitPointMap = Record<string, number>;
+type CompletedReportEntry = {
+  title: string;
+  detail: string;
+};
+
+const GOOGLE_PLAY_URL = 'https://play.google.com/store';
+const APP_STORE_URL = 'https://apps.apple.com/app';
 
 function buildWorkoutPlayerHtml(videoUrl: string) {
   return `<!DOCTYPE html>
@@ -213,52 +221,130 @@ function getDayProgressFraction(day: ChallengePlanDay, progress?: ChallengePlanD
   return progress.completed ? 1 : 0;
 }
 
-function buildChallengeProgressReport(thread: ChallengeProgressThread, dayProgressMap: Map<number, ChallengePlanDayProgress>) {
-  const lines = [
-    `${thread.title} Progress Report`,
-    `Generated: ${new Date().toLocaleString()}`,
-    `${thread.category} | ${thread.difficulty} | ${thread.status}`,
-    `Days completed: ${thread.viewer_progress_days_completed}/${thread.duration_days}`,
-    `Points earned: ${thread.viewer_points_earned}/${thread.points}`,
-    '',
-  ];
+function xmlEscape(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function buildCompletedReportEntries(thread: ChallengeProgressThread, dayProgressMap: Map<number, ChallengePlanDayProgress>) {
+  const entries: CompletedReportEntry[] = [];
 
   for (const day of thread.plan_days) {
     const dayProgress = dayProgressMap.get(day.day_number);
-    const completedExerciseIds = Array.isArray(dayProgress?.completed_exercise_ids) ? dayProgress.completed_exercise_ids : [];
-    const completedSectionIds = Array.isArray(dayProgress?.completed_section_ids) ? dayProgress.completed_section_ids : [];
-    const totalExercises = day.sections.flatMap((section) => section.exercises).length;
-    const completedExercises = day.sections.flatMap((section) => section.exercises).filter((exercise) => completedExerciseIds.includes(exercise.id)).length;
-    const completedSections = day.sections.filter((section) => completedSectionIds.includes(section.id)).length;
-    const dayStatus = dayProgress?.completed ? 'Completed' : completedExercises > 0 || completedSections > 0 ? 'In progress' : 'Not started';
+    const completedExerciseIds = new Set(Array.isArray(dayProgress?.completed_exercise_ids) ? dayProgress.completed_exercise_ids : []);
+    const completedSectionIds = new Set(Array.isArray(dayProgress?.completed_section_ids) ? dayProgress.completed_section_ids : []);
 
-    lines.push(`Day ${day.day_number}: ${day.title} (${dayStatus})`);
-    lines.push(`Focus: ${day.focus}`);
-    lines.push(
-      totalExercises > 0
-        ? `Exercise progress: ${completedExercises}/${totalExercises}`
-        : `Section progress: ${completedSections}/${day.sections.length}`
-    );
-
-    for (const section of day.sections) {
-      const sectionTotal = section.exercises.length;
-      const sectionCompleted = section.exercises.filter((exercise) => completedExerciseIds.includes(exercise.id)).length;
-      const sectionStatus = completedSectionIds.includes(section.id)
-        ? 'Completed'
-        : sectionCompleted > 0
-          ? 'In progress'
-          : 'Not started';
-      lines.push(
-        sectionTotal > 0
-          ? `- ${section.title}: ${sectionCompleted}/${sectionTotal} exercises (${sectionStatus})`
-          : `- ${section.title}: ${sectionStatus}`
-      );
+    if (dayProgress?.completed) {
+      entries.push({
+        title: `Day ${day.day_number} completed`,
+        detail: `${day.title} · ${day.focus}`,
+      });
+      continue;
     }
 
-    lines.push('');
+    for (const section of day.sections) {
+      if (completedSectionIds.has(section.id)) {
+        entries.push({
+          title: `Section completed`,
+          detail: `Day ${day.day_number} · ${section.title}`,
+        });
+        continue;
+      }
+
+      for (const exercise of section.exercises) {
+        if (completedExerciseIds.has(exercise.id)) {
+          entries.push({
+            title: exercise.name,
+            detail: `Day ${day.day_number} · ${section.title}`,
+          });
+        }
+      }
+    }
   }
 
-  return lines.join('\n').trim().slice(0, 5000);
+  return entries.slice(0, 10);
+}
+
+function buildChallengeProgressShareMessage(thread: ChallengeProgressThread, entries: CompletedReportEntry[]) {
+  const completedLines = entries.length > 0
+    ? entries.map((entry) => `• ${entry.title} — ${entry.detail}`).join('\n')
+    : '• No completed items yet';
+
+  return [
+    `Victory Fitness`,
+    `${thread.title} progress report`,
+    `Completed ${thread.viewer_progress_days_completed}/${thread.duration_days} days · ${thread.viewer_points_earned}/${thread.points} pts`,
+    '',
+    completedLines,
+    '',
+    `Get the app on Google Play: ${GOOGLE_PLAY_URL}`,
+    `Get the app on the App Store: ${APP_STORE_URL}`,
+  ].join('\n').slice(0, 5000);
+}
+
+function buildChallengeProgressSvg(thread: ChallengeProgressThread, entries: CompletedReportEntry[]) {
+  const width = 1080;
+  const headerHeight = 290;
+  const rowHeight = 88;
+  const footerHeight = 210;
+  const rows = Math.max(entries.length, 1);
+  const height = headerHeight + rows * rowHeight + footerHeight;
+  const generatedAt = new Date().toLocaleDateString();
+  const content = (entries.length > 0 ? entries : [{ title: 'No completed items yet', detail: 'Finish exercises to build your share card.' }])
+    .map((entry, index) => {
+      const y = headerHeight + index * rowHeight;
+      return `
+        <g transform="translate(72 ${y})">
+          <circle cx="16" cy="24" r="16" fill="#00F0D0" fill-opacity="0.18" />
+          <text x="16" y="30" text-anchor="middle" font-size="18" font-family="Arial, sans-serif" fill="#00F0D0">✓</text>
+          <text x="48" y="18" font-size="28" font-family="Arial, sans-serif" font-weight="700" fill="#FFFFFF">${xmlEscape(entry.title)}</text>
+          <text x="48" y="50" font-size="22" font-family="Arial, sans-serif" fill="#9FB3C8">${xmlEscape(entry.detail)}</text>
+        </g>
+      `;
+    })
+    .join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+  <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#07101F"/>
+        <stop offset="100%" stop-color="#0B1D34"/>
+      </linearGradient>
+    </defs>
+    <rect width="${width}" height="${height}" rx="0" fill="url(#bg)" />
+    <rect x="48" y="48" width="${width - 96}" height="${height - 96}" rx="36" fill="#081423" stroke="rgba(255,255,255,0.08)" />
+    <text x="72" y="108" font-size="28" font-family="Arial, sans-serif" font-weight="700" fill="#00F0D0">VICTORY FITNESS</text>
+    <text x="72" y="156" font-size="54" font-family="Arial, sans-serif" font-weight="700" fill="#FFFFFF">${xmlEscape(thread.title)}</text>
+    <text x="72" y="198" font-size="24" font-family="Arial, sans-serif" fill="#9FB3C8">Completed progress only · ${xmlEscape(generatedAt)}</text>
+    <rect x="72" y="224" width="222" height="42" rx="21" fill="#00F0D0" fill-opacity="0.14" />
+    <text x="92" y="252" font-size="22" font-family="Arial, sans-serif" font-weight="700" fill="#00F0D0">${thread.viewer_progress_days_completed}/${thread.duration_days} DAYS</text>
+    <rect x="316" y="224" width="220" height="42" rx="21" fill="#F59E0B" fill-opacity="0.14" />
+    <text x="336" y="252" font-size="22" font-family="Arial, sans-serif" font-weight="700" fill="#F59E0B">${thread.viewer_points_earned}/${thread.points} PTS</text>
+    ${content}
+    <text x="72" y="${height - 154}" font-size="24" font-family="Arial, sans-serif" font-weight="700" fill="#FFFFFF">Download the app</text>
+    <rect x="72" y="${height - 128}" width="270" height="74" rx="20" fill="#111827" stroke="#2A3548" />
+    <text x="102" y="${height - 84}" font-size="22" font-family="Arial, sans-serif" font-weight="700" fill="#FFFFFF">▶ Google Play</text>
+    <rect x="362" y="${height - 128}" width="270" height="74" rx="20" fill="#111827" stroke="#2A3548" />
+    <text x="392" y="${height - 84}" font-size="22" font-family="Arial, sans-serif" font-weight="700" fill="#FFFFFF"> App Store</text>
+    <text x="72" y="${height - 20}" font-size="20" font-family="Arial, sans-serif" fill="#6F8298">Get Victory Fitness on Google Play and the App Store</text>
+  </svg>`;
+}
+
+async function buildChallengeProgressReportAsset(thread: ChallengeProgressThread, dayProgressMap: Map<number, ChallengePlanDayProgress>) {
+  const entries = buildCompletedReportEntries(thread, dayProgressMap);
+  const svg = buildChallengeProgressSvg(thread, entries);
+  const directory = FileSystem.cacheDirectory || FileSystem.documentDirectory || '';
+  const filename = `victory-progress-${thread.challenge_id}.svg`;
+  const fileUri = `${directory}${filename}`;
+  await FileSystem.writeAsStringAsync(fileUri, svg, { encoding: FileSystem.EncodingType.UTF8 });
+  const imageBase64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+  const shareMessage = buildChallengeProgressShareMessage(thread, entries);
+  return { fileUri, imageBase64, shareMessage };
 }
 
 export default function ChallengeProgressScreen() {
@@ -300,11 +386,6 @@ export default function ChallengeProgressScreen() {
   const unitPointMap = useMemo(
     () => buildUnitPointMap(thread?.plan_days || [], thread?.points || 0),
     [thread?.plan_days, thread?.points],
-  );
-
-  const progressReport = useMemo(
-    () => (thread ? buildChallengeProgressReport(thread, dayProgressMap) : ''),
-    [dayProgressMap, thread],
   );
 
   const loadThread = useCallback(async (showLoader = false) => {
@@ -470,52 +551,49 @@ export default function ChallengeProgressScreen() {
   }, [toggleDayCompletion]);
 
   const handleDownloadReport = useCallback(async () => {
-    if (!progressReport) {
+    if (!thread) {
       return;
     }
     setReportAction('download');
     try {
+      const asset = await buildChallengeProgressReportAsset(thread, dayProgressMap);
       await Share.share({
         title: `${thread?.title || 'Challenge'} Progress Report`,
-        message: progressReport,
+        url: asset.fileUri,
+        message: asset.shareMessage,
       });
     } catch (error) {
       setErrorDialog(formatAppError(error, 'Failed to export the progress report.'));
     } finally {
       setReportAction('');
     }
-  }, [progressReport, thread?.title]);
+  }, [dayProgressMap, thread]);
 
   const handleShareReportToCommunity = useCallback(async () => {
-    if (!progressReport) {
+    if (!thread) {
       return;
     }
 
-    Alert.alert(
-      'Share to Community',
-      'Post this progress report to the community feed?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Share',
-          onPress: async () => {
-            setReportAction('community');
-            try {
-              await apiRequest('/community/posts', {
-                method: 'POST',
-                body: { content: progressReport },
-              });
-              Alert.alert('Shared', 'Your progress report was posted to the community feed.');
-            } catch (error) {
-              setErrorDialog(formatAppError(error, 'Failed to share the progress report to the community.'));
-            } finally {
-              setReportAction('');
-            }
-          },
+    setReportAction('community');
+    try {
+      const asset = await buildChallengeProgressReportAsset(thread, dayProgressMap);
+      router.push({
+        pathname: '/challenge',
+        params: {
+          tab: 'COMMUNITY',
+          prefillSource: 'challenge-report',
+          prefillChallengeId: thread.challenge_id,
+          prefillImageUri: asset.fileUri,
+          prefillImageMimeType: 'image/svg+xml',
+          prefillImageFileName: 'victory-fitness-progress-report.svg',
         },
-      ],
-    );
-  }, [progressReport]);
+      });
+    } catch (error) {
+      setErrorDialog(formatAppError(error, 'Failed to prepare the progress report for community sharing.'));
+    } finally {
+      setReportAction('');
+    }
+  }, [dayProgressMap, router, thread]);
 
   if (loading && !thread) {
     return (
