@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getValidAuthTokens } from '../../lib/api';
+import { getAuthUser, getValidAuthTokens } from '../../lib/api';
 
 export default function TabsLayout() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [profileImage, setProfileImage] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +34,23 @@ export default function TabsLayout() {
       cancelled = true;
     };
   }, [router]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProfileImage = async () => {
+      const authUser = await getAuthUser();
+      if (!cancelled) {
+        setProfileImage(String(authUser?.profileImage || '').trim());
+      }
+    };
+
+    void loadProfileImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (checkingAuth) {
     return null;
@@ -94,7 +112,11 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View style={focused ? styles.activeTab : undefined}>
               <View style={styles.profileBadge}>
-                <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+                {profileImage ? (
+                  <Image source={{ uri: profileImage }} style={styles.profileAvatar} />
+                ) : (
+                  <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
+                )}
               </View>
             </View>
           ),
@@ -126,5 +148,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  profileAvatar: {
+    width: '100%',
+    height: '100%',
   },
 });
