@@ -305,6 +305,30 @@ export default function ChallengeChatScreen() {
     [thread]
   );
 
+  const visibleParticipants = useMemo(() => {
+    if (thread?.participants?.length) {
+      return thread.participants;
+    }
+
+    const seen = new Set<string>();
+    const fallback: ChallengeParticipant[] = [];
+    for (const message of thread?.messages || []) {
+      if (!message.author_id || message.author_id === 'system' || message.author_id === 'coach_bot') {
+        continue;
+      }
+      if (seen.has(message.author_id)) {
+        continue;
+      }
+      seen.add(message.author_id);
+      fallback.push({
+        user_id: message.author_id,
+        name: message.author_name || 'Member',
+        profile_image: message.author_profile_image || '',
+      });
+    }
+    return fallback;
+  }, [thread?.messages, thread?.participants]);
+
   const messagesById = useMemo(() => {
     const map = new Map<string, ChallengeChatMessage>();
     for (const message of thread?.messages || []) {
@@ -575,7 +599,7 @@ export default function ChallengeChatScreen() {
               </TouchableOpacity>
             </View>
             <FlatList
-              data={thread?.participants || []}
+              data={visibleParticipants}
               keyExtractor={(item) => item.user_id}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={<Text style={styles.membersEmptyText}>No participants yet.</Text>}
@@ -612,8 +636,9 @@ export default function ChallengeChatScreen() {
         >
           <Text style={styles.headerProgressButtonText}>Progress</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowMembers(true)} style={styles.headerIcon}>
-          <Ionicons name="people-outline" size={20} color="#fff" />
+        <TouchableOpacity onPress={() => setShowMembers(true)} style={styles.membersButton}>
+          <Ionicons name="people-outline" size={16} color="#fff" />
+          <Text style={styles.membersButtonText}>Members</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => void loadThread(false)} style={styles.headerIcon}>
           {refreshing ? <ActivityIndicator color={Colors.primary} size="small" /> : <Ionicons name="refresh" size={20} color="#fff" />}
@@ -717,6 +742,21 @@ const styles = StyleSheet.create({
   },
   headerProgressButtonText: {
     color: Colors.primary,
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
+  membersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginRight: 6,
+  },
+  membersButtonText: {
+    color: '#fff',
     fontSize: 12,
     fontFamily: 'Inter_700Bold',
   },

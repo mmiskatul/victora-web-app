@@ -448,6 +448,27 @@ export default function ChallengeProgressScreen() {
     }
   }, [applyPlanProgress, challengeId]);
 
+  const confirmDayCompletion = useCallback((dayNumber: number, completed: boolean) => {
+    if (!completed) {
+      void toggleDayCompletion(dayNumber, completed);
+      return;
+    }
+
+    Alert.alert(
+      'Mark day done',
+      `Are you sure you want to mark day ${dayNumber} as complete?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            void toggleDayCompletion(dayNumber, completed);
+          },
+        },
+      ],
+    );
+  }, [toggleDayCompletion]);
+
   const handleDownloadReport = useCallback(async () => {
     if (!progressReport) {
       return;
@@ -713,14 +734,20 @@ export default function ChallengeProgressScreen() {
                                   {totalCount > 0 ? `${completedCount}/${totalCount} exercises` : `${section.estimated_minutes} min`}
                                 </Text>
                                 <TouchableOpacity
-                                  style={[styles.compactButton, !canUpdateProgress && styles.buttonDisabled]}
-                                  disabled={!canUpdateProgress || completionUpdatingKey === `section-${day.day_number}-${section.id}`}
+                                  style={[
+                                    styles.compactButton,
+                                    sectionCompleted && styles.compactButtonCompleted,
+                                    (!canUpdateProgress || sectionCompleted) && styles.buttonDisabled,
+                                  ]}
+                                  disabled={!canUpdateProgress || sectionCompleted || completionUpdatingKey === `section-${day.day_number}-${section.id}`}
                                   onPress={() => void toggleSectionCompletion(day.day_number, section.id, !sectionCompleted)}
                                 >
                                   {completionUpdatingKey === `section-${day.day_number}-${section.id}` ? (
                                     <ActivityIndicator size="small" color="#001311" />
                                   ) : (
-                                    <Text style={styles.compactButtonText}>{sectionCompleted ? 'Completed' : 'Complete section'}</Text>
+                                    <Text style={[styles.compactButtonText, sectionCompleted && styles.compactButtonTextCompleted]}>
+                                      {sectionCompleted ? 'Completed' : 'Complete section'}
+                                    </Text>
                                   )}
                                 </TouchableOpacity>
                               </View>
@@ -736,19 +763,24 @@ export default function ChallengeProgressScreen() {
                                           style={[
                                             styles.exerciseCheck,
                                             exerciseCompleted && styles.exerciseCheckCompleted,
-                                            !canUpdateProgress && styles.buttonDisabled,
+                                            (!canUpdateProgress || exerciseCompleted) && styles.buttonDisabled,
                                           ]}
-                                          disabled={!canUpdateProgress || completionUpdatingKey === exerciseKey}
+                                          disabled={!canUpdateProgress || exerciseCompleted || completionUpdatingKey === exerciseKey}
                                           onPress={() => void toggleExerciseCompletion(day.day_number, section.id, exercise.id, !exerciseCompleted)}
                                         >
                                           {completionUpdatingKey === exerciseKey ? (
                                             <ActivityIndicator size="small" color={exerciseCompleted ? '#001311' : Colors.primary} />
                                           ) : (
-                                            <Ionicons
-                                              name={exerciseCompleted ? 'checkmark' : 'ellipse-outline'}
-                                              size={18}
-                                              color={exerciseCompleted ? '#001311' : Colors.primary}
-                                            />
+                                            <View style={styles.exerciseCheckContent}>
+                                              <Ionicons
+                                                name={exerciseCompleted ? 'checkmark-circle' : 'ellipse-outline'}
+                                                size={16}
+                                                color={exerciseCompleted ? '#001311' : Colors.primary}
+                                              />
+                                              <Text style={[styles.exerciseCheckText, exerciseCompleted && styles.exerciseCheckTextCompleted]}>
+                                                {exerciseCompleted ? 'Completed' : 'Complete'}
+                                              </Text>
+                                            </View>
                                           )}
                                         </TouchableOpacity>
                                         <View style={styles.exerciseTextWrap}>
@@ -781,7 +813,7 @@ export default function ChallengeProgressScreen() {
                             (!canUpdateProgress || (!dayProgress?.completed && !allSectionsCompleted)) && styles.buttonDisabled,
                           ]}
                           disabled={!canUpdateProgress || completionUpdatingKey === `day-${day.day_number}` || (!dayProgress?.completed && !allSectionsCompleted)}
-                          onPress={() => void toggleDayCompletion(day.day_number, !Boolean(dayProgress?.completed))}
+                          onPress={() => confirmDayCompletion(day.day_number, !Boolean(dayProgress?.completed))}
                         >
                           {completionUpdatingKey === `day-${day.day_number}` ? (
                             <ActivityIndicator size="small" color={dayProgress?.completed ? '#001311' : Colors.primary} />
@@ -1029,7 +1061,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
+  compactButtonCompleted: {
+    backgroundColor: 'rgba(34,197,94,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.28)',
+  },
   compactButtonText: { color: '#001311', fontSize: 11, fontFamily: 'Inter_700Bold' },
+  compactButtonTextCompleted: { color: '#DCFCE7' },
   exerciseList: { gap: 8, marginTop: 4 },
   exerciseCard: {
     borderRadius: 12,
@@ -1046,8 +1084,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(34,197,94,0.2)',
   },
   exerciseCheck: {
-    width: 34,
-    height: 34,
+    minWidth: 34,
+    minHeight: 34,
+    paddingHorizontal: 10,
     borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1058,6 +1097,19 @@ const styles = StyleSheet.create({
   exerciseCheckCompleted: {
     backgroundColor: Colors.primary,
     borderColor: Colors.primary,
+  },
+  exerciseCheckContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  exerciseCheckText: {
+    color: Colors.primary,
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+  },
+  exerciseCheckTextCompleted: {
+    color: '#001311',
   },
   exerciseTextWrap: { flex: 1 },
   exerciseTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
