@@ -6,6 +6,7 @@ import {
   Linking,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -95,6 +96,7 @@ export default function LongevityOS() {
   const [dashboard, setDashboard] = useState<LongevityDashboard | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [syncingWearables, setSyncingWearables] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [canGenerateLongevityPlan, setCanGenerateLongevityPlan] = useState(false);
@@ -127,6 +129,28 @@ export default function LongevityOS() {
     React.useCallback(() => {
       void loadDashboard(true);
     }, [loadDashboard]),
+  );
+
+  const handleRefresh = React.useCallback(async () => {
+    if (refreshing) {
+      return;
+    }
+    setRefreshing(true);
+    try {
+      await loadDashboard(false);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadDashboard, refreshing]);
+
+  const refreshControl = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => void handleRefresh()}
+      tintColor={Colors.primary}
+      colors={[Colors.primary]}
+      progressBackgroundColor="#0F172A"
+    />
   );
 
   const handleBack = () => {
@@ -200,8 +224,9 @@ export default function LongevityOS() {
     }
     setGeneratingPlan(true);
     try {
-      const response = await generateLongevityWeeklyPlan();
-      Alert.alert('Weekly plan ready', formatWeeklyPlanMessage(response));
+      await generateLongevityWeeklyPlan();
+      await loadDashboard(false);
+      Alert.alert('Weekly plan ready', 'Your AI weekly plan has been generated and saved in Healthy Food Library.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to generate weekly plan.';
       Alert.alert('Generation failed', message);
@@ -221,7 +246,7 @@ export default function LongevityOS() {
   };
 
   const renderOverview = () => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
       <SectionTitle>Your Health Status</SectionTitle>
       <View style={styles.heroCard}>
         <Image source={{ uri: 'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=900&q=80' }} style={styles.heroImage} />
@@ -270,7 +295,7 @@ export default function LongevityOS() {
       const devices = dashboard?.wearables.devices || [];
       const availableDevices = devices.filter((device) => !device.active);
       return (
-        <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
             <View style={styles.sectionHeaderRow}>
               <SectionTitle>Wearable Sources</SectionTitle>
               <TouchableOpacity style={styles.inlineActionButton} activeOpacity={0.88} onPress={handleAddWearable}>
@@ -369,7 +394,7 @@ export default function LongevityOS() {
   );
 
   const renderHeal = () => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
       <View style={styles.heroCard}>
         <Image source={{ uri: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=900&q=80' }} style={styles.heroImage} />
         <View style={styles.heroOverlay} />
@@ -400,11 +425,36 @@ export default function LongevityOS() {
           </View>
         ))}
       </View>
+      {dashboard?.weekly_plan ? (
+        <>
+          <SectionTitle>Your Weekly AI Plan</SectionTitle>
+          <View style={styles.listCard}>
+            <View style={styles.planHeaderCard}>
+              <Text style={styles.planSummaryText}>{dashboard.weekly_plan.message}</Text>
+              <Text style={styles.planGeneratedAt}>
+                Generated {new Date(dashboard.weekly_plan.generated_at).toLocaleDateString()}
+              </Text>
+            </View>
+            {dashboard.weekly_plan.plan_sections.map((section) => (
+              <View key={section.id} style={styles.planSectionCard}>
+                <Text style={styles.planSectionTitle}>{section.title}</Text>
+                <Text style={styles.planSectionSummary}>{section.summary}</Text>
+                {section.actions.map((action, index) => (
+                  <View key={`${section.id}-${index}`} style={styles.planActionRow}>
+                    <Ionicons name="sparkles" size={14} color={Colors.primary} />
+                    <Text style={styles.planActionText}>{action}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
   );
 
   const renderHabits = () => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
       <View style={styles.metricCard}>
         <Text style={styles.metricLabel}>{dashboard?.habits.streak_days ?? 0} DAY STREAK</Text>
         <Text style={styles.metricPrimary}>Longevity Habits</Text>
@@ -427,7 +477,7 @@ export default function LongevityOS() {
   );
 
   const renderLearn = (items: LongevityMasterclass[]) => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
       <SectionTitle>Masterclasses</SectionTitle>
       {items.length === 0 ? (
         <EmptyState icon="book-outline" title="No Masterclasses Available" subtitle="Check back later for new longevity insights." />
@@ -448,7 +498,7 @@ export default function LongevityOS() {
   );
 
   const renderCircles = (items: LongevityCircle[]) => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} refreshControl={refreshControl}>
       <SectionTitle>Your Circles</SectionTitle>
       {items.length === 0 ? (
         <EmptyState icon="people-outline" title="No Circles Yet" subtitle="You have not joined any circles yet." />
@@ -724,6 +774,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     overflow: 'hidden',
+  },
+  planHeaderCard: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(34,211,238,0.05)',
+  },
+  planSummaryText: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 21,
+    fontFamily: 'Inter_500Medium',
+  },
+  planGeneratedAt: {
+    marginTop: 8,
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  planSectionCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  planSectionTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+  },
+  planSectionSummary: {
+    color: Colors.textMuted,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 10,
+    fontFamily: 'Inter_400Regular',
+  },
+  planActionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 8,
+  },
+  planActionText: {
+    flex: 1,
+    color: '#DCE7F5',
+    fontSize: 13,
+    lineHeight: 19,
+    fontFamily: 'Inter_500Medium',
   },
   listRow: {
     flexDirection: 'row',

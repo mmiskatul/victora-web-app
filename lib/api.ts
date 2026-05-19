@@ -212,6 +212,16 @@ export type LongevityWeeklyPlan = {
   generated_at: string;
 };
 
+export type LongevityDashboard = {
+  overview: LongevityOverview;
+  quick_actions: LongevityQuickAction[];
+  wearables: LongevityWearables;
+  habits: LongevityHabits;
+  heal_categories: LongevityHealCategory[];
+  weekly_plan?: LongevityWeeklyPlan | null;
+  masterclasses: LongevityMasterclass[];
+  circles: LongevityCircle[];
+};
 export type LongevityMasterclass = {
   id: string;
   title: string;
@@ -224,16 +234,6 @@ export type LongevityCircle = {
   name: string;
   member_count: number;
   description: string;
-};
-
-export type LongevityDashboard = {
-  overview: LongevityOverview;
-  quick_actions: LongevityQuickAction[];
-  wearables: LongevityWearables;
-  habits: LongevityHabits;
-  heal_categories: LongevityHealCategory[];
-  masterclasses: LongevityMasterclass[];
-  circles: LongevityCircle[];
 };
 
 const AUTH_STORAGE_KEY = 'victory-auth-tokens';
@@ -636,6 +636,7 @@ export async function fetchLongevityDashboard() {
   const overview = response?.overview && typeof response.overview === 'object' ? response.overview : {} as LongevityOverview;
   const wearables = response?.wearables && typeof response.wearables === 'object' ? response.wearables : {} as LongevityWearables;
   const habits = response?.habits && typeof response.habits === 'object' ? response.habits : {} as LongevityHabits;
+  const weeklyPlan = response?.weekly_plan && typeof response.weekly_plan === 'object' ? response.weekly_plan : null;
   return {
     overview: {
       biological_age: String(overview.biological_age ?? 'N/A'),
@@ -657,6 +658,12 @@ export async function fetchLongevityDashboard() {
       habits: Array.isArray(habits.habits) ? habits.habits : [],
     },
     heal_categories: Array.isArray(response?.heal_categories) ? response.heal_categories : [],
+    weekly_plan: weeklyPlan ? {
+      status: String(weeklyPlan.status ?? 'success'),
+      message: String(weeklyPlan.message ?? ''),
+      plan_sections: Array.isArray(weeklyPlan.plan_sections) ? weeklyPlan.plan_sections : [],
+      generated_at: String(weeklyPlan.generated_at ?? ''),
+    } : null,
     masterclasses: Array.isArray(response?.masterclasses) ? response.masterclasses : [],
     circles: Array.isArray(response?.circles) ? response.circles : [],
   };
