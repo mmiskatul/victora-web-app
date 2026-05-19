@@ -1345,6 +1345,12 @@ export default function JournalScreen() {
         message: 'The nutrition service is unavailable right now. Try again in a moment.',
       };
     }
+    if (formatted.message.toLowerCase().includes('nutrition plan generations every 30 days')) {
+      return {
+        title: 'Plan Limit Reached',
+        message: formatted.message,
+      };
+    }
     return formatted;
   };
 
