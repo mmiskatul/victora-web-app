@@ -77,19 +77,23 @@ export type AuthUser = {
   points_to_next_rank?: number;
   rank_progress_fraction?: number;
   subscription_tier?: string;
+  subscription_role?: string;
   subscription_status?: string;
   subscription_started_at?: string | null;
   subscription_confirmed_at?: string | null;
   subscription_billing_cycle?: string;
   subscription_is_purchased?: boolean;
+  subscription_purchase_source?: string;
   subscription_access?: string[];
   subscription?: {
     tier?: string;
+    role?: string;
     status?: string;
     started_at?: string | null;
     confirmed_at?: string | null;
     billing_cycle?: string;
     is_purchased?: boolean;
+    purchase_source?: string;
     access?: string[];
   };
 };
@@ -242,6 +246,7 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
     points_to_next_rank: Math.max(Number(user.points_to_next_rank ?? 0) || 0, 0),
     rank_progress_fraction: Math.min(Math.max(Number(user.rank_progress_fraction ?? 0) || 0, 0), 1),
     subscription_tier: String(user.subscription_tier ?? normalizedSubscription?.tier ?? 'NONE'),
+    subscription_role: String(user.subscription_role ?? normalizedSubscription?.role ?? user.subscription_tier ?? normalizedSubscription?.tier ?? 'NONE'),
     subscription_status: String(user.subscription_status ?? normalizedSubscription?.status ?? 'NONE'),
     subscription_started_at: user.subscription_started_at
       ? String(user.subscription_started_at)
@@ -255,6 +260,7 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
         : null,
     subscription_billing_cycle: String(user.subscription_billing_cycle ?? normalizedSubscription?.billing_cycle ?? 'yearly'),
     subscription_is_purchased: Boolean(user.subscription_is_purchased ?? normalizedSubscription?.is_purchased),
+    subscription_purchase_source: String(user.subscription_purchase_source ?? normalizedSubscription?.purchase_source ?? ''),
     subscription_access: Array.isArray(user.subscription_access)
       ? user.subscription_access.map((item) => String(item))
       : Array.isArray(normalizedSubscription?.access)
@@ -263,11 +269,13 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
     subscription: normalizedSubscription
       ? {
           tier: String(normalizedSubscription.tier ?? 'NONE'),
+          role: String(normalizedSubscription.role ?? normalizedSubscription.tier ?? 'NONE'),
           status: String(normalizedSubscription.status ?? 'NONE'),
           started_at: normalizedSubscription.started_at ? String(normalizedSubscription.started_at) : null,
           confirmed_at: normalizedSubscription.confirmed_at ? String(normalizedSubscription.confirmed_at) : null,
           billing_cycle: String(normalizedSubscription.billing_cycle ?? 'yearly'),
           is_purchased: Boolean(normalizedSubscription.is_purchased),
+          purchase_source: String(normalizedSubscription.purchase_source ?? ''),
           access: Array.isArray(normalizedSubscription.access) ? normalizedSubscription.access.map((item) => String(item)) : [],
         }
       : undefined,
@@ -815,19 +823,23 @@ export type AuthResponse = {
     points_to_next_rank?: number;
     rank_progress_fraction?: number;
     subscription_tier?: string;
+    subscription_role?: string;
     subscription_status?: string;
     subscription_started_at?: string | null;
     subscription_confirmed_at?: string | null;
     subscription_billing_cycle?: string;
     subscription_is_purchased?: boolean;
+    subscription_purchase_source?: string;
     subscription_access?: string[];
     subscription?: {
       tier?: string;
+      role?: string;
       status?: string;
       started_at?: string | null;
       confirmed_at?: string | null;
       billing_cycle?: string;
       is_purchased?: boolean;
+      purchase_source?: string;
       access?: string[];
     };
   };
