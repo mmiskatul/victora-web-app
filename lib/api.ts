@@ -222,6 +222,42 @@ export type LongevityDashboard = {
   masterclasses: LongevityMasterclass[];
   circles: LongevityCircle[];
 };
+
+export type AdminChallengeItem = {
+  id: string;
+  title: string;
+  description: string;
+  planText: string;
+  planDays: unknown[];
+  category: string;
+  durationDays: number;
+  points: number;
+  difficulty: string;
+  status: string;
+  thumbnail: string;
+  participantCount: number;
+  completionCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminChallengeListResponse = {
+  total: number;
+  challenges: AdminChallengeItem[];
+};
+
+export type AdminChallengePayload = {
+  title: string;
+  description: string;
+  category: string;
+  durationDays: number;
+  points: number;
+  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  status: 'ACTIVE' | 'UPCOMING' | 'DRAFT' | 'ARCHIVED';
+  thumbnail?: string;
+  planText?: string;
+  planDays?: unknown[];
+};
 export type LongevityMasterclass = {
   id: string;
   title: string;
@@ -696,6 +732,30 @@ export async function updateLongevityHabit(habitId: string, done: boolean) {
 export async function generateLongevityWeeklyPlan() {
   return apiRequest<LongevityWeeklyPlan>('/longevity-os/heal/weekly-plan', {
     method: 'POST',
+  });
+}
+
+export async function fetchAdminChallenges(query?: string) {
+  const search = query?.trim();
+  const suffix = search ? `?query=${encodeURIComponent(search)}` : '';
+  return apiRequest<AdminChallengeListResponse>(`/admin/challenges${suffix}`);
+}
+
+export async function createAdminChallenge(payload: AdminChallengePayload) {
+  return apiRequest<AdminChallengeItem>('/admin/challenges', {
+    method: 'POST',
+    body: {
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      durationDays: payload.durationDays,
+      points: payload.points,
+      difficulty: payload.difficulty,
+      status: payload.status,
+      thumbnail: payload.thumbnail || '',
+      planText: payload.planText || '',
+      planDays: Array.isArray(payload.planDays) ? payload.planDays : [],
+    },
   });
 }
 

@@ -52,13 +52,14 @@ function getRankIcon(rank: string) {
 const MENU_SECTIONS = [
   {
     title: 'Account',
-    items: [
-      { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
-      { icon: 'document-text-outline', label: 'Application', tint: '#EAB308', route: '/profile/application' },
-      { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
-      { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
-      { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6', route: '/profile/support' },
-    ],
+      items: [
+        { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
+        { icon: 'document-text-outline', label: 'Application', tint: '#EAB308', route: '/profile/application' },
+        { icon: 'grid-outline', label: 'Challenges Dashboard', tint: '#22C55E', route: '/admin/challenges' },
+        { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
+        { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
+        { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6', route: '/profile/support' },
+      ],
   },
   {
     title: 'Fitness',
@@ -164,6 +165,9 @@ export default function ProfileScreen() {
           }
           if (item.route === '/profile/application') {
             return canAccessFeature('application', me);
+          }
+          if (item.route === '/admin/challenges') {
+            return Boolean(me?.is_admin);
           }
           if (item.route === '/profile/longevity-os') {
             return canAccessFeature('longevity', me);
