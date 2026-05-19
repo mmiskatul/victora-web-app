@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
-import { canAccessPlanRoute } from '../../lib/access';
+import { canAccessFeature, canAccessPlanRoute } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 function getRankIcon(rank: string) {
@@ -148,6 +148,9 @@ export default function ProfileScreen() {
         if (item.route === '/mealPlan') {
           return canAccessPlanRoute('/mealPlan', me);
         }
+        if (item.route === '/profile/longevity-os') {
+          return canAccessFeature('longevity', me);
+        }
         return true;
       }),
     })).filter((section) => section.items.length > 0);
@@ -208,6 +211,7 @@ export default function ProfileScreen() {
   const points = me?.points ?? 0;
   const workoutsCompleted = me?.workouts_completed ?? 0;
   const workoutsTotal = me?.workouts_total ?? 0;
+  const canAccessLongevity = canAccessFeature('longevity', me);
   const streakDays = me?.streak_days ?? 0;
   const rank = me?.rank ?? 'Noob';
   const nextRank = me?.next_rank ?? rank;
@@ -329,14 +333,6 @@ export default function ProfileScreen() {
         <View style={styles.metricsCard}>
           <View style={styles.metricsTitleRow}>
             <Text style={styles.metricsTitle}>BODY METRICS</Text>
-            <TouchableOpacity
-              style={styles.metricsEditBtn}
-              activeOpacity={0.8}
-              onPress={openMetricsModal}
-            >
-              <Ionicons name="pencil-outline" size={14} color="#06B6D4" />
-              <Text style={styles.metricsEditText}>Edit</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.metricsGrid}>
             {[
@@ -357,6 +353,98 @@ export default function ProfileScreen() {
               </View>
             ))}
           </View>
+          <TouchableOpacity
+            style={styles.metricsEditBtn}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (showMetricsModal) {
+                setShowMetricsModal(false);
+                return;
+              }
+              openMetricsModal();
+            }}
+          >
+            <Ionicons name={showMetricsModal ? 'chevron-up-outline' : 'create-outline'} size={14} color="#06B6D4" />
+            <Text style={styles.metricsEditText}>{showMetricsModal ? 'Hide Metrics Form' : 'Update Metrics'}</Text>
+          </TouchableOpacity>
+          {showMetricsModal ? (
+            <View style={styles.metricsInlineEditor}>
+              <View style={styles.metricsModalHeader}>
+                <Text style={styles.metricsModalTitle}>UPDATE BODY METRICS</Text>
+              </View>
+
+              <View style={styles.metricsFormGrid}>
+                <View style={styles.metricsInputGroup}>
+                  <Text style={styles.metricsInputLabel}>AGE</Text>
+                  <View style={styles.metricsInputWrap}>
+                    <TextInput
+                      style={styles.metricsInput}
+                      value={metricsDraft.age}
+                      onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, age: value }))}
+                      keyboardType="numeric"
+                      editable={!savingMetrics}
+                    />
+                    <Text style={styles.metricsInputUnit}>yrs</Text>
+                  </View>
+                </View>
+
+                <View style={styles.metricsInputGroup}>
+                  <Text style={styles.metricsInputLabel}>GENDER</Text>
+                  <TouchableOpacity
+                    style={styles.metricsInputWrap}
+                    activeOpacity={0.8}
+                    onPress={() => setShowGenderModal(true)}
+                    disabled={savingMetrics}
+                  >
+                    <Text style={styles.metricsInput}>{metricsDraft.gender || 'Select'}</Text>
+                    <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.45)" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.metricsInputGroup}>
+                  <Text style={styles.metricsInputLabel}>HEIGHT</Text>
+                  <View style={styles.metricsInputWrap}>
+                    <TextInput
+                      style={styles.metricsInput}
+                      value={metricsDraft.height}
+                      onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, height: value }))}
+                      keyboardType="numeric"
+                      editable={!savingMetrics}
+                    />
+                    <Text style={styles.metricsInputUnit}>cm</Text>
+                  </View>
+                </View>
+
+                <View style={styles.metricsInputGroup}>
+                  <Text style={styles.metricsInputLabel}>WEIGHT</Text>
+                  <View style={styles.metricsInputWrap}>
+                    <TextInput
+                      style={styles.metricsInput}
+                      value={metricsDraft.weight}
+                      onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, weight: value }))}
+                      keyboardType="numeric"
+                      editable={!savingMetrics}
+                    />
+                    <Text style={styles.metricsInputUnit}>kg</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.metricsActionRow}>
+                <TouchableOpacity
+                  style={styles.metricsCancelBtn}
+                  activeOpacity={0.85}
+                  onPress={() => setShowMetricsModal(false)}
+                  disabled={savingMetrics}
+                >
+                  <Text style={styles.metricsCancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.metricsSaveBtn} activeOpacity={0.85} onPress={handleSaveMetrics} disabled={savingMetrics}>
+                  {savingMetrics ? <ActivityIndicator size="small" color="#04111F" /> : <Text style={styles.metricsSaveBtnText}>Save Changes</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* ── Coach Cards ── */}
@@ -377,7 +465,8 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
           </View>
-          <View style={styles.coachCard}>
+          {canAccessLongevity ? (
+            <View style={styles.coachCard}>
             <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentPurple }]}>
               <Ionicons name="pulse" size={22} color="#fff" />
             </View>
@@ -391,7 +480,8 @@ export default function ProfileScreen() {
             >
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
-          </View>
+            </View>
+          ) : null}
         </View>
 
         {/* ── Menu Sections ── */}
@@ -438,88 +528,6 @@ export default function ProfileScreen() {
         <Text style={styles.versionText}>Victory Fitness v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      <Modal visible={showMetricsModal} transparent animationType="fade" onRequestClose={() => setShowMetricsModal(false)}>
-        <View style={styles.metricsModalOverlay}>
-          <View style={styles.metricsModalCard}>
-            {savingMetrics ? (
-              <View style={styles.metricsSavingOverlay}>
-                <View style={styles.metricsSavingCard}>
-                  <ActivityIndicator color={Colors.accentBlue} size="large" />
-                  <Text style={styles.metricsSavingText}>Saving metrics...</Text>
-                </View>
-              </View>
-            ) : null}
-            <View style={styles.metricsModalHeader}>
-              <Text style={styles.metricsModalTitle}>EDIT BODY METRICS</Text>
-              <TouchableOpacity onPress={() => setShowMetricsModal(false)} disabled={savingMetrics}>
-                <Ionicons name="close" size={22} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.metricsFormGrid}>
-              <View style={styles.metricsInputGroup}>
-                <Text style={styles.metricsInputLabel}>AGE</Text>
-                <View style={styles.metricsInputWrap}>
-                  <TextInput
-                    style={styles.metricsInput}
-                    value={metricsDraft.age}
-                    onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, age: value }))}
-                    keyboardType="numeric"
-                    editable={!savingMetrics}
-                  />
-                  <Text style={styles.metricsInputUnit}>yrs</Text>
-                </View>
-              </View>
-
-              <View style={styles.metricsInputGroup}>
-                <Text style={styles.metricsInputLabel}>GENDER</Text>
-                <TouchableOpacity
-                  style={styles.metricsInputWrap}
-                  activeOpacity={0.8}
-                  onPress={() => setShowGenderModal(true)}
-                  disabled={savingMetrics}
-                >
-                  <Text style={styles.metricsInput}>{metricsDraft.gender || 'Select'}</Text>
-                  <Ionicons name="chevron-down" size={16} color="rgba(255,255,255,0.45)" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.metricsInputGroup}>
-                <Text style={styles.metricsInputLabel}>HEIGHT</Text>
-                <View style={styles.metricsInputWrap}>
-                  <TextInput
-                    style={styles.metricsInput}
-                    value={metricsDraft.height}
-                    onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, height: value }))}
-                    keyboardType="numeric"
-                    editable={!savingMetrics}
-                  />
-                  <Text style={styles.metricsInputUnit}>cm</Text>
-                </View>
-              </View>
-
-              <View style={styles.metricsInputGroup}>
-                <Text style={styles.metricsInputLabel}>WEIGHT</Text>
-                <View style={styles.metricsInputWrap}>
-                  <TextInput
-                    style={styles.metricsInput}
-                    value={metricsDraft.weight}
-                    onChangeText={(value) => setMetricsDraft((prev) => ({ ...prev, weight: value }))}
-                    keyboardType="numeric"
-                    editable={!savingMetrics}
-                  />
-                  <Text style={styles.metricsInputUnit}>kg</Text>
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.metricsSaveBtn} activeOpacity={0.85} onPress={handleSaveMetrics} disabled={savingMetrics}>
-              <Text style={styles.metricsSaveBtnText}>SAVE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
 
       <Modal visible={showGenderModal} transparent animationType="fade" onRequestClose={() => setShowGenderModal(false)}>
         <TouchableOpacity style={styles.metricsModalOverlay} activeOpacity={1} onPress={() => setShowGenderModal(false)}>
@@ -686,7 +694,19 @@ const styles = StyleSheet.create({
   },
   metricsTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   metricsTitle: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Inter_700Bold', letterSpacing: 1, textTransform: 'uppercase' },
-  metricsEditBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(6,182,212,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(6,182,212,0.25)' },
+  metricsEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(6,182,212,0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(6,182,212,0.25)',
+    marginTop: 16,
+  },
   metricsEditText: { color: '#06B6D4', fontSize: 12, fontWeight: '600', fontFamily: 'Inter_700Bold' },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   metricCard: {
@@ -702,13 +722,8 @@ const styles = StyleSheet.create({
   metricBigVal: { fontSize: 26, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', lineHeight: 30 },
   metricUnit: { fontSize: 13, color: Colors.textMuted, fontWeight: '400', fontFamily: 'Inter_400Regular' },
   metricLabel: { fontSize: 10, color: Colors.textMuted, fontFamily: 'Inter_400Regular', textTransform: 'uppercase', letterSpacing: 0.6 },
-  metricsModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(3,6,20,0.72)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  metricsModalCard: {
+  metricsInlineEditor: {
+    marginTop: 14,
     backgroundColor: '#151629',
     borderRadius: 24,
     padding: 20,
@@ -767,10 +782,32 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
+  metricsActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  metricsCancelBtn: {
+    flex: 1,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  metricsCancelBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+    letterSpacing: 0.8,
+  },
   metricsSaveBtn: {
+    flex: 1,
     backgroundColor: Colors.accentBlue,
     borderRadius: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 16,
   },
   metricsSaveBtnText: {

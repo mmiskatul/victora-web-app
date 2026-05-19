@@ -10,7 +10,7 @@ import ChallengesSection from '../../components/home/ChallengesSection';
 import AccountabilitySection from '../../components/home/AccountabilitySection';
 import InviteFriendsCard from '../../components/home/InviteFriendsCard';
 import { fetchCurrentUser } from '../../lib/api';
-import { canAccessPlanRoute } from '../../lib/access';
+import { canAccessFeature, canAccessPlanRoute } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 export default function HomeScreen() {
@@ -18,6 +18,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [refreshToken, setRefreshToken] = React.useState(0);
   const [canAccessNutrition, setCanAccessNutrition] = React.useState(true);
+  const [canAccessChallenges, setCanAccessChallenges] = React.useState(true);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -27,10 +28,12 @@ export default function HomeScreen() {
         const user = await fetchCurrentUser();
         if (!cancelled) {
           setCanAccessNutrition(canAccessPlanRoute('/mealPlan', user));
+          setCanAccessChallenges(canAccessFeature('challenge', user));
         }
       } catch {
         if (!cancelled) {
           setCanAccessNutrition(false);
+          setCanAccessChallenges(false);
         }
       }
     };
@@ -69,7 +72,7 @@ export default function HomeScreen() {
         <FeatureCards canAccessNutrition={canAccessNutrition} />
         <MoodSection />
         <WorkoutSection />
-        <ChallengesSection refreshToken={refreshToken} />
+        {canAccessChallenges ? <ChallengesSection refreshToken={refreshToken} /> : null}
         {/* <AccountabilitySection /> */}
         <InviteFriendsCard />
         <View style={{ height: 20 }} />

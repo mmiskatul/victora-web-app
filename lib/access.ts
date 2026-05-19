@@ -12,6 +12,7 @@ export type AppPlanCard = {
   description: string;
   features: string[];
   accent: string;
+  featureAccess: string[];
   tabAccess: string[];
   routeAccess: string[];
 };
@@ -25,8 +26,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Good start, with core training access and basic accountability.',
     features: ['Workout Library', 'Basic Programs', 'Limited Challenges'],
     accent: '#A3A3A3',
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'profile'],
     tabAccess: ['index', 'workout', 'challenge', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/profile'],
+    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/profile'],
   },
   {
     tier: 'GOLD',
@@ -37,8 +39,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Adds nutrition access and more accountability structure.',
     features: ['All Silver features', 'Meal Planning', 'Community Challenges', 'Tracking Reminders'],
     accent: '#FACC15',
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'profile'],
     tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/mealPlan', '/profile'],
+    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/profile'],
   },
   {
     tier: 'PLATINUM',
@@ -48,8 +51,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Built for users who want a deeper coaching and tracking experience.',
     features: ['All Gold features', 'Personalized Plans', 'Priority Support', 'Advanced Progress Tracking'],
     accent: '#38BDF8',
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'profile', 'workoutplan', 'longevity'],
     tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os'],
+    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os'],
   },
   {
     tier: 'INNER_CIRCLE',
@@ -58,8 +62,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Direct coaching access with the broadest app access set.',
     features: ['All Platinum features', 'Direct Coaching', 'Application Access', 'Priority Community Access'],
     accent: '#FB7185',
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'profile', 'workoutplan', 'longevity', 'application'],
     tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os', '/profile/application', '/community'],
+    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os', '/profile/application', '/community'],
   },
 ];
 
@@ -151,4 +156,21 @@ export function canAccessPlanRoute(pathname: string, user?: Pick<AuthUser, 'is_a
   }
 
   return isRouteAllowedForPlan(pathname, user);
+}
+
+export function canAccessFeature(
+  feature: string,
+  user?: Pick<AuthUser, 'is_admin' | 'subscription_tier' | 'subscription_status'> | null,
+): boolean {
+  if (!isSubscriptionActive(user)) {
+    return false;
+  }
+
+  if (user?.is_admin) {
+    return true;
+  }
+
+  const tier = normalizeSubscriptionTier(user?.subscription_tier);
+  const card = getSubscriptionCard(tier);
+  return card.featureAccess.includes(feature);
 }

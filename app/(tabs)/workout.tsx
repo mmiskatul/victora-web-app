@@ -15,6 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Colors } from '../../constants/Colors';
+import { fetchCurrentUser } from '../../lib/api';
+import { canAccessFeature } from '../../lib/access';
 import VictoryHeader from '../../components/VictoryHeader';
 import { fetchWorkoutLibrary, WorkoutLibraryCategory, WorkoutLibraryItem } from '../../lib/workouts';
 import { formatAppError } from '../../lib/error';
@@ -66,6 +68,30 @@ export default function WorkoutScreen() {
   const [error, setError] = useState('');
   const [strengthPlan, setStrengthPlan] = useState<StrengthPlanResponse | null>(null);
   const [videoPlan, setVideoPlan] = useState<VideoPlanResponse | null>(null);
+  const [canAccessWorkoutPlans, setCanAccessWorkoutPlans] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAccess = async () => {
+      try {
+        const user = await fetchCurrentUser();
+        if (!cancelled) {
+          setCanAccessWorkoutPlans(canAccessFeature('workoutplan', user));
+        }
+      } catch {
+        if (!cancelled) {
+          setCanAccessWorkoutPlans(false);
+        }
+      }
+    };
+
+    void loadAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -113,6 +139,14 @@ export default function WorkoutScreen() {
 
   useFocusEffect(
     React.useCallback(() => {
+      if (!canAccessWorkoutPlans) {
+        setStrengthPlan(null);
+        setVideoPlan(null);
+        return () => {
+          return;
+        };
+      }
+
       let active = true;
 
       const loadSavedPlans = async () => {
@@ -132,7 +166,7 @@ export default function WorkoutScreen() {
       return () => {
         active = false;
       };
-    }, [])
+    }, [canAccessWorkoutPlans])
   );
 
   const handleRefresh = async () => {
@@ -341,7 +375,7 @@ export default function WorkoutScreen() {
               ))}
             </View>
 
-            {strengthPlan || videoPlan ? (
+            {canAccessWorkoutPlans && (strengthPlan || videoPlan) ? (
               <View style={styles.savedPlansSection}>
                 <Text style={styles.sectionTitle}>YOUR SAVED PLAN</Text>
                 {strengthPlan ? (
