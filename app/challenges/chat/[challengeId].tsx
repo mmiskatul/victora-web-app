@@ -5,6 +5,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -90,6 +91,12 @@ type ChallengeChatMessage = {
   reactions: ChallengeReaction[];
 };
 
+type ChallengeParticipant = {
+  user_id: string;
+  name: string;
+  profile_image: string;
+};
+
 type ChallengeChatThread = {
   challenge_id: string;
   title: string;
@@ -103,6 +110,7 @@ type ChallengeChatThread = {
   status: string;
   thumbnail: string;
   participant_count: number;
+  participants: ChallengeParticipant[];
   viewer_membership_status: string;
   viewer_progress_days_completed: number;
   viewer_points_earned: number;
@@ -289,16 +297,11 @@ export default function ChallengeChatScreen() {
   const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChallengeChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChallengeChatMessage | null>(null);
-  const [completionUpdatingKey, setCompletionUpdatingKey] = useState('');
+  const [showMembers, setShowMembers] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   const canPostInChallenge = useMemo(
     () => Boolean(thread && ['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status) && thread.status === 'ACTIVE'),
-    [thread]
-  );
-
-  const canUpdateProgressInChat = useMemo(
-    () => Boolean(thread && thread.viewer_membership_status === 'ACTIVE' && thread.status === 'ACTIVE'),
     [thread]
   );
 
@@ -309,31 +312,6 @@ export default function ChallengeChatScreen() {
     }
     return map;
   }, [thread?.messages]);
-
-  const dayProgressMap = useMemo(() => {
-    const map = new Map<number, ChallengePlanDayProgress>();
-    for (const dayProgress of thread?.viewer_plan_progress || []) {
-      map.set(dayProgress.day_number, dayProgress);
-    }
-    return map;
-  }, [thread?.viewer_plan_progress]);
-
-  const currentPlanDayNumber = useMemo(() => {
-    if (!thread) {
-      return null;
-    }
-
-    const nextIncompleteDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
-    if (nextIncompleteDay) {
-      return nextIncompleteDay.day_number;
-    }
-
-    if (thread.plan_days.length > 0) {
-      return thread.plan_days[thread.plan_days.length - 1]?.day_number ?? null;
-    }
-
-    return null;
-  }, [dayProgressMap, thread]);
 
   const loadThread = useCallback(async (showLoader = false) => {
     if (!challengeId) {
@@ -469,25 +447,6 @@ export default function ChallengeChatScreen() {
     setEditingMessage(null);
   };
 
-  const applyPlanProgress = useCallback((response: ChallengePlanProgressResponse) => {
-    setThread((current) => {
-      if (!current || current.challenge_id !== response.challenge_id) {
-        return current;
-      }
-      return {
-        ...current,
-        viewer_membership_status: response.viewer_membership_status,
-        viewer_progress_days_completed: response.viewer_progress_days_completed,
-        viewer_points_earned: response.viewer_points_earned,
-        viewer_plan_progress: Array.isArray(response.viewer_plan_progress) ? response.viewer_plan_progress : [],
-      };
-    });
-  }, []);
-
-  const refreshUserProfile = useCallback(() => {
-    void fetchCurrentUser().catch(() => undefined);
-  }, []);
-
   const sendMessage = async () => {
     if (!challengeId) {
       return;
@@ -526,96 +485,6 @@ export default function ChallengeChatScreen() {
     }
   };
 
-  const shareProgress = async () => {
-    if (!thread) {
-      return;
-    }
-
-    if (thread.plan_days.length > 0) {
-      router.push(`/challenges/progress/${thread.challenge_id}` as any);
-      return;
-    }
-
-    if (!challengeId || sending || !canUpdateProgressInChat) {
-      return;
-    }
-
-    setSending(true);
-    try {
-      const nextPlanDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
-      if (nextPlanDay) {
-        const response = await apiRequest<ChallengePlanProgressResponse>(
-          `/challenges/${encodeURIComponent(challengeId)}/plan/days/${nextPlanDay.day_number}/complete`,
-          {
-            method: 'POST',
-            body: { completed: true },
-          }
-        );
-        applyPlanProgress(response);
-        refreshUserProfile();
-      } else {
-        await apiRequest(`/challenges/${encodeURIComponent(challengeId)}/progress`, {
-          method: 'POST',
-          body: {
-            completed_day: Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days),
-            note: `Completed day ${Math.min(thread.viewer_progress_days_completed + 1, thread.duration_days)}.`,
-          },
-        });
-        refreshUserProfile();
-      }
-    } catch (error) {
-      setErrorDialog(formatAppError(error, 'Failed to share progress.'));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const toggleDayCompletion = useCallback(async (dayNumber: number, completed: boolean) => {
-    if (!challengeId) {
-      return;
-    }
-    const key = `day-${dayNumber}`;
-    setCompletionUpdatingKey(key);
-    try {
-      const response = await apiRequest<ChallengePlanProgressResponse>(
-        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/complete`,
-        {
-          method: 'POST',
-          body: { completed },
-        }
-      );
-      applyPlanProgress(response);
-      refreshUserProfile();
-    } catch (error) {
-      setErrorDialog(formatAppError(error, 'Failed to update day completion.'));
-    } finally {
-      setCompletionUpdatingKey('');
-    }
-  }, [applyPlanProgress, challengeId]);
-
-  const toggleSectionCompletion = useCallback(async (dayNumber: number, sectionId: string, completed: boolean) => {
-    if (!challengeId) {
-      return;
-    }
-    const key = `section-${dayNumber}-${sectionId}`;
-    setCompletionUpdatingKey(key);
-    try {
-      const response = await apiRequest<ChallengePlanProgressResponse>(
-        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/sections/${encodeURIComponent(sectionId)}/complete`,
-        {
-          method: 'POST',
-          body: { completed },
-        }
-      );
-      applyPlanProgress(response);
-      refreshUserProfile();
-    } catch (error) {
-      setErrorDialog(formatAppError(error, 'Failed to update section completion.'));
-    } finally {
-      setCompletionUpdatingKey('');
-    }
-  }, [applyPlanProgress, challengeId]);
-
   const handleDelete = (item: ChallengeChatMessage) => {
     if (!challengeId) {
       return;
@@ -652,61 +521,26 @@ export default function ChallengeChatScreen() {
     }
   };
 
-  const nextDayLabel = useMemo(() => {
-    if (!thread) {
-      return 'Share progress';
-    }
-    if (thread.status === 'UPCOMING') {
-      return 'Challenge coming soon';
-    }
-    if (thread.status === 'ARCHIVED') {
-      return 'Challenge archived';
-    }
-    if (thread.plan_days.length > 0) {
-      return currentPlanDayNumber ? `Open day ${currentPlanDayNumber} progress` : 'Open progress';
-    }
-    if (thread.viewer_membership_status !== 'ACTIVE') {
-      return 'Challenge chat open';
-    }
-    return thread.viewer_progress_days_completed >= thread.duration_days
-      ? 'Challenge completed'
-      : `Mark day ${thread.viewer_progress_days_completed + 1} done`;
-  }, [currentPlanDayNumber, dayProgressMap, thread]);
-
   const renderThreadHeader = () => {
     if (!thread) {
       return null;
     }
 
+    if (canPostInChallenge) {
+      return null;
+    }
+
     return (
-      <View style={styles.heroCard}>
-        <Text style={styles.heroDescription}>{thread.description}</Text>
-        <View style={styles.heroMetaRow}>
-          <Text style={styles.heroMeta}>{thread.difficulty}</Text>
-          <Text style={[styles.heroMeta, thread.status !== 'ACTIVE' && styles.heroMetaMuted]}>{thread.status}</Text>
-          <Text style={styles.heroMeta}>{thread.viewer_progress_days_completed}/{thread.duration_days} days</Text>
-          <Text style={styles.heroMeta}>+{thread.points} pts</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.progressShortcut}
-          onPress={() => router.push(`/challenges/progress/${thread.challenge_id}` as any)}
-        >
-          <Ionicons name="analytics-outline" size={16} color="#001311" />
-          <Text style={styles.progressShortcutText}>Open challenge progress</Text>
-        </TouchableOpacity>
-        {!canPostInChallenge ? (
-          <View style={styles.statusNotice}>
-            <Text style={styles.statusNoticeText}>
-              {thread.status === 'UPCOMING'
-                ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
-                : thread.status === 'ARCHIVED'
-                  ? 'This challenge has been archived. Chat is read-only.'
-                  : !['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status)
-                    ? 'Your membership is no longer active. Chat is read-only.'
-                    : 'This challenge is read-only right now.'}
-            </Text>
-          </View>
-        ) : null}
+      <View style={styles.statusNotice}>
+        <Text style={styles.statusNoticeText}>
+          {thread.status === 'UPCOMING'
+            ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
+            : thread.status === 'ARCHIVED'
+              ? 'This challenge has been archived. Chat is read-only.'
+              : !['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status)
+                ? 'Your membership is no longer active. Chat is read-only.'
+                : 'This challenge is read-only right now.'}
+        </Text>
       </View>
     );
   };
@@ -731,6 +565,36 @@ export default function ChallengeChatScreen() {
         message={errorDialog?.message ?? ''}
         onClose={() => setErrorDialog(null)}
       />
+      <Modal visible={showMembers} transparent animationType="fade" onRequestClose={() => setShowMembers(false)}>
+        <View style={styles.membersModalBackdrop}>
+          <View style={styles.membersModalCard}>
+            <View style={styles.membersModalHeader}>
+              <Text style={styles.membersModalTitle}>Challenge Members</Text>
+              <TouchableOpacity onPress={() => setShowMembers(false)} style={styles.membersModalClose}>
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={thread?.participants || []}
+              keyExtractor={(item) => item.user_id}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={<Text style={styles.membersEmptyText}>No participants yet.</Text>}
+              renderItem={({ item }) => (
+                <View style={styles.memberRow}>
+                  {item.profile_image ? (
+                    <Image source={{ uri: item.profile_image }} style={styles.memberAvatar} />
+                  ) : (
+                    <View style={[styles.memberAvatar, styles.memberAvatarFallback]}>
+                      <Text style={styles.memberAvatarText}>{(item.name || 'U')[0]}</Text>
+                    </View>
+                  )}
+                  <Text style={styles.memberName}>{item.name}</Text>
+                </View>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
@@ -739,9 +603,18 @@ export default function ChallengeChatScreen() {
         <View style={styles.headerBody}>
           <Text style={styles.headerTitle}>{thread?.title || 'Challenge Chat'}</Text>
           <Text style={styles.headerMeta}>
-            {thread?.participant_count || 0} members · {thread?.category || 'Challenge'}
+            {(thread?.participant_count ?? 0)} {(thread?.participant_count ?? 0) === 1 ? 'member' : 'members'} · {thread?.category || 'Challenge'}
           </Text>
         </View>
+        <TouchableOpacity
+          onPress={() => thread?.challenge_id && router.push(`/challenges/progress/${thread.challenge_id}` as any)}
+          style={styles.headerProgressButton}
+        >
+          <Text style={styles.headerProgressButtonText}>Progress</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowMembers(true)} style={styles.headerIcon}>
+          <Ionicons name="people-outline" size={20} color="#fff" />
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => void loadThread(false)} style={styles.headerIcon}>
           {refreshing ? <ActivityIndicator color={Colors.primary} size="small" /> : <Ionicons name="refresh" size={20} color="#fff" />}
         </TouchableOpacity>
@@ -769,32 +642,6 @@ export default function ChallengeChatScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
-
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[
-              styles.progressButton,
-              (
-                !thread ||
-                (
-                  thread.plan_days.length === 0 &&
-                  (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canUpdateProgressInChat)
-                )
-              ) && styles.buttonDisabled,
-            ]}
-            onPress={shareProgress}
-            disabled={
-              !thread ||
-              (
-                thread.plan_days.length === 0 &&
-                (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canUpdateProgressInChat)
-              )
-            }
-          >
-            <Ionicons name="checkmark-circle" size={16} color="#001311" />
-            <Text style={styles.progressButtonText}>{nextDayLabel}</Text>
-          </TouchableOpacity>
-        </View>
 
         {replyingTo || editingMessage ? (
           <View style={styles.composerBanner}>
@@ -826,7 +673,7 @@ export default function ChallengeChatScreen() {
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
-              placeholder='Share progress or type "@Coach ..."'
+              placeholder='Message the challenge or type "@Coach ..."'
               placeholderTextColor="rgba(255,255,255,0.38)"
               value={inputText}
               onChangeText={setInputText}
@@ -859,6 +706,66 @@ const styles = StyleSheet.create({
   headerBody: { flex: 1 },
   headerTitle: { color: '#fff', fontSize: 18, fontFamily: 'Inter_700Bold' },
   headerMeta: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Inter_400Regular', marginTop: 2 },
+  headerProgressButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,240,208,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,240,208,0.22)',
+    marginRight: 2,
+  },
+  headerProgressButtonText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
+  },
+  membersModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  membersModalCard: {
+    maxHeight: '70%',
+    borderRadius: 18,
+    backgroundColor: '#0B1220',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 16,
+  },
+  membersModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  membersModalTitle: { color: '#fff', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  membersModalClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  memberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  memberAvatar: { width: 40, height: 40, borderRadius: 20 },
+  memberAvatarFallback: {
+    backgroundColor: 'rgba(0,240,208,0.14)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberAvatarText: { color: Colors.primary, fontSize: 15, fontFamily: 'Inter_700Bold' },
+  memberName: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold' },
+  membersEmptyText: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Inter_400Regular', paddingVertical: 12 },
   heroCard: {
     marginHorizontal: 16,
     marginTop: 12,
