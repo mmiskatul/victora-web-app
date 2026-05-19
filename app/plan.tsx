@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { fetchCurrentUser, updateCurrentUserSubscription } from '../lib/api';
+import { ApiError, fetchCurrentUser, updateCurrentUserSubscription } from '../lib/api';
 import { BillingCycle, getPlanPrice, getPostAuthRoute, getSubscriptionCard, isSubscriptionActive, PLAN_CARDS, SubscriptionTier } from '../lib/access';
 
 const { width } = Dimensions.get('window');
@@ -84,7 +84,11 @@ export default function PlanSelectionScreen() {
       setCurrentTier(selectedTier);
       router.replace('/(tabs)');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to activate the selected plan.';
+      const message = error instanceof ApiError && error.status === 404
+        ? 'The backend route for subscription purchase was not found. Restart or redeploy the backend that serves this app, then try again.'
+        : error instanceof Error
+          ? error.message
+          : 'Unable to activate the selected plan.';
       Alert.alert('Payment confirmation failed', message);
     } finally {
       setSaving(false);

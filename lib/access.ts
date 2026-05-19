@@ -144,3 +144,11 @@ export function isRouteAllowedForPlan(pathname: string, user?: Pick<AuthUser, 'i
 
   return false;
 }
+
+export function canAccessPlanRoute(pathname: string, user?: Pick<AuthUser, 'is_admin' | 'subscription_tier' | 'subscription_status'> | null): boolean {
+  if (!user) {
+    return false;
+  }
+
+  return isRouteAllowedForPlan(pathname, user);
+}

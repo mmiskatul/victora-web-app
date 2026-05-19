@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
+import { canAccessPlanRoute } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 function getRankIcon(rank: string) {
@@ -136,6 +137,21 @@ export default function ProfileScreen() {
   });
   const [showGenderModal, setShowGenderModal] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+
+  const visibleMenuSections = React.useMemo(() => {
+    return MENU_SECTIONS.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (!('route' in item) || !item.route) {
+          return true;
+        }
+        if (item.route === '/mealPlan') {
+          return canAccessPlanRoute('/mealPlan', me);
+        }
+        return true;
+      }),
+    })).filter((section) => section.items.length > 0);
+  }, [me]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
@@ -379,7 +395,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Menu Sections ── */}
-        {MENU_SECTIONS.map((section) => (
+        {visibleMenuSections.map((section) => (
           <View key={section.title} style={styles.menuSection}>
             <Text style={styles.sectionTitle}>{section.title.toUpperCase()}</Text>
             <View style={styles.menuCard}>
