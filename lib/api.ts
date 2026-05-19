@@ -65,6 +65,7 @@ export type AuthUser = {
   name: string;
   email: string;
   is_verified: boolean;
+  is_admin?: boolean;
   country?: string;
   profileImage?: string;
   points?: number;
@@ -75,6 +76,11 @@ export type AuthUser = {
   next_rank?: string;
   points_to_next_rank?: number;
   rank_progress_fraction?: number;
+  subscription_tier?: string;
+  subscription_status?: string;
+  subscription_started_at?: string | null;
+  subscription_confirmed_at?: string | null;
+  subscription_access?: string[];
 };
 
 export type BodyMetrics = {
@@ -212,6 +218,7 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
     name: String(user.name ?? ''),
     email: String(user.email ?? ''),
     is_verified: Boolean(user.is_verified),
+    is_admin: Boolean(user.is_admin),
     country: String(user.country ?? ''),
     profileImage: String(user.profileImage ?? ''),
     points: Math.max(Number(user.points ?? 0) || 0, 0),
@@ -222,6 +229,11 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
     next_rank: String(user.next_rank ?? 'Bronze'),
     points_to_next_rank: Math.max(Number(user.points_to_next_rank ?? 0) || 0, 0),
     rank_progress_fraction: Math.min(Math.max(Number(user.rank_progress_fraction ?? 0) || 0, 0), 1),
+    subscription_tier: String(user.subscription_tier ?? 'NONE'),
+    subscription_status: String(user.subscription_status ?? 'NONE'),
+    subscription_started_at: user.subscription_started_at ? String(user.subscription_started_at) : null,
+    subscription_confirmed_at: user.subscription_confirmed_at ? String(user.subscription_confirmed_at) : null,
+    subscription_access: Array.isArray(user.subscription_access) ? user.subscription_access.map((item) => String(item)) : [],
   };
 }
 
@@ -449,6 +461,24 @@ export async function updateCurrentUserProfile(payload: {
 }) {
   const user = await apiRequest<AuthUser & { role?: string; is_admin?: boolean; country?: string; profileImage?: string }>(
     '/me',
+    {
+      method: 'PATCH',
+      body: payload,
+    }
+  );
+  authUser = normalizeAuthUser(user);
+  authUserLoaded = true;
+  currentUserFetchedAt = Date.now();
+  await persistAuthUser(authUser);
+  return user;
+}
+
+export async function updateCurrentUserSubscription(payload: {
+  subscription_tier: string;
+  confirm_payment?: boolean;
+}) {
+  const user = await apiRequest<AuthUser & { role?: string; is_admin?: boolean; country?: string; profileImage?: string }>(
+    '/me/subscription',
     {
       method: 'PATCH',
       body: payload,
@@ -746,5 +776,10 @@ export type AuthResponse = {
     next_rank?: string;
     points_to_next_rank?: number;
     rank_progress_fraction?: number;
+    subscription_tier?: string;
+    subscription_status?: string;
+    subscription_started_at?: string | null;
+    subscription_confirmed_at?: string | null;
+    subscription_access?: string[];
   };
 };
