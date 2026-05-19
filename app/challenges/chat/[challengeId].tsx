@@ -58,12 +58,14 @@ type ChallengePlanDayProgress = {
   day_number: number;
   completed: boolean;
   completed_section_ids: string[];
+  completed_exercise_ids: string[];
 };
 
 type ChallengePlanProgressResponse = {
   challenge_id: string;
   viewer_membership_status: string;
   viewer_progress_days_completed: number;
+  viewer_points_earned: number;
   viewer_plan_progress: ChallengePlanDayProgress[];
 };
 
@@ -103,6 +105,7 @@ type ChallengeChatThread = {
   participant_count: number;
   viewer_membership_status: string;
   viewer_progress_days_completed: number;
+  viewer_points_earned: number;
   viewer_plan_progress: ChallengePlanDayProgress[];
   unread_count: number;
   messages: ChallengeChatMessage[];
@@ -286,11 +289,15 @@ export default function ChallengeChatScreen() {
   const [selectedImage, setSelectedImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [replyingTo, setReplyingTo] = useState<ChallengeChatMessage | null>(null);
   const [editingMessage, setEditingMessage] = useState<ChallengeChatMessage | null>(null);
-  const [showPlan, setShowPlan] = useState(false);
   const [completionUpdatingKey, setCompletionUpdatingKey] = useState('');
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
   const canPostInChallenge = useMemo(
+    () => Boolean(thread && ['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status) && thread.status === 'ACTIVE'),
+    [thread]
+  );
+
+  const canUpdateProgressInChat = useMemo(
     () => Boolean(thread && thread.viewer_membership_status === 'ACTIVE' && thread.status === 'ACTIVE'),
     [thread]
   );
@@ -471,6 +478,7 @@ export default function ChallengeChatScreen() {
         ...current,
         viewer_membership_status: response.viewer_membership_status,
         viewer_progress_days_completed: response.viewer_progress_days_completed,
+        viewer_points_earned: response.viewer_points_earned,
         viewer_plan_progress: Array.isArray(response.viewer_plan_progress) ? response.viewer_plan_progress : [],
       };
     });
@@ -524,11 +532,11 @@ export default function ChallengeChatScreen() {
     }
 
     if (thread.plan_days.length > 0) {
-      setShowPlan(true);
+      router.push(`/challenges/progress/${thread.challenge_id}` as any);
       return;
     }
 
-    if (!challengeId || sending || !canPostInChallenge) {
+    if (!challengeId || sending || !canUpdateProgressInChat) {
       return;
     }
 
@@ -654,15 +662,11 @@ export default function ChallengeChatScreen() {
     if (thread.status === 'ARCHIVED') {
       return 'Challenge archived';
     }
-    if (thread.viewer_membership_status !== 'ACTIVE') {
-      return 'Posting locked';
-    }
     if (thread.plan_days.length > 0) {
-      if (currentPlanDayNumber) {
-        const currentDayCompleted = dayProgressMap.get(currentPlanDayNumber)?.completed;
-        return currentDayCompleted ? `Day ${currentPlanDayNumber} completed` : `Open day ${currentPlanDayNumber} plan`;
-      }
-      return 'Open plan';
+      return currentPlanDayNumber ? `Open day ${currentPlanDayNumber} progress` : 'Open progress';
+    }
+    if (thread.viewer_membership_status !== 'ACTIVE') {
+      return 'Challenge chat open';
     }
     return thread.viewer_progress_days_completed >= thread.duration_days
       ? 'Challenge completed'
@@ -697,7 +701,7 @@ export default function ChallengeChatScreen() {
                 ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
                 : thread.status === 'ARCHIVED'
                   ? 'This challenge has been archived. Chat is read-only.'
-                  : thread.viewer_membership_status !== 'ACTIVE'
+                  : !['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status)
                     ? 'Your membership is no longer active. Chat is read-only.'
                     : 'This challenge is read-only right now.'}
             </Text>
@@ -774,7 +778,7 @@ export default function ChallengeChatScreen() {
                 !thread ||
                 (
                   thread.plan_days.length === 0 &&
-                  (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge)
+                  (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canUpdateProgressInChat)
                 )
               ) && styles.buttonDisabled,
             ]}
@@ -783,7 +787,7 @@ export default function ChallengeChatScreen() {
               !thread ||
               (
                 thread.plan_days.length === 0 &&
-                (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge)
+                (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canUpdateProgressInChat)
               )
             }
           >

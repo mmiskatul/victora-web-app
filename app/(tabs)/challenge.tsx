@@ -742,7 +742,7 @@ export default function ChallengesScreen() {
               <>
                 <View style={styles.subSectionHeader}>
                   <Ionicons name="chatbubbles" size={16} color={Colors.primary} />
-                  <Text style={styles.subSectionTitle}>Active Challenge Chats</Text>
+                  <Text style={styles.subSectionTitle}>Challenge Chats</Text>
                 </View>
                 {challengeOverview.active_chats.map((chat) => (
                   <TouchableOpacity
