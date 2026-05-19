@@ -140,6 +140,7 @@ export default function LongevityOS() {
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
       await loadDashboard(false);
+      Alert.alert('Data sync successfully', 'Wearable data has been cached and all Longevity calculations now use the synced data.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to sync wearables.';
       Alert.alert('Sync failed', message);
