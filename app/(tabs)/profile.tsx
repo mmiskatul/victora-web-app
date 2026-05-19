@@ -146,8 +146,14 @@ export default function ProfileScreen() {
         if (!('route' in item) || !item.route) {
           return true;
         }
+        if (item.route === '/workoutplan') {
+          return canAccessFeature('workoutplan', me);
+        }
         if (item.route === '/mealPlan') {
           return canAccessPlanRoute('/mealPlan', me);
+        }
+        if (item.route === '/profile/application') {
+          return canAccessFeature('application', me);
         }
         if (item.route === '/profile/longevity-os') {
           return canAccessFeature('longevity', me);

@@ -227,6 +227,7 @@ export default function ChallengesScreen() {
   }>();
   const [activeTab, setActiveTab] = useState('CHALLENGES');
   const [canAccessChallenges, setCanAccessChallenges] = useState(true);
+  const [canAccessCommunity, setCanAccessCommunity] = useState(true);
   const [challengeOverview, setChallengeOverview] = useState<ChallengeOverview>({
     active_chats: [],
     active_challenges: [],
@@ -264,7 +265,11 @@ export default function ChallengesScreen() {
   const hasUpcomingChallenges = upcomingChallenges.length > 0;
   const hasVisibleChallengeSections =
     hasReadyToStartChallenges || hasUpcomingChallenges || hasActiveChats || hasActiveChallenges || hasCompletedChallenges;
-  const availableTabs = canAccessChallenges ? TABS : ['COMMUNITY'];
+  const availableTabs = canAccessChallenges && canAccessCommunity
+    ? TABS
+    : canAccessChallenges
+      ? ['CHALLENGES']
+      : ['COMMUNITY'];
   const isSilverUser = subscriptionTier === 'SILVER';
   const silverChallengeLimit = 5;
   const silverChallengesUsed = Math.min(challengeOverview.active_challenges.length, silverChallengeLimit);
@@ -280,6 +285,7 @@ export default function ChallengesScreen() {
         }
 
         setCanAccessChallenges(canAccessFeature('challenge', currentUser));
+        setCanAccessCommunity(canAccessFeature('community', currentUser));
         setSubscriptionTier(normalizeSubscriptionTier(currentUser?.subscription_tier));
         setCurrentCommunityUser({
           name: authUser?.name || currentUser?.name || 'You',
@@ -291,6 +297,7 @@ export default function ChallengesScreen() {
         }
 
         setCanAccessChallenges(false);
+        setCanAccessCommunity(false);
       }
     };
 
@@ -305,7 +312,10 @@ export default function ChallengesScreen() {
     if (!canAccessChallenges && activeTab === 'CHALLENGES') {
       setActiveTab('COMMUNITY');
     }
-  }, [activeTab, canAccessChallenges]);
+    if (!canAccessCommunity && activeTab === 'COMMUNITY') {
+      setActiveTab('CHALLENGES');
+    }
+  }, [activeTab, canAccessChallenges, canAccessCommunity]);
 
   const loadChallengeOverview = useCallback(async (showLoading = true) => {
     if (!canAccessChallenges) {
@@ -341,6 +351,12 @@ export default function ChallengesScreen() {
   }, [canAccessChallenges]);
 
   const loadCommunityPosts = useCallback(async (showLoading = true) => {
+    if (!canAccessCommunity) {
+      setCommunityLoading(false);
+      setCommunityError('');
+      setCommunityPosts([]);
+      return;
+    }
     if (showLoading) {
       setCommunityLoading(true);
     }
@@ -355,7 +371,7 @@ export default function ChallengesScreen() {
         setCommunityLoading(false);
       }
     }
-  }, []);
+  }, [canAccessCommunity]);
 
   useEffect(() => {
     if (activeTab !== 'CHALLENGES') {
@@ -384,10 +400,10 @@ export default function ChallengesScreen() {
 
   useEffect(() => {
     const requestedTab = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-    if (requestedTab === 'COMMUNITY' && activeTab !== 'COMMUNITY') {
+    if (requestedTab === 'COMMUNITY' && canAccessCommunity && activeTab !== 'COMMUNITY') {
       setActiveTab('COMMUNITY');
     }
-  }, [activeTab, params.tab]);
+  }, [activeTab, canAccessCommunity, params.tab]);
 
   useEffect(() => {
     const source = Array.isArray(params.prefillSource) ? params.prefillSource[0] : params.prefillSource;
