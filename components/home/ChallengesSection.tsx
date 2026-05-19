@@ -108,10 +108,11 @@ function ChallengeSkeletonCard() {
   );
 }
 
-export default function ChallengesSection() {
+export default function ChallengesSection({ refreshToken = 0 }: { refreshToken?: number }) {
   const router = useRouter();
   const [cards, setCards] = React.useState<HomeChallengeCard[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const hasMountedRef = React.useRef(false);
 
   const loadChallenges = React.useCallback(async (showLoader = true) => {
     if (showLoader) {
@@ -129,7 +130,7 @@ export default function ChallengesSection() {
         participants: 1,
         status: 'ACTIVE',
         footerLabel: `${Math.max(Math.round(challenge.progress * 100), 0)}% done`,
-        route: '/challenges/chat/[challengeId]',
+        route: '/challenges/progress/[challengeId]',
         params: { challengeId: challenge.challenge_id },
         accentColor: challenge.color || Colors.accentBlue,
       }));
@@ -148,6 +149,14 @@ export default function ChallengesSection() {
       void loadChallenges(true);
     }, [loadChallenges]),
   );
+
+  React.useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    void loadChallenges(false);
+  }, [loadChallenges, refreshToken]);
 
   return (
     <View style={styles.section}>
@@ -186,8 +195,11 @@ export default function ChallengesSection() {
               key={card.id}
               {...card}
               onPress={() => {
-                if (card.route === '/challenges/chat/[challengeId]' && card.params?.challengeId) {
-                  router.push({ pathname: card.route as '/challenges/chat/[challengeId]', params: card.params });
+                if (
+                  (card.route === '/challenges/chat/[challengeId]' || card.route === '/challenges/progress/[challengeId]') &&
+                  card.params?.challengeId
+                ) {
+                  router.push({ pathname: card.route as '/challenges/progress/[challengeId]', params: card.params });
                   return;
                 }
                 router.push('/challenge');

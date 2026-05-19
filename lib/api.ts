@@ -127,11 +127,20 @@ export type LongevityWearableDevice = {
   image: string;
 };
 
+export type WearableProvider = 'apple-health' | 'health-connect' | 'fitbit' | 'garmin';
+
 export type LongevityWearables = {
   devices: LongevityWearableDevice[];
   last_synced_at?: string | null;
   has_data: boolean;
   sync_message: string;
+};
+
+export type WearableOAuthConnectResponse = {
+  provider: WearableProvider;
+  authorization_url: string;
+  state: string;
+  expires_at: string;
 };
 
 export type LongevityHabit = {
@@ -553,6 +562,10 @@ export async function syncLongevityWearables() {
   return apiRequest<LongevityWearables>('/longevity-os/wearables/sync', {
     method: 'POST',
   });
+}
+
+export async function connectWearableProvider(provider: Extract<WearableProvider, 'fitbit' | 'garmin'>) {
+  return apiRequest<WearableOAuthConnectResponse>(`/wearables/${encodeURIComponent(provider)}/connect`);
 }
 
 export async function updateLongevityHabit(habitId: string, done: boolean) {

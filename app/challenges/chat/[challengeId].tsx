@@ -311,6 +311,23 @@ export default function ChallengeChatScreen() {
     return map;
   }, [thread?.viewer_plan_progress]);
 
+  const currentPlanDayNumber = useMemo(() => {
+    if (!thread) {
+      return null;
+    }
+
+    const nextIncompleteDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
+    if (nextIncompleteDay) {
+      return nextIncompleteDay.day_number;
+    }
+
+    if (thread.plan_days.length > 0) {
+      return thread.plan_days[thread.plan_days.length - 1]?.day_number ?? null;
+    }
+
+    return null;
+  }, [dayProgressMap, thread]);
+
   const loadThread = useCallback(async (showLoader = false) => {
     if (!challengeId) {
       return;
@@ -502,7 +519,16 @@ export default function ChallengeChatScreen() {
   };
 
   const shareProgress = async () => {
-    if (!challengeId || !thread || sending || !canPostInChallenge) {
+    if (!thread) {
+      return;
+    }
+
+    if (thread.plan_days.length > 0) {
+      setShowPlan(true);
+      return;
+    }
+
+    if (!challengeId || sending || !canPostInChallenge) {
       return;
     }
 
@@ -631,14 +657,55 @@ export default function ChallengeChatScreen() {
     if (thread.viewer_membership_status !== 'ACTIVE') {
       return 'Posting locked';
     }
-    const nextPlanDay = thread.plan_days.find((day) => !dayProgressMap.get(day.day_number)?.completed);
-    if (nextPlanDay) {
-      return `Mark day ${nextPlanDay.day_number} done`;
+    if (thread.plan_days.length > 0) {
+      if (currentPlanDayNumber) {
+        const currentDayCompleted = dayProgressMap.get(currentPlanDayNumber)?.completed;
+        return currentDayCompleted ? `Day ${currentPlanDayNumber} completed` : `Open day ${currentPlanDayNumber} plan`;
+      }
+      return 'Open plan';
     }
     return thread.viewer_progress_days_completed >= thread.duration_days
       ? 'Challenge completed'
       : `Mark day ${thread.viewer_progress_days_completed + 1} done`;
-  }, [dayProgressMap, thread]);
+  }, [currentPlanDayNumber, dayProgressMap, thread]);
+
+  const renderThreadHeader = () => {
+    if (!thread) {
+      return null;
+    }
+
+    return (
+      <View style={styles.heroCard}>
+        <Text style={styles.heroDescription}>{thread.description}</Text>
+        <View style={styles.heroMetaRow}>
+          <Text style={styles.heroMeta}>{thread.difficulty}</Text>
+          <Text style={[styles.heroMeta, thread.status !== 'ACTIVE' && styles.heroMetaMuted]}>{thread.status}</Text>
+          <Text style={styles.heroMeta}>{thread.viewer_progress_days_completed}/{thread.duration_days} days</Text>
+          <Text style={styles.heroMeta}>+{thread.points} pts</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.progressShortcut}
+          onPress={() => router.push(`/challenges/progress/${thread.challenge_id}` as any)}
+        >
+          <Ionicons name="analytics-outline" size={16} color="#001311" />
+          <Text style={styles.progressShortcutText}>Open challenge progress</Text>
+        </TouchableOpacity>
+        {!canPostInChallenge ? (
+          <View style={styles.statusNotice}>
+            <Text style={styles.statusNoticeText}>
+              {thread.status === 'UPCOMING'
+                ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
+                : thread.status === 'ARCHIVED'
+                  ? 'This challenge has been archived. Chat is read-only.'
+                  : thread.viewer_membership_status !== 'ACTIVE'
+                    ? 'Your membership is no longer active. Chat is read-only.'
+                    : 'This challenge is read-only right now.'}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+    );
+  };
 
   if (loading && !thread) {
     return (
@@ -676,144 +743,10 @@ export default function ChallengeChatScreen() {
         </TouchableOpacity>
       </View>
 
-      {thread ? (
-        <View style={styles.heroCard}>
-          <Text style={styles.heroDescription}>{thread.description}</Text>
-          <View style={styles.heroMetaRow}>
-            <Text style={styles.heroMeta}>{thread.difficulty}</Text>
-            <Text style={[styles.heroMeta, thread.status !== 'ACTIVE' && styles.heroMetaMuted]}>{thread.status}</Text>
-            <Text style={styles.heroMeta}>{thread.viewer_progress_days_completed}/{thread.duration_days} days</Text>
-            <Text style={styles.heroMeta}>+{thread.points} pts</Text>
-          </View>
-          {!canPostInChallenge ? (
-            <View style={styles.statusNotice}>
-              <Text style={styles.statusNoticeText}>
-                {thread.status === 'UPCOMING'
-                  ? 'This challenge is upcoming. You can view the details, but posting is locked until it becomes active.'
-                  : thread.status === 'ARCHIVED'
-                    ? 'This challenge has been archived. Chat is read-only.'
-                    : thread.viewer_membership_status !== 'ACTIVE'
-                      ? 'Your membership is no longer active. Chat is read-only.'
-                      : 'This challenge is read-only right now.'}
-              </Text>
-            </View>
-          ) : null}
-          {thread.plan_days.length > 0 || thread.plan_text ? (
-            <View style={styles.planSection}>
-              <TouchableOpacity style={styles.planToggle} onPress={() => setShowPlan((current) => !current)}>
-                <Text style={styles.planToggleText}>{showPlan ? 'Hide Plan' : 'View Plan'}</Text>
-                <Ionicons name={showPlan ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.primary} />
-              </TouchableOpacity>
-              {showPlan ? (
-                <View style={styles.planCard}>
-                  {thread.plan_days.length > 0 ? (
-                    <View style={styles.planDaysWrap}>
-                      {thread.plan_days.map((day) => {
-                        const dayProgress = dayProgressMap.get(day.day_number);
-                        const completedSectionIds = dayProgress?.completed_section_ids || [];
-                        const dayCompleted = Boolean(dayProgress?.completed);
-                        return (
-                          <View key={`plan-day-${day.day_number}`} style={[styles.planDayCard, dayCompleted && styles.planDayCardCompleted]}>
-                            <View style={styles.planDayHeader}>
-                              <View style={styles.planDayHeaderText}>
-                                <Text style={styles.planDayEyebrow}>Day {day.day_number}</Text>
-                                <Text style={styles.planDayTitle}>{day.title}</Text>
-                                <Text style={styles.planDayFocus}>{day.focus}</Text>
-                              </View>
-                              <TouchableOpacity
-                                style={[styles.planDayButton, dayCompleted && styles.planDayButtonCompleted, !canPostInChallenge && styles.buttonDisabled]}
-                                disabled={!canPostInChallenge || completionUpdatingKey === `day-${day.day_number}`}
-                                onPress={() => void toggleDayCompletion(day.day_number, !dayCompleted)}
-                              >
-                                {completionUpdatingKey === `day-${day.day_number}` ? (
-                                  <ActivityIndicator size="small" color={dayCompleted ? '#001311' : Colors.primary} />
-                                ) : (
-                                  <>
-                                    <Ionicons
-                                      name={dayCompleted ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                                      size={16}
-                                      color={dayCompleted ? '#001311' : Colors.primary}
-                                    />
-                                    <Text style={[styles.planDayButtonText, dayCompleted && styles.planDayButtonTextCompleted]}>
-                                      {dayCompleted ? 'Completed' : 'Complete day'}
-                                    </Text>
-                                  </>
-                                )}
-                              </TouchableOpacity>
-                            </View>
-                            {day.notes ? <Text style={styles.planDayNotes}>{day.notes}</Text> : null}
-                            <View style={styles.planSectionsWrap}>
-                              {day.sections.map((section) => {
-                                const sectionCompleted = completedSectionIds.includes(section.id);
-                                return (
-                                  <View key={section.id} style={[styles.planSectionCard, sectionCompleted && styles.planSectionCardCompleted]}>
-                                    <View style={styles.planSectionHeader}>
-                                      <View style={styles.planSectionTextWrap}>
-                                        <Text style={styles.planSectionTitle}>{section.title}</Text>
-                                        {section.description ? <Text style={styles.planSectionDescription}>{section.description}</Text> : null}
-                                      </View>
-                                      <TouchableOpacity
-                                        style={[styles.planSectionButton, sectionCompleted && styles.planSectionButtonCompleted, !canPostInChallenge && styles.buttonDisabled]}
-                                        disabled={!canPostInChallenge || completionUpdatingKey === `section-${day.day_number}-${section.id}`}
-                                        onPress={() => void toggleSectionCompletion(day.day_number, section.id, !sectionCompleted)}
-                                      >
-                                        {completionUpdatingKey === `section-${day.day_number}-${section.id}` ? (
-                                          <ActivityIndicator size="small" color={sectionCompleted ? '#001311' : Colors.primary} />
-                                        ) : (
-                                          <Ionicons
-                                            name={sectionCompleted ? 'checkmark' : 'ellipse-outline'}
-                                            size={16}
-                                            color={sectionCompleted ? '#001311' : Colors.primary}
-                                          />
-                                        )}
-                                      </TouchableOpacity>
-                                    </View>
-                                    <Text style={styles.planSectionMeta}>{section.estimated_minutes} min</Text>
-                                    <View style={styles.planExercisesWrap}>
-                                      {section.exercises.map((exercise) => (
-                                        <View key={exercise.id} style={styles.planExerciseRow}>
-                                          <View style={styles.planExerciseDot} />
-                                          <View style={styles.planExerciseTextWrap}>
-                                            <Text style={styles.planExerciseName}>{exercise.name}</Text>
-                                            <Text style={styles.planExerciseDetails}>{exercise.details}</Text>
-                                            {exercise.notes ? <Text style={styles.planExerciseNotes}>{exercise.notes}</Text> : null}
-                                            {exercise.workout_vimeo_id ? (
-                                              <TouchableOpacity
-                                                onPress={() => openLinkedWorkout(exercise)}
-                                                style={styles.exerciseVideoButton}
-                                                activeOpacity={0.85}
-                                              >
-                                                <Ionicons name="play-circle" size={15} color="#001311" />
-                                                <Text style={styles.exerciseVideoButtonText}>
-                                                  Watch {exercise.workout_title || `${exercise.name} Demo`}
-                                                </Text>
-                                              </TouchableOpacity>
-                                            ) : null}
-                                          </View>
-                                        </View>
-                                      ))}
-                                    </View>
-                                  </View>
-                                );
-                              })}
-                            </View>
-                          </View>
-                        );
-                      })}
-                    </View>
-                  ) : (
-                    <Text style={styles.planText}>{thread.plan_text}</Text>
-                  )}
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
-      ) : null}
-
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
         <FlatList
           data={thread?.messages || []}
+          ListHeaderComponent={renderThreadHeader}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <MessageBubble
@@ -835,9 +768,24 @@ export default function ChallengeChatScreen() {
 
         <View style={styles.actionsRow}>
           <TouchableOpacity
-            style={[styles.progressButton, (!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge) && styles.buttonDisabled]}
+            style={[
+              styles.progressButton,
+              (
+                !thread ||
+                (
+                  thread.plan_days.length === 0 &&
+                  (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge)
+                )
+              ) && styles.buttonDisabled,
+            ]}
             onPress={shareProgress}
-            disabled={!thread || thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge}
+            disabled={
+              !thread ||
+              (
+                thread.plan_days.length === 0 &&
+                (thread.viewer_progress_days_completed >= thread.duration_days || sending || !canPostInChallenge)
+              )
+            }
           >
             <Ionicons name="checkmark-circle" size={16} color="#001311" />
             <Text style={styles.progressButtonText}>{nextDayLabel}</Text>
@@ -932,6 +880,18 @@ const styles = StyleSheet.create({
     color: '#F59E0B',
     backgroundColor: 'rgba(245,158,11,0.12)',
   },
+  progressShortcut: {
+    marginTop: 14,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  progressShortcutText: { color: '#001311', fontSize: 12, fontFamily: 'Inter_700Bold' },
   statusNotice: {
     marginTop: 12,
     borderRadius: 12,
@@ -995,6 +955,7 @@ const styles = StyleSheet.create({
   planDayTitle: { color: '#fff', fontSize: 14, fontFamily: 'Inter_700Bold', marginTop: 2 },
   planDayFocus: { color: Colors.textSecondary, fontSize: 12, lineHeight: 18, fontFamily: 'Inter_400Regular', marginTop: 4 },
   planDayNotes: { color: Colors.textMuted, fontSize: 12, lineHeight: 18, fontFamily: 'Inter_400Regular' },
+  planDayHelperText: { color: Colors.textMuted, fontSize: 12, lineHeight: 18, fontFamily: 'Inter_500Medium', marginTop: 8 },
   planDayButton: {
     minHeight: 34,
     borderRadius: 999,

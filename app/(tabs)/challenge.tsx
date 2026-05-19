@@ -792,7 +792,7 @@ export default function ChallengesScreen() {
                     key={ch.id}
                     style={styles.activeCard}
                     activeOpacity={0.88}
-                    onPress={() => router.push(`/challenges/chat/${ch.challenge_id}` as any)}
+                    onPress={() => router.push(`/challenges/progress/${ch.challenge_id}` as any)}
                   >
                     <View style={styles.activeCardTop}>
                       <View style={[styles.activeColorDot, { backgroundColor: ch.color }]} />
