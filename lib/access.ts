@@ -26,7 +26,7 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Good start, with core training access and basic accountability.',
     features: ['Workout Library', 'Basic Programs', 'Limited Challenges'],
     accent: '#A3A3A3',
-    featureAccess: ['home', 'workout', 'challenge', 'profile'],
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'profile'],
     tabAccess: ['index', 'workout', 'challenge', 'profile'],
     routeAccess: ['/', '/workout', '/challenge', '/challenges', '/profile'],
   },

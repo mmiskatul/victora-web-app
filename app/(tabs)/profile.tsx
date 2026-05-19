@@ -138,30 +138,49 @@ export default function ProfileScreen() {
   });
   const [showGenderModal, setShowGenderModal] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const bodyMetricsSummary = React.useMemo(() => {
+    const parts = [
+      bodyMetrics.age ? `${bodyMetrics.age}y` : '',
+      bodyMetrics.height ? `${bodyMetrics.height}cm` : '',
+      bodyMetrics.weight ? `${bodyMetrics.weight}kg` : '',
+      bodyMetrics.gender || '',
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' • ') : 'Not set';
+  }, [bodyMetrics.age, bodyMetrics.gender, bodyMetrics.height, bodyMetrics.weight]);
 
   const visibleMenuSections = React.useMemo(() => {
     return MENU_SECTIONS.map((section) => ({
       ...section,
-      items: section.items.filter((item) => {
-        if (!('route' in item) || !item.route) {
+      items: section.items
+        .filter((item) => {
+          if (!('route' in item) || !item.route) {
+            return true;
+          }
+          if (item.route === '/workoutplan') {
+            return canAccessFeature('workoutplan', me);
+          }
+          if (item.route === '/mealPlan') {
+            return canAccessPlanRoute('/mealPlan', me);
+          }
+          if (item.route === '/profile/application') {
+            return canAccessFeature('application', me);
+          }
+          if (item.route === '/profile/longevity-os') {
+            return canAccessFeature('longevity', me);
+          }
           return true;
-        }
-        if (item.route === '/workoutplan') {
-          return canAccessFeature('workoutplan', me);
-        }
-        if (item.route === '/mealPlan') {
-          return canAccessPlanRoute('/mealPlan', me);
-        }
-        if (item.route === '/profile/application') {
-          return canAccessFeature('application', me);
-        }
-        if (item.route === '/profile/longevity-os') {
-          return canAccessFeature('longevity', me);
-        }
-        return true;
-      }),
+        })
+        .map((item) => {
+          if ((item as any).action === 'body_metrics') {
+            return {
+              ...item,
+              value: bodyMetricsSummary,
+            };
+          }
+          return item;
+        }),
     })).filter((section) => section.items.length > 0);
-  }, [me]);
+  }, [bodyMetricsSummary, me]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
