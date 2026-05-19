@@ -24,6 +24,7 @@ import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 import {
   createNutritionPlan,
   NutritionPlanApiResponse,
@@ -1117,6 +1118,7 @@ function MealPlanResult({
 
 /* ── Main Wizard Screen ── */
 export default function JournalScreen() {
+  useModuleAccessGuard('/mealPlan');
   const [step, setStep] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [generationSuccess, setGenerationSuccess] = useState(false);
@@ -1143,6 +1145,7 @@ export default function JournalScreen() {
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [healthConditions, setHealthConditions] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     let cancelled = false;

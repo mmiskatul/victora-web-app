@@ -27,6 +27,7 @@ import {
   StrengthPlanResponse,
   VideoPlanResponse,
 } from '../../lib/workout-plans';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 const { width } = Dimensions.get('window');
 const FALLBACK_WORKOUT_IMAGE = 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&q=80';
@@ -45,6 +46,7 @@ function pairCategories(categories: WorkoutLibraryCategory[]) {
 }
 
 export default function WorkoutScreen() {
+  useModuleAccessGuard('/workout');
   const router = useRouter();
   const hasLoadedLibraryRef = React.useRef(false);
   const [searchQuery, setSearchQuery] = useState('');

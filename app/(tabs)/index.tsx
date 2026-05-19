@@ -9,8 +9,10 @@ import WorkoutSection from '../../components/home/WorkoutSection';
 import ChallengesSection from '../../components/home/ChallengesSection';
 import AccountabilitySection from '../../components/home/AccountabilitySection';
 import InviteFriendsCard from '../../components/home/InviteFriendsCard';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 export default function HomeScreen() {
+  useModuleAccessGuard('/');
   const [refreshing, setRefreshing] = React.useState(false);
   const [refreshToken, setRefreshToken] = React.useState(0);
 

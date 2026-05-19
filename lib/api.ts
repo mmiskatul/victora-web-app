@@ -80,7 +80,18 @@ export type AuthUser = {
   subscription_status?: string;
   subscription_started_at?: string | null;
   subscription_confirmed_at?: string | null;
+  subscription_billing_cycle?: string;
+  subscription_is_purchased?: boolean;
   subscription_access?: string[];
+  subscription?: {
+    tier?: string;
+    status?: string;
+    started_at?: string | null;
+    confirmed_at?: string | null;
+    billing_cycle?: string;
+    is_purchased?: boolean;
+    access?: string[];
+  };
 };
 
 export type BodyMetrics = {
@@ -213,6 +224,7 @@ const CURRENT_USER_CACHE_TTL_MS = 30_000;
 const BODY_METRICS_CACHE_TTL_MS = 30_000;
 
 function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: string; email?: string; is_verified?: boolean }): AuthUser {
+  const normalizedSubscription = user.subscription && typeof user.subscription === 'object' ? user.subscription : undefined;
   return {
     id: String(user.id ?? ''),
     name: String(user.name ?? ''),
@@ -229,11 +241,36 @@ function normalizeAuthUser(user: Partial<AuthUser> & { id?: string; name?: strin
     next_rank: String(user.next_rank ?? 'Bronze'),
     points_to_next_rank: Math.max(Number(user.points_to_next_rank ?? 0) || 0, 0),
     rank_progress_fraction: Math.min(Math.max(Number(user.rank_progress_fraction ?? 0) || 0, 0), 1),
-    subscription_tier: String(user.subscription_tier ?? 'NONE'),
-    subscription_status: String(user.subscription_status ?? 'NONE'),
-    subscription_started_at: user.subscription_started_at ? String(user.subscription_started_at) : null,
-    subscription_confirmed_at: user.subscription_confirmed_at ? String(user.subscription_confirmed_at) : null,
-    subscription_access: Array.isArray(user.subscription_access) ? user.subscription_access.map((item) => String(item)) : [],
+    subscription_tier: String(user.subscription_tier ?? normalizedSubscription?.tier ?? 'NONE'),
+    subscription_status: String(user.subscription_status ?? normalizedSubscription?.status ?? 'NONE'),
+    subscription_started_at: user.subscription_started_at
+      ? String(user.subscription_started_at)
+      : normalizedSubscription?.started_at
+        ? String(normalizedSubscription.started_at)
+        : null,
+    subscription_confirmed_at: user.subscription_confirmed_at
+      ? String(user.subscription_confirmed_at)
+      : normalizedSubscription?.confirmed_at
+        ? String(normalizedSubscription.confirmed_at)
+        : null,
+    subscription_billing_cycle: String(user.subscription_billing_cycle ?? normalizedSubscription?.billing_cycle ?? 'yearly'),
+    subscription_is_purchased: Boolean(user.subscription_is_purchased ?? normalizedSubscription?.is_purchased),
+    subscription_access: Array.isArray(user.subscription_access)
+      ? user.subscription_access.map((item) => String(item))
+      : Array.isArray(normalizedSubscription?.access)
+        ? normalizedSubscription.access.map((item) => String(item))
+        : [],
+    subscription: normalizedSubscription
+      ? {
+          tier: String(normalizedSubscription.tier ?? 'NONE'),
+          status: String(normalizedSubscription.status ?? 'NONE'),
+          started_at: normalizedSubscription.started_at ? String(normalizedSubscription.started_at) : null,
+          confirmed_at: normalizedSubscription.confirmed_at ? String(normalizedSubscription.confirmed_at) : null,
+          billing_cycle: String(normalizedSubscription.billing_cycle ?? 'yearly'),
+          is_purchased: Boolean(normalizedSubscription.is_purchased),
+          access: Array.isArray(normalizedSubscription.access) ? normalizedSubscription.access.map((item) => String(item)) : [],
+        }
+      : undefined,
   };
 }
 
@@ -475,6 +512,7 @@ export async function updateCurrentUserProfile(payload: {
 
 export async function updateCurrentUserSubscription(payload: {
   subscription_tier: string;
+  billing_cycle?: string;
   confirm_payment?: boolean;
 }) {
   const user = await apiRequest<AuthUser & { role?: string; is_admin?: boolean; country?: string; profileImage?: string }>(
@@ -780,6 +818,17 @@ export type AuthResponse = {
     subscription_status?: string;
     subscription_started_at?: string | null;
     subscription_confirmed_at?: string | null;
+    subscription_billing_cycle?: string;
+    subscription_is_purchased?: boolean;
     subscription_access?: string[];
+    subscription?: {
+      tier?: string;
+      status?: string;
+      started_at?: string | null;
+      confirmed_at?: string | null;
+      billing_cycle?: string;
+      is_purchased?: boolean;
+      access?: string[];
+    };
   };
 };

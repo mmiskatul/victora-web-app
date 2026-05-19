@@ -20,6 +20,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
 import { apiRequest, getAuthUser, resolveRemoteAssetUrl } from '../../lib/api';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 const { width } = Dimensions.get('window');
 
@@ -212,6 +213,7 @@ function formatDurationLabel(days: number) {
 }
 
 export default function ChallengesScreen() {
+  useModuleAccessGuard('/challenge');
   const router = useRouter();
   const params = useLocalSearchParams<{
     tab?: string | string[];

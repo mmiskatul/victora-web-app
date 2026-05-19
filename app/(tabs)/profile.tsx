@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 function getRankIcon(rank: string) {
   const normalized = rank.trim().toLowerCase();
@@ -98,6 +99,7 @@ function getDynamicRankIcon(rank: string) {
 }
 
 export default function ProfileScreen() {
+  useModuleAccessGuard('/profile');
   const router = useRouter();
   const [me, setMe] = React.useState<{
     id: string;

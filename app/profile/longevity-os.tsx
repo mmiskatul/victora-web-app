@@ -33,6 +33,7 @@ import {
   syncLongevityWearables,
   updateLongevityHabit,
 } from '../../lib/api';
+import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 const FALLBACK_CARD_IMAGE = 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=600&q=80';
 
@@ -74,10 +75,12 @@ function EmptyState({ icon, title, subtitle }: { icon: any; title: string; subti
 }
 
 export default function LongevityOS() {
+  useModuleAccessGuard('/profile/longevity-os');
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [activeTab, setActiveTab] = useState('overview');
   const [dashboard, setDashboard] = useState<LongevityDashboard | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [syncingWearables, setSyncingWearables] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
