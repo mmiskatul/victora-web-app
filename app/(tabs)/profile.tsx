@@ -63,6 +63,7 @@ const MENU_SECTIONS = [
   {
     title: 'Fitness',
     items: [
+      { icon: 'analytics-outline', label: 'Body Metrics', tint: '#06B6D4', action: 'body_metrics' },
       { icon: 'barbell-outline', label: 'Workout', tint: '#06B6D4', route: '/workoutplan' },
       { icon: 'restaurant-outline', label: 'Nutrition', tint: '#F97316', route: '/mealPlan' },
       { icon: 'body-outline', label: 'Journal', tint: '#EC4899', route: '/journal' },
@@ -330,38 +331,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* ── Body Metrics ── */}
-        <View style={styles.metricsCard}>
-          <View style={styles.metricsTitleRow}>
-            <Text style={styles.metricsTitle}>BODY METRICS</Text>
-          </View>
-          <View style={styles.metricsGrid}>
-            {[
-              { label: 'Age', value: bodyMetrics.age || '--', unit: bodyMetrics.age ? 'yrs' : '', icon: 'calendar-outline', tint: '#4F8EF7' },
-              { label: 'Height', value: bodyMetrics.height || '--', unit: bodyMetrics.height ? 'cm' : '', icon: 'resize-outline', tint: '#06B6D4' },
-              { label: 'Weight', value: bodyMetrics.weight || '--', unit: bodyMetrics.weight ? 'kg' : '', icon: 'barbell-outline', tint: '#A855F7' },
-              { label: 'Gender', value: bodyMetrics.gender || '--', unit: '', icon: 'person-outline', tint: '#F97316' },
-            ].map((m) => (
-              <View key={m.label} style={styles.metricCard}>
-                <View style={[styles.metricIconBox, { backgroundColor: `${m.tint}18` }]}>
-                  <Ionicons name={m.icon as any} size={18} color={m.tint} />
-                </View>
-                <Text style={styles.metricBigVal}>
-                  {m.value}
-                  {m.unit ? <Text style={styles.metricUnit}> {m.unit}</Text> : null}
-                </Text>
-                <Text style={styles.metricLabel}>{m.label}</Text>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity
-            style={styles.metricsEditBtn}
-            activeOpacity={0.8}
-            onPress={openMetricsModal}
-          >
-            <Ionicons name="create-outline" size={14} color="#06B6D4" />
-            <Text style={styles.metricsEditText}>Update Metrics</Text>
-          </TouchableOpacity>
-        </View>
+
 
         {/* ── Coach Cards ── */}
         <View style={styles.coachSection}>
@@ -410,7 +380,15 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     style={styles.menuRow}
                     activeOpacity={0.7}
-                    onPress={() => (item as any).route && router.push((item as any).route)}
+                    onPress={() => {
+                      if ((item as any).action === 'body_metrics') {
+                        openMetricsModal();
+                        return;
+                      }
+                      if ((item as any).route) {
+                        router.push((item as any).route);
+                      }
+                    }}
                   >
                     <View style={[styles.menuIconWrap, { backgroundColor: `${item.tint}20` }]}>
                       <Ionicons name={item.icon as any} size={18} color={item.tint} />
