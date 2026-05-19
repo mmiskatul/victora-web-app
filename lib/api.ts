@@ -164,6 +164,20 @@ export type WearableOAuthConnectResponse = {
   expires_at: string;
 };
 
+export type WearableConnectionResponse = {
+  id: string;
+  user_id: string;
+  provider: WearableProvider;
+  status: string;
+  connected_at?: string | null;
+  last_synced_at?: string | null;
+  last_sync_status?: string;
+  last_sync_message?: string;
+  metadata?: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type LongevityHabit = {
   id: string;
   title: string;
@@ -642,6 +656,12 @@ export async function syncLongevityWearables() {
 
 export async function connectWearableProvider(provider: Extract<WearableProvider, 'fitbit' | 'garmin'>) {
   return apiRequest<WearableOAuthConnectResponse>(`/wearables/${encodeURIComponent(provider)}/connect`);
+}
+
+export async function connectLongevityDemoProvider(provider: WearableProvider) {
+  return apiRequest<WearableConnectionResponse>(`/wearables/${encodeURIComponent(provider)}/demo-connect`, {
+    method: 'POST',
+  });
 }
 
 export async function updateLongevityHabit(habitId: string, done: boolean) {

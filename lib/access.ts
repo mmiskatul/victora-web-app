@@ -17,6 +17,19 @@ export type AppPlanCard = {
   routeAccess: string[];
 };
 
+const SILVER_FEATURE_ACCESS = ['home', 'workout', 'challenge', 'community', 'profile'] as const;
+const GOLD_FEATURE_ACCESS = [...SILVER_FEATURE_ACCESS, 'mealPlan'] as const;
+const PLATINUM_FEATURE_ACCESS = [...GOLD_FEATURE_ACCESS, 'nutrition_tracker', 'meal_analysis', 'workoutplan', 'longevity'] as const;
+const INNER_CIRCLE_FEATURE_ACCESS = [...PLATINUM_FEATURE_ACCESS, 'application', 'coach_victor', 'longevity_plan'] as const;
+
+const SILVER_TAB_ACCESS = ['index', 'workout', 'challenge', 'profile'] as const;
+const GOLD_AND_ABOVE_TAB_ACCESS = ['index', 'workout', 'challenge', 'mealPlan', 'profile'] as const;
+
+const SILVER_ROUTE_ACCESS = ['/', '/workout', '/challenge', '/challenges', '/profile'] as const;
+const GOLD_ROUTE_ACCESS = [...SILVER_ROUTE_ACCESS, '/mealPlan'] as const;
+const PLATINUM_ROUTE_ACCESS = [...GOLD_ROUTE_ACCESS, '/workoutplan', '/profile/longevity-os'] as const;
+const INNER_CIRCLE_ROUTE_ACCESS = [...PLATINUM_ROUTE_ACCESS, '/profile/application', '/community', '/chat'] as const;
+
 export const PLAN_CARDS: AppPlanCard[] = [
   {
     tier: 'SILVER',
@@ -26,9 +39,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Good start, with core training access and basic accountability.',
     features: ['Workout Library', 'Basic Programs', 'Limited Challenges'],
     accent: '#A3A3A3',
-    featureAccess: ['home', 'workout', 'challenge', 'community', 'profile'],
-    tabAccess: ['index', 'workout', 'challenge', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/profile'],
+    featureAccess: [...SILVER_FEATURE_ACCESS],
+    tabAccess: [...SILVER_TAB_ACCESS],
+    routeAccess: [...SILVER_ROUTE_ACCESS],
   },
   {
     tier: 'GOLD',
@@ -39,9 +52,9 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Adds nutrition access and more accountability structure.',
     features: ['All Silver features', 'Meal Planning', 'Community Challenges', 'Tracking Reminders'],
     accent: '#FACC15',
-    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'profile'],
-    tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/profile'],
+    featureAccess: [...GOLD_FEATURE_ACCESS],
+    tabAccess: [...GOLD_AND_ABOVE_TAB_ACCESS],
+    routeAccess: [...GOLD_ROUTE_ACCESS],
   },
   {
     tier: 'PLATINUM',
@@ -51,20 +64,20 @@ export const PLAN_CARDS: AppPlanCard[] = [
     description: 'Built for users who want a deeper coaching and tracking experience.',
     features: ['All Gold features', 'Personalized 7-Day Workout Plan', 'Tracker', 'AI Meal Analysis', 'Longevity OS'],
     accent: '#38BDF8',
-    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'nutrition_tracker', 'meal_analysis', 'profile', 'workoutplan', 'longevity'],
-    tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os'],
+    featureAccess: [...PLATINUM_FEATURE_ACCESS],
+    tabAccess: [...GOLD_AND_ABOVE_TAB_ACCESS],
+    routeAccess: [...PLATINUM_ROUTE_ACCESS],
   },
   {
     tier: 'INNER_CIRCLE',
     title: 'Victory Inner Circle',
     yearlyPrice: 'Application Only',
     description: 'Direct coaching access with the broadest app access set.',
-    features: ['All Platinum features', 'Direct Coaching', 'Coach Victor', 'Application Access'],
+    features: ['All Platinum features', 'Customized Plan', 'Longevity OS Plan', 'Coach Victor', 'Application Access'],
     accent: '#FB7185',
-    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'nutrition_tracker', 'meal_analysis', 'profile', 'workoutplan', 'longevity', 'application', 'coach_victor'],
-    tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os', '/profile/application', '/community', '/chat'],
+    featureAccess: [...INNER_CIRCLE_FEATURE_ACCESS],
+    tabAccess: [...GOLD_AND_ABOVE_TAB_ACCESS],
+    routeAccess: [...INNER_CIRCLE_ROUTE_ACCESS],
   },
 ];
 
