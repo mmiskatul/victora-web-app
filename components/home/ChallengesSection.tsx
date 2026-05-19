@@ -33,6 +33,7 @@ type HomeChallengeCard = {
   participants: number;
   status: string;
   footerLabel: string;
+  progress: number;
   route: string;
   params?: Record<string, string>;
   accentColor: string;
@@ -45,6 +46,7 @@ function ChallengeCard({
   participants,
   status,
   footerLabel,
+  progress,
   accentColor,
   onPress,
 }: HomeChallengeCard & { onPress: () => void }) {
@@ -63,6 +65,21 @@ function ChallengeCard({
       </View>
 
       <Text style={styles.challengeDescription} numberOfLines={3}>{description}</Text>
+
+      <View style={styles.progressRow}>
+        <View style={styles.progressBarBg}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${Math.max(Math.min(progress * 100, 100), 0)}%` as any,
+                backgroundColor: accentColor || Colors.accentBlue,
+              },
+            ]}
+          />
+        </View>
+        <Text style={styles.progressText}>{footerLabel}</Text>
+      </View>
 
       <View style={styles.challengeDivider} />
 
@@ -130,6 +147,7 @@ export default function ChallengesSection({ refreshToken = 0 }: { refreshToken?:
         participants: 1,
         status: 'ACTIVE',
         footerLabel: `${Math.max(Math.round(challenge.progress * 100), 0)}% done`,
+        progress: challenge.progress,
         route: '/challenges/progress/[challengeId]',
         params: { challengeId: challenge.challenge_id },
         accentColor: challenge.color || Colors.accentBlue,
@@ -278,6 +296,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 20,
     fontFamily: 'Inter_400Regular',
+  },
+  progressRow: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 999,
+  },
+  progressText: {
+    color: Colors.textMuted,
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
   },
   challengeDivider: {
     height: 1,

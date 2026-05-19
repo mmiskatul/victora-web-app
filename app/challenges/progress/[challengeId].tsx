@@ -199,6 +199,20 @@ function getSectionCompletedCount(section: ChallengePlanSection, completedExerci
   return section.exercises.filter((exercise) => safeCompletedExerciseIds.includes(exercise.id)).length;
 }
 
+function isExerciseCompleted(
+  section: ChallengePlanSection,
+  exerciseId: string,
+  completedExerciseIds: string[],
+  completedSectionIds: string[],
+) {
+  const safeCompletedExerciseIds = Array.isArray(completedExerciseIds) ? completedExerciseIds : [];
+  const safeCompletedSectionIds = Array.isArray(completedSectionIds) ? completedSectionIds : [];
+  if (safeCompletedSectionIds.includes(section.id)) {
+    return true;
+  }
+  return safeCompletedExerciseIds.includes(exerciseId);
+}
+
 function getDayProgressFraction(day: ChallengePlanDay, progress?: ChallengePlanDayProgress) {
   if (!progress) {
     return 0;
@@ -206,11 +220,15 @@ function getDayProgressFraction(day: ChallengePlanDay, progress?: ChallengePlanD
 
   const completedExerciseIds = Array.isArray(progress.completed_exercise_ids) ? progress.completed_exercise_ids : [];
   const completedSectionIds = Array.isArray(progress.completed_section_ids) ? progress.completed_section_ids : [];
-
-  const exerciseIds = day.sections.flatMap((section) => section.exercises.map((exercise) => exercise.id));
-  if (exerciseIds.length > 0) {
-    const completedCount = exerciseIds.filter((id) => completedExerciseIds.includes(id)).length;
-    return Math.min(completedCount / exerciseIds.length, 1);
+  const exerciseCount = day.sections.reduce((total, section) => total + section.exercises.length, 0);
+  if (exerciseCount > 0) {
+    const completedCount = day.sections.reduce((total, section) => {
+      if (completedSectionIds.includes(section.id)) {
+        return total + section.exercises.length;
+      }
+      return total + getSectionCompletedCount(section, completedExerciseIds);
+    }, 0);
+    return Math.min(completedCount / exerciseCount, 1);
   }
 
   if (day.sections.length > 0) {
@@ -467,11 +485,11 @@ export default function ChallengeProgressScreen() {
     if (!challengeId) {
       return;
     }
-    const key = `exercise-${dayNumber}-${sectionId}-${exerciseId}`;
+    const key = `exercise-${dayNumber}-${exerciseId}`;
     setCompletionUpdatingKey(key);
     try {
       const response = await apiRequest<ChallengePlanProgressResponse>(
-        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/sections/${encodeURIComponent(sectionId)}/exercises/${encodeURIComponent(exerciseId)}/complete`,
+        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${dayNumber}/exercises/${encodeURIComponent(exerciseId)}/complete`,
         {
           method: 'POST',
           body: { completed },
@@ -738,7 +756,12 @@ export default function ChallengeProgressScreen() {
                 const completedExerciseIds = Array.isArray(dayProgress?.completed_exercise_ids) ? dayProgress.completed_exercise_ids : [];
                 const completedSectionIds = Array.isArray(dayProgress?.completed_section_ids) ? dayProgress.completed_section_ids : [];
                 const dayExerciseCount = day.sections.flatMap((section) => section.exercises).length;
-                const completedExerciseCount = day.sections.flatMap((section) => section.exercises).filter((exercise) => completedExerciseIds.includes(exercise.id)).length;
+                const completedExerciseCount = day.sections.reduce((total, section) => {
+                  if (completedSectionIds.includes(section.id)) {
+                    return total + section.exercises.length;
+                  }
+                  return total + getSectionCompletedCount(section, completedExerciseIds);
+                }, 0);
                 const allSectionsCompleted = day.sections.every((section) => completedSectionIds.includes(section.id));
 
                 return (
@@ -784,7 +807,7 @@ export default function ChallengeProgressScreen() {
                           const sectionExpanded = Boolean(expandedSections[sectionKey]);
                           const sectionPoints = getSectionPoints(section, unitPointMap);
                           const sectionCompleted = Boolean(completedSectionIds.includes(section.id));
-                          const completedCount = getSectionCompletedCount(section, completedExerciseIds);
+                          const completedCount = sectionCompleted ? section.exercises.length : getSectionCompletedCount(section, completedExerciseIds);
                           const totalCount = section.exercises.length;
 
                           return (
@@ -833,8 +856,8 @@ export default function ChallengeProgressScreen() {
                               {sectionExpanded ? (
                                 <View style={styles.exerciseList}>
                                   {section.exercises.map((exercise) => {
-                                    const exerciseCompleted = completedExerciseIds.includes(exercise.id);
-                                    const exerciseKey = `exercise-${day.day_number}-${section.id}-${exercise.id}`;
+                                    const exerciseCompleted = isExerciseCompleted(section, exercise.id, completedExerciseIds, completedSectionIds);
+                                    const exerciseKey = `exercise-${day.day_number}-${exercise.id}`;
                                     return (
                                       <View key={exercise.id} style={[styles.exerciseCard, exerciseCompleted && styles.exerciseCardCompleted]}>
                                         <TouchableOpacity
