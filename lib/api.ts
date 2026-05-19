@@ -648,9 +648,10 @@ export async function fetchLongevityDashboard() {
   };
 }
 
-export async function syncLongevityWearables() {
+export async function syncLongevityWearables(provider?: WearableProvider | null) {
   return apiRequest<LongevityWearables>('/longevity-os/wearables/sync', {
     method: 'POST',
+    body: provider ? { provider } : {},
   });
 }
 

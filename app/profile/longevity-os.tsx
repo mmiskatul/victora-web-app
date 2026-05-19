@@ -3,6 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -18,6 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import {
+  connectLongevityDemoProvider,
+  connectWearableProvider,
   fetchCurrentUser,
   fetchLongevityDashboard,
   generateLongevityWeeklyPlan,
@@ -25,6 +29,8 @@ import {
   LongevityDashboard,
   LongevityHabit,
   LongevityMasterclass,
+  LongevityWearableDevice,
+  WearableProvider,
   syncLongevityWearables,
   updateLongevityHabit,
 } from '../../lib/api';
@@ -44,7 +50,6 @@ const TABS = [
   { id: 'heal', label: 'HEAL', icon: 'restaurant-outline' },
   { id: 'habits', label: 'HABITS', icon: 'checkbox-outline' },
   { id: 'learn', label: 'LEARN', icon: 'book-outline' },
-  { id: 'circles', label: 'CIRCLES', icon: 'people-outline' },
 ];
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
@@ -81,6 +86,9 @@ export default function LongevityOS() {
   const [syncingWearables, setSyncingWearables] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [canGenerateLongevityPlan, setCanGenerateLongevityPlan] = useState(false);
+  const [showWearablePicker, setShowWearablePicker] = useState(false);
+  const [connectingDeviceId, setConnectingDeviceId] = useState<string | null>(null);
+  const [selectedWearableId, setSelectedWearableId] = useState<string | null>(null);
 
   const loadDashboard = React.useCallback(async (showLoader = true) => {
     if (showLoader) {
@@ -121,10 +129,14 @@ export default function LongevityOS() {
     if (syncingWearables) {
       return;
     }
+    if (!selectedWearableId) {
+      Alert.alert('Select wearable', 'Tap a wearable source first, then press Sync Data Now.');
+      return;
+    }
     setSyncingWearables(true);
     try {
       await Promise.all([
-        syncLongevityWearables(),
+        syncLongevityWearables(selectedWearableId as WearableProvider),
         new Promise((resolve) => setTimeout(resolve, 5000)),
       ]);
       await loadDashboard(false);
@@ -133,6 +145,39 @@ export default function LongevityOS() {
       Alert.alert('Sync failed', message);
     } finally {
       setSyncingWearables(false);
+    }
+  };
+
+  const handleAddWearable = () => {
+    setShowWearablePicker(true);
+  };
+
+  const handleSelectWearable = async (device: LongevityWearableDevice) => {
+    if (connectingDeviceId) {
+      return;
+    }
+    setConnectingDeviceId(device.id);
+    try {
+      if (device.id === 'fitbit' || device.id === 'garmin') {
+        const response = await connectWearableProvider(device.id);
+        const supported = await Linking.canOpenURL(response.authorization_url);
+        if (!supported) {
+          throw new Error('Unable to open the wearable connection page.');
+        }
+        await Linking.openURL(response.authorization_url);
+        Alert.alert('Continue in browser', `Finish the ${device.name} connection flow, then return here and press Sync Data Now.`);
+      } else {
+        await connectLongevityDemoProvider(device.id as WearableProvider);
+        Alert.alert(`${device.name} added`, `${device.name} is ready. Press Sync Data Now to import its health data from the database.`);
+      }
+      setSelectedWearableId(device.id);
+      setShowWearablePicker(false);
+      await loadDashboard(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `Unable to add ${device.name}.`;
+      Alert.alert('Add wearable failed', message);
+    } finally {
+      setConnectingDeviceId(null);
     }
   };
 
@@ -208,16 +253,30 @@ export default function LongevityOS() {
   );
 
   const renderWearables = () => (
-    <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-      {(() => {
-        const devices = dashboard?.wearables.devices || [];
-
-        return (
-          <>
-            <SectionTitle>Wearable Sources</SectionTitle>
+    (() => {
+      const devices = dashboard?.wearables.devices || [];
+      const availableDevices = devices.filter((device) => !device.active);
+      return (
+        <ScrollView style={styles.tabContent} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.sectionHeaderRow}>
+              <SectionTitle>Wearable Sources</SectionTitle>
+              <TouchableOpacity style={styles.inlineActionButton} activeOpacity={0.88} onPress={handleAddWearable}>
+                <Ionicons name="add" size={16} color="#000" />
+                <Text style={styles.inlineActionText}>Add Wearable</Text>
+              </TouchableOpacity>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalList}>
               {devices.map((device) => (
-                <View key={device.id} style={[styles.deviceCard, { width: (width - 32) * 0.52 }]}>
+                <TouchableOpacity
+                  key={device.id}
+                  activeOpacity={0.88}
+                  onPress={() => setSelectedWearableId(device.id)}
+                  style={[
+                    styles.deviceCard,
+                    { width: (width - 32) * 0.52 },
+                    selectedWearableId === device.id && styles.deviceCardSelected,
+                  ]}
+                >
                   <Image source={{ uri: safeImageUri(device.image) }} style={styles.deviceImage} />
                   <View style={styles.deviceOverlay} />
                   <View style={styles.deviceContent}>
@@ -225,10 +284,10 @@ export default function LongevityOS() {
                     <Text style={styles.deviceMeta}>{device.status}</Text>
                     <View style={styles.deviceConnectedBadge}>
                       <Ionicons name={device.active ? 'checkmark-circle' : 'hardware-chip-outline'} size={15} color={device.active ? '#10B981' : Colors.primary} />
-                      <Text style={styles.deviceConnectedText}>{device.active ? 'SYNCED' : 'READY'}</Text>
+                      <Text style={styles.deviceConnectedText}>{selectedWearableId === device.id ? 'SELECTED' : device.active ? 'SYNCED' : 'READY'}</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
 
@@ -242,13 +301,58 @@ export default function LongevityOS() {
               <Ionicons name={syncingWearables ? 'hourglass-outline' : 'refresh'} size={18} color="#000" />
               <Text style={styles.primaryButtonText}>{syncingWearables ? 'SYNCING HEALTH DATA...' : 'SYNC DATA NOW'}</Text>
             </TouchableOpacity>
-          </>
-        );
-      })()}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoText}>{dashboard?.wearables.sync_message || 'No data synced yet.'}</Text>
-      </View>
-    </ScrollView>
+            <View style={styles.infoCard}>
+              <Text style={styles.infoText}>{dashboard?.wearables.sync_message || 'No data synced yet.'}</Text>
+            </View>
+
+            <Modal visible={showWearablePicker} transparent animationType="fade" onRequestClose={() => setShowWearablePicker(false)}>
+              <Pressable style={styles.modalBackdrop} onPress={() => setShowWearablePicker(false)}>
+                <Pressable style={styles.modalCard} onPress={() => undefined}>
+                  <View style={styles.modalHeader}>
+                    <View>
+                      <Text style={styles.modalEyebrow}>WEARABLE SETUP</Text>
+                      <Text style={styles.modalTitle}>Add Wearable</Text>
+                    </View>
+                    <TouchableOpacity style={styles.modalCloseButton} activeOpacity={0.88} onPress={() => setShowWearablePicker(false)}>
+                      <Ionicons name="close" size={20} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.connectionDescription}>
+                    Select a wearable source first. After it is added, use Sync Data Now to import its health data into Longevity OS.
+                  </Text>
+                  <View style={styles.availableDeviceList}>
+                    {availableDevices.length > 0 ? (
+                      availableDevices.map((device) => (
+                        <TouchableOpacity
+                          key={device.id}
+                          style={styles.availableDeviceRow}
+                          activeOpacity={0.88}
+                          disabled={connectingDeviceId === device.id}
+                          onPress={() => void handleSelectWearable(device)}
+                        >
+                          <View style={styles.availableDeviceContent}>
+                            <Text style={styles.availableDeviceTitle}>{device.name}</Text>
+                            <Text style={styles.availableDeviceSubtitle}>
+                              {device.id === 'fitbit' || device.id === 'garmin' ? 'Real connection flow' : 'Database-backed demo data'}
+                            </Text>
+                          </View>
+                          <Ionicons
+                            name={connectingDeviceId === device.id ? 'hourglass-outline' : 'chevron-forward'}
+                            size={18}
+                            color={Colors.primary}
+                          />
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <Text style={styles.infoText}>All wearable sources are already added.</Text>
+                    )}
+                  </View>
+                </Pressable>
+              </Pressable>
+            </Modal>
+        </ScrollView>
+      );
+    })()
   );
 
   const renderHeal = () => (
@@ -367,8 +471,6 @@ export default function LongevityOS() {
         return renderHabits();
       case 'learn':
         return renderLearn(dashboard?.masterclasses || []);
-      case 'circles':
-        return renderCircles(dashboard?.circles || []);
       default:
         return renderOverview();
     }
@@ -485,6 +587,25 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 14,
     marginTop: 4,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inlineActionButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  inlineActionText: {
+    color: '#000',
+    fontSize: 12,
+    fontFamily: 'Inter_700Bold',
   },
   heroCard: {
     height: 220,
@@ -630,6 +751,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     overflow: 'hidden',
     backgroundColor: '#1A1F35',
+  },
+  deviceCardSelected: {
+    backgroundColor: '#0E1629',
+    borderWidth: 2,
+    borderColor: Colors.primary,
   },
   deviceImage: {
     ...StyleSheet.absoluteFillObject,
