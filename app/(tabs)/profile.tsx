@@ -238,6 +238,7 @@ export default function ProfileScreen() {
   const workoutsCompleted = me?.workouts_completed ?? 0;
   const workoutsTotal = me?.workouts_total ?? 0;
   const canAccessLongevity = canAccessFeature('longevity', me);
+  const canAccessCoachVictor = canAccessFeature('coach_victor', me);
   const streakDays = me?.streak_days ?? 0;
   const rank = me?.rank ?? 'Noob';
   const nextRank = me?.next_rank ?? rank;
@@ -361,7 +362,7 @@ export default function ProfileScreen() {
         {/* ── Coach Cards ── */}
         <View style={styles.coachSection}>
           <Text style={styles.sectionTitle}>MY COACHES</Text>
-          <View style={[styles.coachCard, { backgroundColor: Colors.surface }]}>
+          {canAccessCoachVictor ? <View style={[styles.coachCard, { backgroundColor: Colors.surface }]}>
             <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentBlue }]}>
               <Ionicons name="add" size={26} color="#fff" />
             </View>
@@ -375,7 +376,7 @@ export default function ProfileScreen() {
             >
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
-          </View>
+          </View> : null}
           {canAccessLongevity ? (
             <View style={styles.coachCard}>
               <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentPurple }]}>

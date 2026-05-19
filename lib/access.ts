@@ -49,7 +49,7 @@ export const PLAN_CARDS: AppPlanCard[] = [
     monthlyPrice: 'EUR 39 / month',
     yearlyPrice: 'EUR 399 / year',
     description: 'Built for users who want a deeper coaching and tracking experience.',
-    features: ['All Gold features', 'Personalized Plans', 'Priority Support', 'Advanced Progress Tracking'],
+    features: ['All Gold features', 'Personalized 7-Day Workout Plan', 'Tracker', 'AI Meal Analysis', 'Longevity OS'],
     accent: '#38BDF8',
     featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'nutrition_tracker', 'meal_analysis', 'profile', 'workoutplan', 'longevity'],
     tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
@@ -60,11 +60,11 @@ export const PLAN_CARDS: AppPlanCard[] = [
     title: 'Victory Inner Circle',
     yearlyPrice: 'Application Only',
     description: 'Direct coaching access with the broadest app access set.',
-    features: ['All Platinum features', 'Direct Coaching', 'Application Access', 'Priority Community Access'],
+    features: ['All Platinum features', 'Direct Coaching', 'Coach Victor', 'Application Access'],
     accent: '#FB7185',
-    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'nutrition_tracker', 'meal_analysis', 'profile', 'workoutplan', 'longevity', 'application'],
+    featureAccess: ['home', 'workout', 'challenge', 'community', 'mealPlan', 'nutrition_tracker', 'meal_analysis', 'profile', 'workoutplan', 'longevity', 'application', 'coach_victor'],
     tabAccess: ['index', 'workout', 'challenge', 'mealPlan', 'profile'],
-    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os', '/profile/application', '/community'],
+    routeAccess: ['/', '/workout', '/challenge', '/challenges', '/mealPlan', '/workoutplan', '/profile', '/profile/longevity-os', '/profile/application', '/community', '/chat'],
   },
 ];
 
