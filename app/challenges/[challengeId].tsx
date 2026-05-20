@@ -89,6 +89,7 @@ type ChallengeDetail = {
   has_joined: boolean;
   current_day_number: number | null;
   can_complete_today: boolean;
+  completed_today: boolean;
   messages: ChallengeChatMessage[];
 };
 
@@ -227,6 +228,7 @@ export default function ChallengeDetailScreen() {
 
   const ctaDisabled = !detail || starting || detail.has_joined || (!detail.can_start && !detail.has_joined);
   const showCompleteToday = Boolean(detail?.has_joined && detail?.viewer_membership_status === 'ACTIVE');
+  const completeButtonLabel = detail?.completed_today ? 'Completed Today' : 'Mark Complete';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -274,15 +276,15 @@ export default function ChallengeDetailScreen() {
                     <View style={styles.heroActions}>
                       {showCompleteToday ? (
                         <TouchableOpacity
-                          style={[styles.secondaryButton, completingToday && styles.primaryButtonDisabled]}
+                          style={[styles.secondaryButton, (!detail.can_complete_today || completingToday) && styles.primaryButtonDisabled]}
                           activeOpacity={0.88}
                           onPress={() => void handleCompleteToday()}
-                          disabled={completingToday}
+                          disabled={!detail.can_complete_today || completingToday}
                         >
                           {completingToday ? (
                             <ActivityIndicator color="#EAF4FF" size="small" />
                           ) : (
-                            <Text style={styles.secondaryButtonText}>Mark Complete</Text>
+                            <Text style={styles.secondaryButtonText}>{completeButtonLabel}</Text>
                           )}
                         </TouchableOpacity>
                       ) : null}
