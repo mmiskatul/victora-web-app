@@ -189,21 +189,34 @@ export default function ChallengeDetailScreen() {
     if (!challengeId || !detail?.can_complete_today || !detail.current_day_number || completingToday) {
       return;
     }
-    setCompletingToday(true);
-    try {
-      await apiRequest(
-        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${detail.current_day_number}/complete`,
+    Alert.alert(
+      'Complete today?',
+      `Mark day ${detail.current_day_number} as complete?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
         {
-          method: 'POST',
-          body: { completed: true },
-        }
-      );
-      await loadDetail(false);
-    } catch (error) {
-      setErrorDialog(formatAppError(error, 'Unable to complete today right now.'));
-    } finally {
-      setCompletingToday(false);
-    }
+          text: 'Confirm',
+          onPress: () => {
+            void (async () => {
+              setCompletingToday(true);
+              try {
+                await apiRequest(
+                  `/challenges/${encodeURIComponent(challengeId)}/complete-today`,
+                  {
+                    method: 'POST',
+                  }
+                );
+                await loadDetail(false);
+              } catch (error) {
+                setErrorDialog(formatAppError(error, 'Unable to complete today right now.'));
+              } finally {
+                setCompletingToday(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
   }, [challengeId, completingToday, detail?.can_complete_today, detail?.current_day_number, loadDetail]);
 
   const ctaLabel = detail?.viewer_membership_status === 'ACTIVE'
@@ -268,7 +281,7 @@ export default function ChallengeDetailScreen() {
                           {completingToday ? (
                             <ActivityIndicator color="#EAF4FF" size="small" />
                           ) : (
-                            <Text style={styles.secondaryButtonText}>Complete Today</Text>
+                            <Text style={styles.secondaryButtonText}>Mark Complete</Text>
                           )}
                         </TouchableOpacity>
                       ) : null}
@@ -416,14 +429,14 @@ const styles = StyleSheet.create({
   quoteBar: { width: 4, borderRadius: 999, backgroundColor: '#FBBF24' },
   quoteText: { flex: 1, color: '#9CA3AF', fontSize: 15, lineHeight: 24, fontStyle: 'italic', fontFamily: 'Inter_400Regular' },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 18 },
-  heroFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  heroFooter: { gap: 16 },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' },
   pointsText: { color: '#FBBF24', fontSize: 18, fontFamily: 'Inter_700Bold' },
   primaryButton: {
-    minWidth: 170,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 22,
+    paddingHorizontal: 18,
     paddingVertical: 16,
     borderRadius: 16,
     backgroundColor: '#FF735C',
@@ -433,7 +446,7 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: '#FFF7ED', fontSize: 16, fontFamily: 'Inter_700Bold' },
   secondaryButton: {
-    minWidth: 146,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 18,
@@ -441,7 +454,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#2563EB',
   },
-  secondaryButtonText: { color: '#EAF4FF', fontSize: 15, fontFamily: 'Inter_700Bold' },
+  secondaryButtonText: { color: '#EAF4FF', fontSize: 14, fontFamily: 'Inter_700Bold' },
   participantsCard: {
     backgroundColor: '#1F2937',
     borderRadius: 20,
