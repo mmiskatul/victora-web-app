@@ -226,6 +226,7 @@ export default function ChallengeDetailScreen() {
       : 'Start Challenge';
 
   const ctaDisabled = !detail || starting || detail.has_joined || (!detail.can_start && !detail.has_joined);
+  const showCompleteToday = Boolean(detail?.has_joined && detail?.viewer_membership_status === 'ACTIVE');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -271,12 +272,12 @@ export default function ChallengeDetailScreen() {
                   <View style={styles.heroFooter}>
                     <Text style={styles.pointsText}>+{detail.points} Points</Text>
                     <View style={styles.heroActions}>
-                      {detail.has_joined && detail.viewer_membership_status === 'ACTIVE' ? (
+                      {showCompleteToday ? (
                         <TouchableOpacity
-                          style={[styles.secondaryButton, (completingToday || !detail.can_complete_today) && styles.primaryButtonDisabled]}
+                          style={[styles.secondaryButton, completingToday && styles.primaryButtonDisabled]}
                           activeOpacity={0.88}
                           onPress={() => void handleCompleteToday()}
-                          disabled={completingToday || !detail.can_complete_today}
+                          disabled={completingToday}
                         >
                           {completingToday ? (
                             <ActivityIndicator color="#EAF4FF" size="small" />
