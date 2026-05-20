@@ -28,6 +28,10 @@ type ChallengePlanDayProgress = {
   completed_exercise_ids: string[];
 };
 
+type ChallengePlanDay = {
+  day_number: number;
+};
+
 type ChallengeReaction = {
   emoji: string;
   count: number;
@@ -66,6 +70,7 @@ type ChallengeDetail = {
   title: string;
   description: string;
   plan_text: string;
+  plan_days: ChallengePlanDay[];
   category: string;
   duration_days: number;
   points: number;
@@ -82,6 +87,8 @@ type ChallengeDetail = {
   can_start: boolean;
   can_post: boolean;
   has_joined: boolean;
+  current_day_number: number | null;
+  can_complete_today: boolean;
   messages: ChallengeChatMessage[];
 };
 
@@ -101,6 +108,7 @@ export default function ChallengeDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [completingToday, setCompletingToday] = useState(false);
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
@@ -177,12 +185,26 @@ export default function ChallengeDetailScreen() {
     }
   }, [challengeId, detail?.can_post, loadDetail, message, sending]);
 
-  const openProgress = useCallback(() => {
-    if (!detail?.challenge_id) {
+  const handleCompleteToday = useCallback(async () => {
+    if (!challengeId || !detail?.can_complete_today || !detail.current_day_number || completingToday) {
       return;
     }
-    router.push(`/challenges/progress/${detail.challenge_id}` as any);
-  }, [detail?.challenge_id, router]);
+    setCompletingToday(true);
+    try {
+      await apiRequest(
+        `/challenges/${encodeURIComponent(challengeId)}/plan/days/${detail.current_day_number}/complete`,
+        {
+          method: 'POST',
+          body: { completed: true },
+        }
+      );
+      await loadDetail(false);
+    } catch (error) {
+      setErrorDialog(formatAppError(error, 'Unable to complete today right now.'));
+    } finally {
+      setCompletingToday(false);
+    }
+  }, [challengeId, completingToday, detail?.can_complete_today, detail?.current_day_number, loadDetail]);
 
   const ctaLabel = detail?.viewer_membership_status === 'ACTIVE'
     ? 'In Progress'
@@ -190,7 +212,7 @@ export default function ChallengeDetailScreen() {
       ? 'Completed'
       : 'Start Challenge';
 
-  const ctaDisabled = !detail || starting || (!detail.can_start && !detail.has_joined);
+  const ctaDisabled = !detail || starting || detail.has_joined || (!detail.can_start && !detail.has_joined);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -235,29 +257,51 @@ export default function ChallengeDetailScreen() {
                   <View style={styles.heroDivider} />
                   <View style={styles.heroFooter}>
                     <Text style={styles.pointsText}>+{detail.points} Points</Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        detail.has_joined && styles.primaryButtonJoined,
-                        detail.viewer_membership_status === 'COMPLETED' && styles.primaryButtonCompleted,
-                        ctaDisabled && styles.primaryButtonDisabled,
-                      ]}
-                      activeOpacity={0.88}
-                      onPress={() => {
-                        if (detail.has_joined) {
-                          openProgress();
-                          return;
-                        }
-                        void handleStart();
-                      }}
-                      disabled={ctaDisabled}
-                    >
-                      {starting ? (
-                        <ActivityIndicator color="#FFF7ED" size="small" />
+                    <View style={styles.heroActions}>
+                      {detail.has_joined && detail.viewer_membership_status === 'ACTIVE' ? (
+                        <TouchableOpacity
+                          style={[styles.secondaryButton, (completingToday || !detail.can_complete_today) && styles.primaryButtonDisabled]}
+                          activeOpacity={0.88}
+                          onPress={() => void handleCompleteToday()}
+                          disabled={completingToday || !detail.can_complete_today}
+                        >
+                          {completingToday ? (
+                            <ActivityIndicator color="#EAF4FF" size="small" />
+                          ) : (
+                            <Text style={styles.secondaryButtonText}>Complete Today</Text>
+                          )}
+                        </TouchableOpacity>
+                      ) : null}
+                      {detail.has_joined ? (
+                        <View
+                          style={[
+                            styles.primaryButton,
+                            styles.primaryButtonJoined,
+                            detail.viewer_membership_status === 'COMPLETED' && styles.primaryButtonCompleted,
+                          ]}
+                        >
+                          <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                        </View>
                       ) : (
-                        <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                        <TouchableOpacity
+                          style={[
+                            styles.primaryButton,
+                            ctaDisabled && styles.primaryButtonDisabled,
+                          ]}
+                          activeOpacity={0.88}
+                          onPress={() => {
+                            void handleStart();
+                          }}
+                          disabled={ctaDisabled}
+                        >
+                          {starting ? (
+                            <ActivityIndicator color="#FFF7ED" size="small" />
+                          ) : (
+                            <Text style={styles.primaryButtonText}>{ctaLabel}</Text>
+                          )}
+                        </TouchableOpacity>
                       )}
-                    </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
 
@@ -373,6 +417,7 @@ const styles = StyleSheet.create({
   quoteText: { flex: 1, color: '#9CA3AF', fontSize: 15, lineHeight: 24, fontStyle: 'italic', fontFamily: 'Inter_400Regular' },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 18 },
   heroFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  heroActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   pointsText: { color: '#FBBF24', fontSize: 18, fontFamily: 'Inter_700Bold' },
   primaryButton: {
     minWidth: 170,
@@ -387,6 +432,16 @@ const styles = StyleSheet.create({
   primaryButtonCompleted: { backgroundColor: '#2563EB' },
   primaryButtonDisabled: { opacity: 0.55 },
   primaryButtonText: { color: '#FFF7ED', fontSize: 16, fontFamily: 'Inter_700Bold' },
+  secondaryButton: {
+    minWidth: 146,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#2563EB',
+  },
+  secondaryButtonText: { color: '#EAF4FF', fontSize: 15, fontFamily: 'Inter_700Bold' },
   participantsCard: {
     backgroundColor: '#1F2937',
     borderRadius: 20,

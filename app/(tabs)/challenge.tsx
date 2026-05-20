@@ -1197,14 +1197,10 @@ export default function ChallengesScreen() {
                               <Ionicons name="person-add-outline" size={15} color="#D9EEFF" />
                               <Text style={styles.challengeInviteBtnText}>Invite</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.challengeStatusBtn, styles.challengeStatusBtnActive]}
-                              activeOpacity={0.88}
-                              onPress={() => router.push(`/challenges/${ch.challenge_id}` as any)}
-                            >
+                            <View style={[styles.challengeStatusBtn, styles.challengeStatusBtnActive]}>
                               <Ionicons name="checkmark" size={15} color="#052E16" />
                               <Text style={styles.challengeStatusBtnText}>In Progress</Text>
-                            </TouchableOpacity>
+                            </View>
                           </>
                         ) : ch.state === 'COMPLETED' ? (
                           <TouchableOpacity
