@@ -20,6 +20,7 @@ function resolveApiUrl(url: string): string {
 }
 
 const API_URL = resolveApiUrl(RAW_API_URL);
+const REQUEST_TIMEOUT_MS = 8_000;
 
 export function resolveRemoteAssetUrl(url: string | null | undefined): string {
   const normalizedUrl = String(url || '').trim();
@@ -434,6 +435,27 @@ async function persistAuthUser(user: AuthUser | null) {
   }
 }
 
+async function fetchWithTimeout(input: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: init.signal ?? controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new ApiError(0, 'Request timed out');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function loadPersistedAuthTokens(): Promise<AuthTokens | null> {
   if (Platform.OS === 'web') {
     if (typeof window === 'undefined') {
@@ -760,15 +782,20 @@ export async function createAdminChallenge(payload: AdminChallengePayload) {
 }
 
 async function refreshWithSessionToken(sessionToken: string): Promise<AuthTokens | null> {
-  const response = await fetch(`${API_URL}/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({ session_token: sessionToken }),
-  });
+  let response: Response;
+  try {
+    response = await fetchWithTimeout(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ session_token: sessionToken }),
+    });
+  } catch {
+    return null;
+  }
 
   if (!response.ok) {
     return null;
@@ -841,7 +868,7 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${authTokens.access_token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  const response = await fetchWithTimeout(`${API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers,
     credentials: 'include',

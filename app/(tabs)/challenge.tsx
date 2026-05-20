@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from '../../constants/Colors';
+import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { apiRequest, fetchCurrentUser, getAuthUser, resolveRemoteAssetUrl } from '../../lib/api';
 import { canAccessFeature, normalizeSubscriptionTier } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
@@ -275,6 +276,7 @@ export default function ChallengesScreen() {
     profileImage: '',
   });
   const [subscriptionTier, setSubscriptionTier] = useState('NONE');
+  const [restrictedSection, setRestrictedSection] = useState('');
   const [selectedDurationDays, setSelectedDurationDays] = useState<number | typeof CHALLENGE_FILTER_ALL>(CHALLENGE_FILTER_ALL);
   const consumedCommunityPrefillKeyRef = useRef('');
   const readyToStartChallenges = challengeOverview.ready_to_start.filter((challenge) => challenge.can_start);
@@ -321,11 +323,6 @@ export default function ChallengesScreen() {
   const hasCompletedChallenges = false;
   const hasVisibleChallengeSections =
     challengeOverview.ready_to_start.length > 0 || challengeOverview.active_challenges.length > 0 || challengeOverview.completed_challenges.length > 0;
-  const availableTabs = canAccessChallenges && canAccessCommunity
-    ? TABS
-    : canAccessChallenges
-      ? ['CHALLENGES']
-      : ['COMMUNITY'];
   const isSilverUser = subscriptionTier === 'SILVER';
   const silverChallengeLimit = 5;
   const silverChallengesUsed = Math.min(challengeOverview.active_challenges.length, silverChallengeLimit);
@@ -363,15 +360,6 @@ export default function ChallengesScreen() {
       isMounted = false;
     };
   }, []);
-
-  useEffect(() => {
-    if (!canAccessChallenges && activeTab === 'CHALLENGES') {
-      setActiveTab('COMMUNITY');
-    }
-    if (!canAccessCommunity && activeTab === 'COMMUNITY') {
-      setActiveTab('CHALLENGES');
-    }
-  }, [activeTab, canAccessChallenges, canAccessCommunity]);
 
   useEffect(() => {
     if (!durationTabOptions.length) {
@@ -922,13 +910,29 @@ export default function ChallengesScreen() {
 
         {/* Tabs */}
         <View style={styles.tabRow}>
-          {availableTabs.map((tab) => (
+          {TABS.map((tab) => (
             <TouchableOpacity
               key={tab}
               style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => {
+                if (tab === 'CHALLENGES' && !canAccessChallenges) {
+                  setRestrictedSection('Challenges');
+                  return;
+                }
+                if (tab === 'COMMUNITY' && !canAccessCommunity) {
+                  setRestrictedSection('Community');
+                  return;
+                }
+                setActiveTab(tab);
+              }}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === tab && styles.tabTextActive,
+                  ((tab === 'CHALLENGES' && !canAccessChallenges) || (tab === 'COMMUNITY' && !canAccessCommunity)) && styles.tabTextLocked,
+                ]}
+              >
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -1480,6 +1484,19 @@ export default function ChallengesScreen() {
         )}
 
       </ScrollView>
+      <AccessRestrictionModal
+        visible={Boolean(restrictedSection)}
+        sectionName={restrictedSection}
+        onClose={() => setRestrictedSection('')}
+        onUpdatePlan={() => {
+          setRestrictedSection('');
+          router.push('/plan');
+        }}
+        onBackHome={() => {
+          setRestrictedSection('');
+          router.replace('/(tabs)');
+        }}
+      />
 
       <Modal
         visible={selectedCommunityPost !== null}
@@ -1620,6 +1637,9 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     letterSpacing: 0.5,
     fontFamily: 'Inter_700Bold',
+  },
+  tabTextLocked: {
+    opacity: 0.58,
   },
   tabTextActive: {
     color: '#000',

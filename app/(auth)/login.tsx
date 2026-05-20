@@ -98,7 +98,7 @@ export default function LoginScreen() {
   if (checkingAuth) {
     return (
       <ImageBackground
-        source={require('../../assets/images/gym-bg.png')}
+        source={require('../../assets/w4.jpg')}
         style={styles.background}
         resizeMode="cover"
       >
@@ -113,7 +113,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground
-      source={require('../../assets/images/gym-bg.png')}
+      source={require('../../assets/w4.jpg')}
       style={styles.background}
       resizeMode="cover"
     >

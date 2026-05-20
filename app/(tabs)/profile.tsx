@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
+import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
 import { canAccessFeature, canAccessPlanRoute } from '../../lib/access';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
@@ -139,6 +140,7 @@ export default function ProfileScreen() {
   });
   const [showGenderModal, setShowGenderModal] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [restrictedSection, setRestrictedSection] = React.useState('');
   const bodyMetricsSummary = React.useMemo(() => {
     const parts = [
       bodyMetrics.age ? `${bodyMetrics.age}y` : '',
@@ -153,26 +155,28 @@ export default function ProfileScreen() {
     return MENU_SECTIONS.map((section) => ({
       ...section,
       items: section.items
-        .filter((item) => {
+        .map((item) => {
+          let restricted = false;
+
           if (!('route' in item) || !item.route) {
-            return true;
+            return item;
           }
           if (item.route === '/workoutplan') {
-            return canAccessFeature('workoutplan', me);
+            restricted = !canAccessFeature('workoutplan', me);
           }
           if (item.route === '/mealPlan') {
-            return canAccessPlanRoute('/mealPlan', me);
+            restricted = !canAccessPlanRoute('/mealPlan', me);
           }
           if (item.route === '/profile/application') {
-            return canAccessFeature('application', me);
+            restricted = !canAccessFeature('application', me);
           }
           if (item.route === '/admin/challenges') {
-            return Boolean(me?.is_admin);
+            restricted = !Boolean(me?.is_admin);
           }
           if (item.route === '/profile/longevity-os') {
-            return canAccessFeature('longevity', me);
+            restricted = !canAccessFeature('longevity', me);
           }
-          return true;
+          return { ...item, restricted };
         })
         .map((item) => {
           if ((item as any).action === 'body_metrics') {
@@ -183,7 +187,7 @@ export default function ProfileScreen() {
           }
           return item;
         }),
-    })).filter((section) => section.items.length > 0);
+    }));
   }, [bodyMetricsSummary, me]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
@@ -380,7 +384,18 @@ export default function ProfileScreen() {
             >
               <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
             </TouchableOpacity>
-          </View> : null}
+          </View> : (
+            <TouchableOpacity style={[styles.coachCard, styles.lockedCard]} activeOpacity={0.85} onPress={() => setRestrictedSection('Coach Victor')}>
+              <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentBlue }]}>
+                <Ionicons name="add" size={26} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.coachName}>COACH VICTOR</Text>
+                <Text style={styles.coachStatus}>Upgrade required</Text>
+              </View>
+              <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
+          )}
           {canAccessLongevity ? (
             <View style={styles.coachCard}>
               <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentPurple }]}>
@@ -397,7 +412,18 @@ export default function ProfileScreen() {
                 <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
               </TouchableOpacity>
             </View>
-          ) : null}
+          ) : (
+            <TouchableOpacity style={[styles.coachCard, styles.lockedCard]} activeOpacity={0.85} onPress={() => setRestrictedSection('Longevity OS')}>
+              <View style={[styles.coachIconWrap, { backgroundColor: Colors.accentPurple }]}>
+                <Ionicons name="pulse" size={22} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.coachName}>LONGEVITY OS</Text>
+                <Text style={[styles.coachStatus, { color: '#A855F7' }]}>Upgrade required</Text>
+              </View>
+              <Ionicons name="lock-closed" size={16} color="rgba(255,255,255,0.5)" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* ── Menu Sections ── */}
@@ -408,11 +434,15 @@ export default function ProfileScreen() {
               {section.items.map((item, i) => (
                 <View key={item.label}>
                   <TouchableOpacity
-                    style={styles.menuRow}
+                    style={[styles.menuRow, (item as any).restricted && styles.lockedRow]}
                     activeOpacity={0.7}
                     onPress={() => {
                       if ((item as any).action === 'body_metrics') {
                         openMetricsModal();
+                        return;
+                      }
+                      if ((item as any).restricted) {
+                        setRestrictedSection(item.label);
                         return;
                       }
                       if ((item as any).route) {
@@ -452,6 +482,19 @@ export default function ProfileScreen() {
         <Text style={styles.versionText}>Victory Fitness v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
+      <AccessRestrictionModal
+        visible={Boolean(restrictedSection)}
+        sectionName={restrictedSection}
+        onClose={() => setRestrictedSection('')}
+        onUpdatePlan={() => {
+          setRestrictedSection('');
+          router.push('/plan');
+        }}
+        onBackHome={() => {
+          setRestrictedSection('');
+          router.replace('/(tabs)');
+        }}
+      />
 
       <Modal visible={showMetricsModal} transparent animationType="fade" onRequestClose={() => setShowMetricsModal(false)}>
         <View style={styles.metricsModalOverlay}>
@@ -924,6 +967,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.07)',
     marginBottom: 10,
   },
+  lockedCard: {
+    opacity: 0.82,
+  },
   coachIconWrap: { width: 50, height: 50, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   coachName: { fontSize: 14, fontWeight: '800', color: '#fff', fontFamily: 'Inter_700Bold', letterSpacing: 0.5 },
   coachStatus: { fontSize: 11, color: '#06B6D4', fontFamily: 'Inter_400Regular', marginTop: 3 },
@@ -939,6 +985,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
+  lockedRow: { opacity: 0.72 },
   menuIconWrap: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   menuLabel: { flex: 1, fontSize: 14, color: '#fff', fontFamily: 'Inter_400Regular' },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
