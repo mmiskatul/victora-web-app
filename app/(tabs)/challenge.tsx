@@ -823,7 +823,7 @@ export default function ChallengesScreen() {
     try {
       await apiRequest(`/challenges/${encodeURIComponent(challenge.challenge_id)}/plan/days/${nextDay}/complete`, {
         method: 'POST',
-        body: { completed_day: nextDay },
+        body: { completed: true },
       });
       await loadChallengeOverview(false);
     } catch (error) {
@@ -890,6 +890,7 @@ export default function ChallengesScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        stickyHeaderIndices={[1]}
         refreshControl={
           <RefreshControl
             refreshing={screenRefreshing}
@@ -909,34 +910,36 @@ export default function ChallengesScreen() {
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabRow}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
-              onPress={() => {
-                if (tab === 'CHALLENGES' && !canAccessChallenges) {
-                  setRestrictedSection('Challenges');
-                  return;
-                }
-                if (tab === 'COMMUNITY' && !canAccessCommunity) {
-                  setRestrictedSection('Community');
-                  return;
-                }
-                setActiveTab(tab);
-              }}
-            >
-              <Text
-                style={[
-                  styles.tabText,
-                  activeTab === tab && styles.tabTextActive,
-                  ((tab === 'CHALLENGES' && !canAccessChallenges) || (tab === 'COMMUNITY' && !canAccessCommunity)) && styles.tabTextLocked,
-                ]}
+        <View style={styles.tabStickyWrap}>
+          <View style={styles.tabRow}>
+            {TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+                onPress={() => {
+                  if (tab === 'CHALLENGES' && !canAccessChallenges) {
+                    setRestrictedSection('Challenges');
+                    return;
+                  }
+                  if (tab === 'COMMUNITY' && !canAccessCommunity) {
+                    setRestrictedSection('Community');
+                    return;
+                  }
+                  setActiveTab(tab);
+                }}
               >
-                {tab}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === tab && styles.tabTextActive,
+                    ((tab === 'CHALLENGES' && !canAccessChallenges) || (tab === 'COMMUNITY' && !canAccessCommunity)) && styles.tabTextLocked,
+                  ]}
+                >
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* ── CHALLENGES TAB ── */}
@@ -980,7 +983,7 @@ export default function ChallengesScreen() {
                     key={chat.id}
                     style={styles.chatCard}
                     activeOpacity={0.85}
-                    onPress={() => router.push(`/challenges/chat/${chat.challenge_id}` as any)}
+                    onPress={() => router.push(`/challenges/${chat.challenge_id}` as any)}
                   >
                     <View style={styles.chatAvatarWrap}>
                       {chat.avatar ? (
@@ -1102,9 +1105,12 @@ export default function ChallengesScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                {selectedDurationChallenges.length > 0 ? selectedDurationChallenges.map((ch) => (
+                {selectedDurationChallenges.length > 0 ? selectedDurationChallenges.map((ch) => {
+                  const challengeRouteId = 'challenge_id' in ch ? ch.challenge_id : ch.id;
+                  return (
                   <View key={ch.id} style={styles.challengeLibraryCard}>
-                    {ch.thumbnail ? <Image source={{ uri: ch.thumbnail }} style={styles.challengeLibraryImage} /> : null}
+                    <TouchableOpacity activeOpacity={0.94} onPress={() => router.push(`/challenges/${challengeRouteId}` as any)}>
+                      {ch.thumbnail ? <Image source={{ uri: ch.thumbnail }} style={styles.challengeLibraryImage} /> : null}
                     <View style={styles.challengeLibraryCardHeader}>
                       <View style={styles.challengeLibraryTitleWrap}>
                         <Text style={styles.challengeLibraryTitle}>{ch.title}</Text>
@@ -1117,26 +1123,27 @@ export default function ChallengesScreen() {
                       </View>
                     </View>
                     <Text style={styles.challengeLibraryDescription}>{ch.description}</Text>
-                    {ch.state === 'ACTIVE' ? (
-                      <View style={styles.challengeLibraryProgressRow}>
-                        <View style={styles.challengeLibraryProgressTrack}>
-                          <View
-                            style={[
-                              styles.challengeLibraryProgressFill,
-                              { width: `${Math.max(0, Math.min(100, Math.round(ch.progress * 100)))}%` as any },
-                            ]}
-                          />
+                      {ch.state === 'ACTIVE' ? (
+                        <View style={styles.challengeLibraryProgressRow}>
+                          <View style={styles.challengeLibraryProgressTrack}>
+                            <View
+                              style={[
+                                styles.challengeLibraryProgressFill,
+                                { width: `${Math.max(0, Math.min(100, Math.round(ch.progress * 100)))}%` as any },
+                              ]}
+                            />
+                          </View>
+                          <Text style={styles.challengeLibraryProgressText}>{Math.round(ch.progress * 100)}%</Text>
                         </View>
-                        <Text style={styles.challengeLibraryProgressText}>{Math.round(ch.progress * 100)}%</Text>
-                      </View>
-                    ) : ch.state === 'COMPLETED' ? (
-                      <View style={styles.challengeLibraryProgressRow}>
-                        <View style={styles.challengeLibraryProgressTrack}>
-                          <View style={[styles.challengeLibraryProgressFill, { width: '100%', backgroundColor: '#22C55E' }]} />
+                      ) : ch.state === 'COMPLETED' ? (
+                        <View style={styles.challengeLibraryProgressRow}>
+                          <View style={styles.challengeLibraryProgressTrack}>
+                            <View style={[styles.challengeLibraryProgressFill, { width: '100%', backgroundColor: '#22C55E' }]} />
+                          </View>
+                          <Text style={styles.challengeLibraryProgressText}>100%</Text>
                         </View>
-                        <Text style={styles.challengeLibraryProgressText}>100%</Text>
-                      </View>
-                    ) : null}
+                      ) : null}
+                    </TouchableOpacity>
                     <View style={styles.challengeLibraryFooter}>
                       <View style={styles.challengeLibraryMetaRow}>
                         <View style={styles.challengeLibraryMetaItem}>
@@ -1148,23 +1155,21 @@ export default function ChallengesScreen() {
                             name={
                               ch.state === 'ACTIVE'
                                 ? 'chatbubble-outline'
-                                : ch.state === 'READY'
-                                  ? 'time-outline'
-                                  : ch.state === 'COMPLETED'
-                                    ? 'checkmark-circle-outline'
-                                    : 'lock-closed-outline'
+                                : ch.state === 'COMPLETED'
+                                  ? 'checkmark-circle-outline'
+                                  : 'chatbubble-outline'
                             }
                             size={14}
                             color="rgba(255,255,255,0.58)"
                           />
                           <Text style={styles.challengeLibraryMetaText}>
                             {ch.state === 'ACTIVE'
-                              ? `${ch.days_left} days left`
+                              ? 'Chat'
                               : ch.state === 'READY'
-                                ? 'Ready'
+                                ? 'Chat'
                                 : ch.state === 'COMPLETED'
                                   ? `Completed ${formatCompletedDate(ch.completed_at)}`
-                                  : 'Locked'}
+                                  : 'Chat'}
                           </Text>
                         </View>
                       </View>
@@ -1174,32 +1179,38 @@ export default function ChallengesScreen() {
                             <TouchableOpacity
                               style={styles.challengeInviteBtn}
                               activeOpacity={0.88}
-                              onPress={() => router.push(`/challenges/chat/${ch.challenge_id}` as any)}
+                              onPress={() => handleInviteChallenge({
+                                id: ch.challenge_id,
+                                title: ch.title,
+                                description: ch.description,
+                                duration_days: ch.duration_days,
+                                type: ch.type,
+                                points: ch.points,
+                                participants: ch.participants,
+                                difficulty: 'ACTIVE',
+                                difficulty_color: ch.color,
+                                status: 'ACTIVE',
+                                can_start: false,
+                                thumbnail: ch.thumbnail,
+                              })}
                             >
-                              <Ionicons name="chatbubble-outline" size={15} color="#D9EEFF" />
-                              <Text style={styles.challengeInviteBtnText}>Chat</Text>
+                              <Ionicons name="person-add-outline" size={15} color="#D9EEFF" />
+                              <Text style={styles.challengeInviteBtnText}>Invite</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={[styles.challengeStatusBtn, styles.challengeStatusBtnActive]}
                               activeOpacity={0.88}
-                              onPress={() => void handleCompleteCurrentDay(ch)}
-                              disabled={challengeDayCompleting[ch.id]}
+                              onPress={() => router.push(`/challenges/${ch.challenge_id}` as any)}
                             >
-                              {challengeDayCompleting[ch.id] ? (
-                                <ActivityIndicator size="small" color="#052E16" />
-                              ) : (
-                                <>
-                                  <Ionicons name="checkmark" size={15} color="#052E16" />
-                                  <Text style={styles.challengeStatusBtnText}>Complete Day</Text>
-                                </>
-                              )}
+                              <Ionicons name="checkmark" size={15} color="#052E16" />
+                              <Text style={styles.challengeStatusBtnText}>In Progress</Text>
                             </TouchableOpacity>
                           </>
                         ) : ch.state === 'COMPLETED' ? (
                           <TouchableOpacity
                             style={[styles.challengeStatusBtn, styles.challengeStatusBtnCompleted]}
                             activeOpacity={0.88}
-                            onPress={() => router.push(`/challenges/progress/${ch.challenge_id}` as any)}
+                            onPress={() => router.push(`/challenges/${ch.challenge_id}` as any)}
                           >
                             <Ionicons name="checkmark-circle" size={15} color="#052E16" />
                             <Text style={styles.challengeStatusBtnText}>Completed</Text>
@@ -1253,7 +1264,7 @@ export default function ChallengesScreen() {
                       </View>
                     </View>
                   </View>
-                )) : (
+                )}) : (
                   <View style={styles.challengeEmptyCard}>
                     <Text style={styles.challengeEmptyText}>
                       {selectedDurationDays === CHALLENGE_FILTER_ALL
@@ -1614,13 +1625,24 @@ const styles = StyleSheet.create({
   },
 
   /* Tabs */
+  tabStickyWrap: {
+    backgroundColor: Colors.background,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
   tabRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 20,
     backgroundColor: '#1A1A2E',
     borderRadius: 14,
     padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 6,
   },
   tabBtn: {
     flex: 1,
@@ -1648,6 +1670,7 @@ const styles = StyleSheet.create({
   /* Shared */
   section: {
     paddingHorizontal: 16,
+    paddingTop: 12,
   },
 
   /* Sub-section Header */

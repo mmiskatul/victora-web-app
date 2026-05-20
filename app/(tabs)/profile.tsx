@@ -56,7 +56,6 @@ const MENU_SECTIONS = [
       items: [
         { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
         { icon: 'document-text-outline', label: 'Application', tint: '#EAB308', route: '/profile/application' },
-        { icon: 'grid-outline', label: 'Challenges Dashboard', tint: '#22C55E', route: '/admin/challenges' },
         { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
         { icon: 'language-outline', label: 'Language', tint: '#22C55E', value: 'English' },
         { icon: 'help-circle-outline', label: 'Help & Support', tint: '#8B5CF6', route: '/profile/support' },
@@ -456,7 +455,13 @@ export default function ProfileScreen() {
                     <Text style={styles.menuLabel}>{item.label}</Text>
                     <View style={styles.menuRight}>
                       {(item as any).value && <Text style={styles.menuValue}>{(item as any).value}</Text>}
-                      <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+                      {(item as any).restricted ? (
+                        <View style={styles.lockedIconBadge}>
+                          <Ionicons name="lock-closed" size={13} color="#F8FAFC" />
+                        </View>
+                      ) : (
+                        <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />
+                      )}
                     </View>
                   </TouchableOpacity>
                   {i < section.items.length - 1 && <View style={styles.divider} />}
@@ -990,6 +995,16 @@ const styles = StyleSheet.create({
   menuLabel: { flex: 1, fontSize: 14, color: '#fff', fontFamily: 'Inter_400Regular' },
   menuRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   menuValue: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Inter_400Regular' },
+  lockedIconBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(249,115,22,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(249,115,22,0.35)',
+  },
 
   /* Section Title */
   sectionTitle: { fontSize: 11, color: Colors.textMuted, fontFamily: 'Inter_700Bold', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10 },
