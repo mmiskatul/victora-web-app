@@ -15,6 +15,17 @@ export default function TabsLayout() {
   const [allowedTabs, setAllowedTabs] = useState<string[] | null>(null);
   const [restrictedSection, setRestrictedSection] = useState('');
 
+  const blurActiveElement = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -136,6 +147,7 @@ export default function TabsLayout() {
               return;
             }
             event.preventDefault();
+            blurActiveElement();
             setRestrictedSection('Workout');
           },
         }}
@@ -155,6 +167,7 @@ export default function TabsLayout() {
               return;
             }
             event.preventDefault();
+            blurActiveElement();
             setRestrictedSection('Challenges');
           },
         }}
@@ -174,6 +187,7 @@ export default function TabsLayout() {
               return;
             }
             event.preventDefault();
+            blurActiveElement();
             setRestrictedSection('Meal Plan');
           },
         }}

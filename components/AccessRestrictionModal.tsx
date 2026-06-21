@@ -18,15 +18,41 @@ export default function AccessRestrictionModal({
   onUpdatePlan,
   onBackHome,
 }: AccessRestrictionModalProps) {
+  const blurActiveElement = () => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur();
+    }
+  };
+
+  const handleClose = () => {
+    blurActiveElement();
+    onClose();
+  };
+
+  const handleUpdatePlan = () => {
+    blurActiveElement();
+    onUpdatePlan();
+  };
+
+  const handleBackHome = () => {
+    blurActiveElement();
+    onBackHome();
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <Pressable style={styles.backdrop} onPress={handleClose}>
         <Pressable style={styles.card} onPress={() => undefined}>
           <View style={styles.header}>
             <View style={styles.badge}>
               <Ionicons name="lock-closed" size={18} color={Colors.accentGold} />
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeBtn} activeOpacity={0.8}>
               <Ionicons name="close" size={18} color="rgba(255,255,255,0.72)" />
             </TouchableOpacity>
           </View>
@@ -37,10 +63,10 @@ export default function AccessRestrictionModal({
           </Text>
 
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.primaryBtn} onPress={onUpdatePlan} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleUpdatePlan} activeOpacity={0.85}>
               <Text style={styles.primaryBtnText}>Update Plan</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={onBackHome} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleBackHome} activeOpacity={0.85}>
               <Text style={styles.secondaryBtnText}>Back Home</Text>
             </TouchableOpacity>
           </View>
