@@ -16,6 +16,7 @@ import { Colors } from "../../constants/Colors";
 import { ErrorPopupModal } from "../../components/ErrorPopupModal";
 import { apiRequest } from "../../lib/api";
 import { formatAppError } from "../../lib/error";
+import { useLanguage } from "../../lib/i18n";
 
 const MOODS = [
   { emoji: "😡", label: "ANGRY" },
@@ -27,12 +28,17 @@ const MOODS = [
 
 export default function JournalScreen() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [mood, setMood] = useState(3); // Default to happy
   const [entry, setEntry] = useState("");
   const [saving, setSaving] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const selectedMood = useMemo(() => MOODS[mood] ?? MOODS[3], [mood]);
+
+  const handleBackPress = () => {
+    router.replace("/(tabs)");
+  };
 
   const handleSecureLog = async () => {
     const content = entry.trim();
@@ -53,7 +59,7 @@ export default function JournalScreen() {
       setEntry("");
       router.push("/journal/history");
     } catch (error) {
-      setErrorDialog(formatAppError(error, "Unable to save your journal entry right now."));
+      setErrorDialog(formatAppError(error, t("Unable to save your journal entry right now.")));
     } finally {
       setSaving(false);
     }
@@ -77,7 +83,7 @@ export default function JournalScreen() {
       });
       setEntry(response.analysis);
     } catch (error) {
-      setErrorDialog(formatAppError(error, "Unable to analyze your journal entry right now."));
+      setErrorDialog(formatAppError(error, t("Unable to analyze your journal entry right now.")));
     } finally {
       setAnalyzing(false);
     }
@@ -88,43 +94,35 @@ export default function JournalScreen() {
       <StatusBar barStyle="light-content" />
       <ErrorPopupModal
         visible={Boolean(errorDialog)}
-        title={errorDialog?.title ?? "Error"}
+        title={errorDialog?.title ?? t("Error")}
         message={errorDialog?.message ?? ""}
         onClose={() => setErrorDialog(null)}
       />
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: "JOURNAL",
-          headerTransparent: true,
-          headerTintColor: "#fff",
-          headerTitleStyle: {
-            fontFamily: "Inter_700Bold",
-            fontSize: 16,
-            letterSpacing: 4,
-          } as any,
-          headerLeft: () => (
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={{ marginLeft: 8 }}
-            >
-              <Ionicons name="chevron-back" size={28} color="#fff" />
-            </TouchableOpacity>
-          ),
+          headerShown: false,
         }}
       />
+
+      <View style={styles.screenHeader}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.8}>
+          <Ionicons name="chevron-back" size={28} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.screenTitle}>{t("JOURNAL")}</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.welcomeSection}>
-          <Text style={styles.dateLabel}>THURSDAY, APRIL 9</Text>
-          <Text style={styles.mainTitle}>Reflect on your victory.</Text>
+          <Text style={styles.dateLabel}>{t("THURSDAY, APRIL 9")}</Text>
+          <Text style={styles.mainTitle}>{t("Reflect on your victory.")}</Text>
         </View>
 
         <View style={styles.glassCard}>
-          <Text style={styles.sectionLabel}>CURRENT VIBE</Text>
+          <Text style={styles.sectionLabel}>{t("CURRENT VIBE")}</Text>
           <View style={styles.moodScale}>
             {MOODS.map((m, i) => (
               <TouchableOpacity
@@ -155,7 +153,7 @@ export default function JournalScreen() {
           <View style={styles.composerContainer}>
             <TextInput
               style={styles.composer}
-              placeholder="Start typing your reflection..."
+              placeholder={t("Start typing your reflection...")}
               placeholderTextColor="rgba(255,255,255,0.2)"
               multiline
               value={entry}
@@ -163,7 +161,7 @@ export default function JournalScreen() {
             />
 
             <View style={styles.composerFooter}>
-              <Text style={styles.charCount}>{entry.length} characters</Text>
+              <Text style={styles.charCount}>{entry.length} {t("characters")}</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -176,7 +174,7 @@ export default function JournalScreen() {
               <ActivityIndicator color="#000" />
             ) : (
               <View style={styles.actionContentRow}>
-                <Text style={styles.primaryActionText}>SECURE LOG</Text>
+                <Text style={styles.primaryActionText}>{t("SECURE LOG")}</Text>
                 <Ionicons name="shield-checkmark" size={18} color="#000" />
               </View>
             )}
@@ -192,7 +190,7 @@ export default function JournalScreen() {
             ) : (
               <View style={styles.actionContentRow}>
                 <Ionicons name="sparkles" size={18} color={Colors.accentPurple} />
-                <Text style={styles.aiActionText}>ANALYZE WITH AI</Text>
+                <Text style={styles.aiActionText}>{t("ANALYZE WITH AI")}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -203,7 +201,7 @@ export default function JournalScreen() {
             style={styles.historyLink}
             onPress={() => router.push("/journal/history")}
           >
-            <Text style={styles.historyLinkText}>View All Past Entries</Text>
+            <Text style={styles.historyLinkText}>{t("View All Past Entries")}</Text>
             <Ionicons
               name="arrow-forward"
               size={16}
@@ -221,8 +219,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0F0F0F", // Deeper background
   },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  screenTitle: {
+    color: '#fff',
+    fontSize: 16,
+    letterSpacing: 4,
+    fontFamily: 'Inter_700Bold',
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
+  },
   scrollContent: {
-    paddingTop: 110,
+    paddingTop: 32,
     paddingHorizontal: 20,
     paddingBottom: 40,
   },

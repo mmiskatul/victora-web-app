@@ -1,22 +1,24 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
+import { useLanguage } from '../../lib/i18n';
+import { ScreenState } from '../../components/ScreenState';
 
 type JournalEntry = {
   id: string;
@@ -120,30 +122,68 @@ function formatJournalContent(content: string): FormattedJournalBlock[] {
 
 export default function JournalHistoryScreen() {
   const router = useRouter();
-  const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [entries, setEntries] = useState<JournalEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
   const formattedSelectedEntry = selectedEntry ? formatJournalContent(selectedEntry.content) : [];
 
-  const loadEntries = useCallback(async () => {
-    setLoading(true);
+  const handleBackPress = useCallback(() => {
+    setSelectedEntry(null);
+    router.replace('/journal');
+  }, [router]);
+
+  const loadEntries = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    setError('');
+
     try {
       const response = await apiRequest<{ entries: JournalEntry[] }>('/journal/entries');
-      setEntries(response.entries);
-    } catch (error) {
-      setEntries([]);
-      setErrorDialog(formatAppError(error, 'Unable to load journal history right now.'));
+      setEntries(Array.isArray(response.entries) ? response.entries : []);
+    } catch (loadError) {
+      setError(formatAppError(loadError, t('Unable to load journal history right now.')).message);
+      throw loadError;
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
-  useFocusEffect(
-    useCallback(() => {
-      void loadEntries();
-    }, [loadEntries])
-  );
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await apiRequest<{ entries: JournalEntry[] }>('/journal/entries');
+        if (cancelled) {
+          return;
+        }
+        setEntries(Array.isArray(response.entries) ? response.entries : []);
+        setError('');
+      } catch (loadError) {
+        if (cancelled) {
+          return;
+        }
+        setError(formatAppError(loadError, t('Unable to load journal history right now.')).message);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
 
   const renderItem = ({ item }: { item: JournalEntry }) => {
     const moodEmoji = MOOD_EMOJI[item.mood] ?? '\u{1F4DD}';
@@ -186,7 +226,7 @@ export default function JournalHistoryScreen() {
           )}
         </View>
         <View style={styles.cardFooter}>
-          <Text style={styles.viewMoreText}>View entry</Text>
+          <Text style={styles.viewMoreText}>{t('View entry')}</Text>
           <Ionicons name="chevron-forward" size={14} color={Colors.accentBlue} />
         </View>
       </TouchableOpacity>
@@ -197,7 +237,7 @@ export default function JournalHistoryScreen() {
     <SafeAreaView style={styles.container}>
       <ErrorPopupModal
         visible={Boolean(errorDialog)}
-        title={errorDialog?.title ?? 'Error'}
+        title={errorDialog?.title ?? t('Error')}
         message={errorDialog?.message ?? ''}
         onClose={() => setErrorDialog(null)}
       />
@@ -254,24 +294,31 @@ export default function JournalHistoryScreen() {
       </Modal>
       <Stack.Screen
         options={{
-          headerShown: true,
-          title: 'JOURNAL HISTORY',
-          headerTransparent: true,
-          headerTintColor: '#fff',
-          headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 2 } as any,
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
-              <Ionicons name="chevron-back" size={28} color="#fff" />
-            </TouchableOpacity>
-          ),
+          headerShown: false,
         }}
       />
 
+      <View style={styles.screenHeader}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton} activeOpacity={0.8}>
+          <Ionicons name="chevron-back" size={28} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.screenTitle}>{t('JOURNAL HISTORY')}</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
       {loading ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={Colors.accentBlue} />
-          <Text style={styles.loadingText}>Loading saved journal entries...</Text>
-        </View>
+        <ScreenState mode="loading" message={t('Loading saved journal entries...')} />
+      ) : error ? (
+        <ScreenState
+          mode="error"
+          message={error}
+          actionLabel={t('Try Again')}
+          onAction={() => {
+            void loadEntries().catch((loadError) => {
+              setErrorDialog(formatAppError(loadError, t('Unable to load journal history right now.')));
+            });
+          }}
+        />
       ) : (
         <FlatList
           data={entries}
@@ -282,11 +329,22 @@ export default function JournalHistoryScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="document-text-outline" size={34} color="rgba(255,255,255,0.25)" />
-              <Text style={styles.emptyTitle}>No journal entries yet</Text>
-              <Text style={styles.emptyText}>Save a journal entry to see it here.</Text>
+               <Text style={styles.emptyTitle}>{t('No journal entries yet')}</Text>
+               <Text style={styles.emptyText}>{t('Save a journal entry to see it here.')}</Text>
             </View>
           }
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                void loadEntries(true).catch((loadError) => {
+                  setErrorDialog(formatAppError(loadError, t('Unable to load journal history right now.')));
+                });
+              }}
+              tintColor={Colors.accentBlue}
+            />
+          }
         />
       )}
     </SafeAreaView>
@@ -298,22 +356,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#131313',
   },
-  loadingWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 24,
-  },
-  loadingText: {
-    color: Colors.textMuted,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 40,
     flexGrow: 1,
+  },
+  screenHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  screenTitle: {
+    color: '#fff',
+    fontSize: 16,
+    letterSpacing: 2,
+    fontFamily: 'Inter_700Bold',
+  },
+  headerSpacer: {
+    width: 44,
+    height: 44,
   },
   emptyState: {
     flex: 1,

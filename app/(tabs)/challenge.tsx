@@ -22,11 +22,17 @@ import { Colors } from '../../constants/Colors';
 import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { apiRequest, fetchCurrentUser, getAuthUser, resolveRemoteAssetUrl } from '../../lib/api';
 import { canAccessFeature, normalizeSubscriptionTier } from '../../lib/access';
+import { useLanguage } from '../../lib/i18n';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
+import { replaceRoute } from '../../lib/navigation';
 
 const { width } = Dimensions.get('window');
 
-const TABS = ['CHALLENGES', 'COMMUNITY'];
+const CHALLENGE_TABS = [
+  { id: 'CHALLENGES', labelKey: 'CHALLENGES', restrictedSectionKey: 'Challenges' },
+  { id: 'COMMUNITY', labelKey: 'COMMUNITY', restrictedSectionKey: 'Community' },
+] as const;
+const COMMUNITY_AUDIENCE_FILTERS = ['ALL', 'SILVER', 'GOLD', 'PLATINUM', 'INNER_CIRCLE'] as const;
 const CHALLENGE_DURATION_ORDER = [3, 5, 7, 14, 21];
 const CHALLENGE_FILTER_ALL = 'ALL';
 
@@ -139,7 +145,7 @@ type CommunityReactionUser = {
   user_profile_image: string;
   created_at: string;
 };
-function formatCommunityPostTime(value: string) {
+function formatCommunityPostTime(value: string, t: (key: string, params?: Record<string, string | number>) => string) {
   const createdAt = new Date(value);
   if (Number.isNaN(createdAt.getTime())) {
     return '';
@@ -148,20 +154,20 @@ function formatCommunityPostTime(value: string) {
   const diffMs = Date.now() - createdAt.getTime();
   const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
   if (diffMinutes < 1) {
-    return 'Just now';
+    return t('Just now');
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+    return t('{count}m ago', { count: diffMinutes });
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return t('{count}h ago', { count: diffHours });
   }
 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays}d ago`;
+    return t('{count}d ago', { count: diffDays });
   }
 
   return createdAt.toLocaleDateString();
@@ -184,7 +190,7 @@ function SkeletonBlock({
   return <View style={[styles.skeletonBlock, { width, height }, style]} />;
 }
 
-function formatChallengeTime(value: string | null) {
+function formatChallengeTime(value: string | null, t: (key: string, params?: Record<string, string | number>) => string) {
   if (!value) {
     return '';
   }
@@ -197,20 +203,20 @@ function formatChallengeTime(value: string | null) {
   const diffMs = Date.now() - createdAt.getTime();
   const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
   if (diffMinutes < 1) {
-    return 'Now';
+    return t('Now');
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+    return t('{count}m ago', { count: diffMinutes });
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return t('{count}h ago', { count: diffHours });
   }
 
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) {
-    return `${diffDays}d ago`;
+    return t('{count}d ago', { count: diffDays });
   }
 
   return createdAt.toLocaleDateString();
@@ -225,17 +231,18 @@ function formatCompletedDate(value: string) {
   return completedAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function formatDurationLabel(days: number) {
-  return `${days} Day${days === 1 ? '' : 's'}`;
+function formatDurationLabel(days: number, t: (key: string) => string) {
+  return `${days} ${days === 1 ? t('Day') : t('Days')}`;
 }
 
-function formatChallengeFilterLabel(value: number | typeof CHALLENGE_FILTER_ALL) {
-  return value === CHALLENGE_FILTER_ALL ? 'All' : formatDurationLabel(value);
+function formatChallengeFilterLabel(value: number | typeof CHALLENGE_FILTER_ALL, t: (key: string) => string) {
+  return value === CHALLENGE_FILTER_ALL ? t('All') : formatDurationLabel(value, t);
 }
 
 export default function ChallengesScreen() {
-  useModuleAccessGuard('/challenge');
+  const checkingAccess = useModuleAccessGuard('/challenge');
   const router = useRouter();
+  const { t } = useLanguage();
   const params = useLocalSearchParams<{
     tab?: string | string[];
     prefillSource?: string | string[];
@@ -245,6 +252,15 @@ export default function ChallengesScreen() {
     prefillImageFileName?: string | string[];
     prefillStatus?: string | string[];
   }>();
+  const challengeTabs = useMemo(
+    () =>
+      CHALLENGE_TABS.map((tab) => ({
+        ...tab,
+        label: t(tab.labelKey),
+        restrictedSection: t(tab.restrictedSectionKey),
+      })),
+    [t]
+  );
   const [activeTab, setActiveTab] = useState('CHALLENGES');
   const [canAccessChallenges, setCanAccessChallenges] = useState(true);
   const [canAccessCommunity, setCanAccessCommunity] = useState(true);
@@ -272,10 +288,14 @@ export default function ChallengesScreen() {
   const [deleteSubmitting, setDeleteSubmitting] = useState<Record<string, boolean>>({});
   const [selectedCommunityPost, setSelectedCommunityPost] = useState<CommunityPost | null>(null);
   const [currentCommunityUser, setCurrentCommunityUser] = useState<CurrentCommunityUser>({
-    name: 'You',
+    name: t('You'),
     profileImage: '',
   });
   const [subscriptionTier, setSubscriptionTier] = useState('NONE');
+  const [isCommunityAdmin, setIsCommunityAdmin] = useState(false);
+  const [selectedCommunityFilter, setSelectedCommunityFilter] = useState<(typeof COMMUNITY_AUDIENCE_FILTERS)[number]>('ALL');
+  const [communityFilterPickerOpen, setCommunityFilterPickerOpen] = useState(false);
+
   const [restrictedSection, setRestrictedSection] = useState('');
   const [selectedDurationDays, setSelectedDurationDays] = useState<number | typeof CHALLENGE_FILTER_ALL>(CHALLENGE_FILTER_ALL);
   const consumedCommunityPrefillKeyRef = useRef('');
@@ -323,10 +343,27 @@ export default function ChallengesScreen() {
   const hasCompletedChallenges = false;
   const hasVisibleChallengeSections =
     challengeOverview.ready_to_start.length > 0 || challengeOverview.active_challenges.length > 0 || challengeOverview.completed_challenges.length > 0;
-  const isSilverUser = subscriptionTier === 'SILVER';
-  const silverChallengeLimit = 5;
-  const silverChallengesUsed = Math.min(challengeOverview.active_challenges.length, silverChallengeLimit);
-
+  const allowedCommunityAudiences = useMemo(() => {
+    if (!canAccessCommunity) {
+      return [] as string[];
+    }
+    if (isCommunityAdmin) {
+      return [...COMMUNITY_AUDIENCE_FILTERS];
+    }
+    const hierarchy: Record<string, string[]> = {
+      SILVER: ['ALL', 'SILVER'],
+      GOLD: ['ALL', 'SILVER', 'GOLD'],
+      PLATINUM: ['ALL', 'SILVER', 'GOLD', 'PLATINUM'],
+      INNER_CIRCLE: ['ALL', 'SILVER', 'GOLD', 'PLATINUM', 'INNER_CIRCLE'],
+    };
+    return hierarchy[subscriptionTier] ?? ['ALL'];
+  }, [canAccessCommunity, isCommunityAdmin, subscriptionTier]);
+  const filteredCommunityPosts = useMemo(() => {
+    if (selectedCommunityFilter === 'ALL') {
+      return communityPosts;
+    }
+    return communityPosts.filter((post) => String(post.audience || '').toUpperCase() === selectedCommunityFilter);
+  }, [communityPosts, selectedCommunityFilter]);
   useEffect(() => {
     let isMounted = true;
 
@@ -340,8 +377,9 @@ export default function ChallengesScreen() {
         setCanAccessChallenges(canAccessFeature('challenge', currentUser));
         setCanAccessCommunity(canAccessFeature('community', currentUser));
         setSubscriptionTier(normalizeSubscriptionTier(currentUser?.subscription_tier));
+        setIsCommunityAdmin(Boolean(currentUser?.is_admin));
         setCurrentCommunityUser({
-          name: authUser?.name || currentUser?.name || 'You',
+          name: authUser?.name || currentUser?.name || t('You'),
           profileImage: authUser?.profileImage || currentUser?.profileImage || '',
         });
       } catch {
@@ -351,6 +389,7 @@ export default function ChallengesScreen() {
 
         setCanAccessChallenges(false);
         setCanAccessCommunity(false);
+        setIsCommunityAdmin(false);
       }
     };
 
@@ -395,7 +434,7 @@ export default function ChallengesScreen() {
         ready_to_start: Array.isArray(response.ready_to_start) ? response.ready_to_start : [],
       });
     } catch (error) {
-      setChallengeError(error instanceof Error ? error.message : 'Failed to load challenges');
+      setChallengeError(error instanceof Error ? error.message : t('Failed to load challenges.'));
     } finally {
       if (showLoading) {
         setChallengeLoading(false);
@@ -418,7 +457,7 @@ export default function ChallengesScreen() {
       const response = await apiRequest<{ posts: CommunityPost[] }>('/community/posts');
       setCommunityPosts(Array.isArray(response.posts) ? response.posts : []);
     } catch (error) {
-      setCommunityError(error instanceof Error ? error.message : 'Failed to load community posts');
+      setCommunityError(error instanceof Error ? error.message : t('Failed to load community posts.'));
     } finally {
       if (showLoading) {
         setCommunityLoading(false);
@@ -457,6 +496,12 @@ export default function ChallengesScreen() {
       setActiveTab('COMMUNITY');
     }
   }, [activeTab, canAccessCommunity, params.tab]);
+
+  useEffect(() => {
+    if (!allowedCommunityAudiences.includes(selectedCommunityFilter)) {
+      setSelectedCommunityFilter('ALL');
+    }
+  }, [allowedCommunityAudiences, selectedCommunityFilter]);
 
   useEffect(() => {
     const source = Array.isArray(params.prefillSource) ? params.prefillSource[0] : params.prefillSource;
@@ -505,7 +550,7 @@ export default function ChallengesScreen() {
           return;
         }
         consumedCommunityPrefillKeyRef.current = '';
-        setCommunityError(error instanceof Error ? error.message : 'Failed to attach the shared report image.');
+        setCommunityError(error instanceof Error ? error.message : t('Failed to attach the shared report image.'));
       }
     };
 
@@ -535,6 +580,10 @@ export default function ChallengesScreen() {
       setScreenRefreshing(false);
     }
   }, [activeTab, loadChallengeOverview, loadCommunityPosts]);
+
+  if (checkingAccess) {
+    return null;
+  }
 
   const renderChallengeSkeleton = () => (
     <>
@@ -629,7 +678,7 @@ export default function ChallengesScreen() {
   const handleCommunityPost = async () => {
     const content = communityDraft.trim();
     if (!content && !communityImage?.base64) {
-      setCommunityError('Add a status or choose an image before posting.');
+      setCommunityError(t('Add a status or choose an image before posting.'));
       return;
     }
 
@@ -649,7 +698,7 @@ export default function ChallengesScreen() {
       setCommunityImage(null);
       setCommunityPosts((current) => [response, ...current]);
     } catch (error) {
-      setCommunityError(error instanceof Error ? error.message : 'Failed to publish post');
+      setCommunityError(error instanceof Error ? error.message : t('Failed to publish post'));
     } finally {
       setCommunityPosting(false);
     }
@@ -659,7 +708,7 @@ export default function ChallengesScreen() {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission needed', 'Please allow photo library access to add an image.');
+        Alert.alert(t('Permission needed'), t('Please allow photo library access to add an image.'));
         return;
       }
 
@@ -682,8 +731,8 @@ export default function ChallengesScreen() {
       setCommunityImage(asset);
       setCommunityError('');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to choose an image right now.';
-      Alert.alert('Image unavailable', message);
+      const message = error instanceof Error ? error.message : t('Unable to choose an image right now.');
+      Alert.alert(t('Image unavailable'), message);
     }
   };
 
@@ -732,7 +781,7 @@ export default function ChallengesScreen() {
         like_count: previousLikeCount,
         viewer_has_liked: previousViewerHasLiked,
       }));
-      setCommunityError(error instanceof Error ? error.message : 'Failed to update reaction');
+      setCommunityError(error instanceof Error ? error.message : t('Failed to update reaction'));
     } finally {
       setReactionSubmitting((current) => ({ ...current, [postId]: false }));
     }
@@ -782,7 +831,7 @@ export default function ChallengesScreen() {
         comment_count: Math.max(0, post.comment_count - 1),
         comments: (post.comments || []).filter((comment) => comment.id !== optimisticComment.id),
       }));
-      setCommunityError(error instanceof Error ? error.message : 'Failed to add comment');
+      setCommunityError(error instanceof Error ? error.message : t('Failed to add comment'));
     } finally {
       setCommentSubmitting((current) => ({ ...current, [postId]: false }));
     }
@@ -801,7 +850,7 @@ export default function ChallengesScreen() {
       });
       await loadChallengeOverview(false);
     } catch (error) {
-      setChallengeError(error instanceof Error ? error.message : 'Failed to start challenge');
+      setChallengeError(error instanceof Error ? error.message : t('Failed to start challenge'));
     } finally {
       setChallengeStarting((current) => ({ ...current, [challenge.id]: false }));
     }
@@ -827,7 +876,7 @@ export default function ChallengesScreen() {
       });
       await loadChallengeOverview(false);
     } catch (error) {
-      setChallengeError(error instanceof Error ? error.message : 'Failed to complete the current day.');
+      setChallengeError(error instanceof Error ? error.message : t('Failed to complete the current day.'));
     } finally {
       setChallengeDayCompleting((current) => ({ ...current, [challenge.id]: false }));
     }
@@ -859,7 +908,7 @@ export default function ChallengesScreen() {
       setCommunityPosts((current) => current.filter((post) => post.id !== postId));
       setSelectedCommunityPost((current) => (current?.id === postId ? null : current));
     } catch (error) {
-      setCommunityError(error instanceof Error ? error.message : 'Failed to delete post');
+      setCommunityError(error instanceof Error ? error.message : t('Failed to delete post'));
     } finally {
       setDeleteSubmitting((current) => ({ ...current, [postId]: false }));
     }
@@ -870,13 +919,13 @@ export default function ChallengesScreen() {
       return;
     }
 
-    Alert.alert('Delete post', 'Are you sure you want to delete this post?', [
+    Alert.alert(t('Delete post'), t('Are you sure you want to delete this post?'), [
       {
-        text: 'Cancel',
+        text: t('Cancel'),
         style: 'cancel',
       },
       {
-        text: 'Delete',
+        text: t('Delete'),
         style: 'destructive',
         onPress: () => {
           void performDeleteCommunityPost(postId);
@@ -912,30 +961,30 @@ export default function ChallengesScreen() {
         {/* Tabs */}
         <View style={styles.tabStickyWrap}>
           <View style={styles.tabRow}>
-            {TABS.map((tab) => (
+            {challengeTabs.map((tab) => (
               <TouchableOpacity
-                key={tab}
-                style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+                key={tab.id}
+                style={[styles.tabBtn, activeTab === tab.id && styles.tabBtnActive]}
                 onPress={() => {
-                  if (tab === 'CHALLENGES' && !canAccessChallenges) {
-                    setRestrictedSection('Challenges');
+                  if (tab.id === 'CHALLENGES' && !canAccessChallenges) {
+                    setRestrictedSection(tab.restrictedSection);
                     return;
                   }
-                  if (tab === 'COMMUNITY' && !canAccessCommunity) {
-                    setRestrictedSection('Community');
+                  if (tab.id === 'COMMUNITY' && !canAccessCommunity) {
+                    setRestrictedSection(tab.restrictedSection);
                     return;
                   }
-                  setActiveTab(tab);
+                  setActiveTab(tab.id);
                 }}
               >
                 <Text
                   style={[
                     styles.tabText,
-                    activeTab === tab && styles.tabTextActive,
-                    ((tab === 'CHALLENGES' && !canAccessChallenges) || (tab === 'COMMUNITY' && !canAccessCommunity)) && styles.tabTextLocked,
+                    activeTab === tab.id && styles.tabTextActive,
+                    ((tab.id === 'CHALLENGES' && !canAccessChallenges) || (tab.id === 'COMMUNITY' && !canAccessCommunity)) && styles.tabTextLocked,
                   ]}
                 >
-                  {tab}
+                  {tab.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -945,25 +994,6 @@ export default function ChallengesScreen() {
         {/* ── CHALLENGES TAB ── */}
         {activeTab === 'CHALLENGES' && (
           <View style={styles.section}>
-            {isSilverUser ? (
-              <View style={styles.challengeLimitCard}>
-                <View style={styles.challengeLimitHeader}>
-                  <Text style={styles.challengeLimitTitle}>Silver Challenge Access</Text>
-                  <Text style={styles.challengeLimitCount}>{silverChallengesUsed} / {silverChallengeLimit}</Text>
-                </View>
-                <Text style={styles.challengeLimitText}>
-                  Your current plan allows up to 5 active challenges at the same time.
-                </Text>
-                <View style={styles.challengeLimitBarTrack}>
-                  <View
-                    style={[
-                      styles.challengeLimitBarFill,
-                      { width: `${(silverChallengesUsed / silverChallengeLimit) * 100}%` as any },
-                    ]}
-                  />
-                </View>
-              </View>
-            ) : null}
             {challengeError ? (
               <View style={styles.challengeStatusCard}>
                 <Text style={styles.challengeStatusText}>{challengeError}</Text>
@@ -976,7 +1006,7 @@ export default function ChallengesScreen() {
               <>
                 <View style={styles.subSectionHeader}>
                   <Ionicons name="chatbubbles" size={16} color={Colors.primary} />
-                  <Text style={styles.subSectionTitle}>Challenge Chats</Text>
+                  <Text style={styles.subSectionTitle}>{t('Challenge Chats')}</Text>
                 </View>
                 {challengeOverview.active_chats.map((chat) => (
                   <TouchableOpacity
@@ -997,7 +1027,7 @@ export default function ChallengesScreen() {
                       <Text style={styles.chatLastMsg} numberOfLines={1}>{chat.last_message}</Text>
                     </View>
                     <View style={styles.chatRight}>
-                      <Text style={styles.chatTime}>{formatChallengeTime(chat.last_message_at)}</Text>
+                  <Text style={styles.chatTime}>{formatChallengeTime(chat.last_message_at, t)}</Text>
                       {chat.unread_count > 0 && (
                         <View style={styles.unreadBadge}>
                           <Text style={styles.unreadText}>{chat.unread_count}</Text>
@@ -1019,7 +1049,7 @@ export default function ChallengesScreen() {
                   ]}
                 >
                   <Ionicons name="flash" size={16} color={Colors.primary} />
-                  <Text style={styles.subSectionTitle}>Your Active Challenges</Text>
+                  <Text style={styles.subSectionTitle}>{t('Your Active Challenges')}</Text>
                 </View>
                 {challengeOverview.active_challenges.map((ch) => (
                   <TouchableOpacity
@@ -1033,7 +1063,7 @@ export default function ChallengesScreen() {
                       <Text style={styles.activeCardTitle}>{ch.title}</Text>
                       <View style={styles.activePointsBadge}>
                         <Ionicons name="star" size={11} color="#F59E0B" />
-                        <Text style={styles.activePointsText}>+{ch.points}</Text>
+                          <Text style={styles.activePointsText}>+{ch.points} {t('Points')}</Text>
                       </View>
                     </View>
                     <View style={styles.activeProgressRow}>
@@ -1047,7 +1077,7 @@ export default function ChallengesScreen() {
                     <View style={styles.activeCardMeta}>
                       <Text style={styles.activeMetaText}>{ch.type}</Text>
                       <Text style={[styles.daysLeftText, { color: ch.days_left <= 2 ? '#EF4444' : Colors.textMuted }]}>
-                        {ch.days_left} days left
+                        {ch.days_left} {t('days left')}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -1060,7 +1090,7 @@ export default function ChallengesScreen() {
               <>
                 <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
                   <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                  <Text style={[styles.subSectionTitle, { color: '#22C55E' }]}>Completed</Text>
+                  <Text style={[styles.subSectionTitle, { color: '#22C55E' }]}>{t('Completed')}</Text>
                 </View>
                 {challengeOverview.completed_challenges.map((ch) => (
               <View key={ch.id} style={styles.completedCard}>
@@ -1082,11 +1112,11 @@ export default function ChallengesScreen() {
 
             {(hasReadyToStartChallenges || hasUpcomingChallenges || hasCompletedChallenges || challengeOverview.active_challenges.length > 0) ? (
               <>
-                <View style={[styles.subSectionHeader, { marginTop: 24 }]}>
+                <View style={[styles.subSectionHeader, { marginTop: 4 }]}>
                   <Ionicons name="rocket" size={16} color="#4F8EF7" />
-                  <Text style={[styles.subSectionTitle, { color: '#4F8EF7' }]}>Challenge Library</Text>
+                  <Text style={[styles.subSectionTitle, { color: '#4F8EF7' }]}>{t('Challenge Library')}</Text>
                 </View>
-                <Text style={styles.challengeLibraryLead}>Grow through out of the Comfort zone</Text>
+                <Text style={styles.challengeLibraryLead}>{t('Grow through out of the Comfort zone')}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1100,7 +1130,7 @@ export default function ChallengesScreen() {
                       onPress={() => setSelectedDurationDays(days)}
                     >
                       <Text style={[styles.durationTabText, selectedDurationDays === days && styles.durationTabTextActive]}>
-                        {formatChallengeFilterLabel(days)}
+                        {formatChallengeFilterLabel(days, t)}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1117,9 +1147,9 @@ export default function ChallengesScreen() {
                         <Text style={styles.challengeLibraryCategory}>{ch.type}</Text>
                       </View>
                       <View style={styles.challengeLibraryPointsBadge}>
-                        <Text style={styles.challengeLibraryPointsText}>
-                          +{ch.state === 'COMPLETED' ? ch.earned_points : ch.points} Points
-                        </Text>
+                      <Text style={styles.challengeLibraryPointsText}>
+                        +{ch.state === 'COMPLETED' ? ch.earned_points : ch.points} {t('Points')}
+                      </Text>
                       </View>
                     </View>
                     <Text style={styles.challengeLibraryDescription}>{ch.description}</Text>
@@ -1164,12 +1194,12 @@ export default function ChallengesScreen() {
                           />
                           <Text style={styles.challengeLibraryMetaText}>
                             {ch.state === 'ACTIVE'
-                              ? 'Chat'
+                              ? t('Chat')
                               : ch.state === 'READY'
-                                ? 'Chat'
+                                ? t('Chat')
                                 : ch.state === 'COMPLETED'
-                                  ? `Completed ${formatCompletedDate(ch.completed_at)}`
-                                  : 'Chat'}
+                                  ? `${t('Completed')} ${formatCompletedDate(ch.completed_at)}`
+                                  : t('Chat')}
                           </Text>
                         </View>
                       </View>
@@ -1195,11 +1225,11 @@ export default function ChallengesScreen() {
                               })}
                             >
                               <Ionicons name="person-add-outline" size={15} color="#D9EEFF" />
-                              <Text style={styles.challengeInviteBtnText}>Invite</Text>
+                              <Text style={styles.challengeInviteBtnText}>{t('Invite')}</Text>
                             </TouchableOpacity>
                             <View style={[styles.challengeStatusBtn, styles.challengeStatusBtnActive]}>
                               <Ionicons name="checkmark" size={15} color="#052E16" />
-                              <Text style={styles.challengeStatusBtnText}>In Progress</Text>
+                              <Text style={styles.challengeStatusBtnText}>{t('In Progress')}</Text>
                             </View>
                           </>
                         ) : ch.state === 'COMPLETED' ? (
@@ -1209,7 +1239,7 @@ export default function ChallengesScreen() {
                             onPress={() => router.push(`/challenges/${ch.challenge_id}` as any)}
                           >
                             <Ionicons name="checkmark-circle" size={15} color="#052E16" />
-                            <Text style={styles.challengeStatusBtnText}>Completed</Text>
+                            <Text style={styles.challengeStatusBtnText}>{t('Completed')}</Text>
                           </TouchableOpacity>
                         ) : (
                           <>
@@ -1219,7 +1249,7 @@ export default function ChallengesScreen() {
                               onPress={() => handleInviteChallenge(ch)}
                             >
                               <Ionicons name="person-add-outline" size={15} color="#D9EEFF" />
-                              <Text style={styles.challengeInviteBtnText}>Invite</Text>
+                              <Text style={styles.challengeInviteBtnText}>{t('Invite')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={[
@@ -1250,7 +1280,7 @@ export default function ChallengesScreen() {
                                       ch.state !== 'READY' && styles.challengeStatusBtnTextLocked,
                                     ]}
                                   >
-                                    {ch.state === 'READY' ? 'Start' : 'Coming Soon'}
+                                    {ch.state === 'READY' ? t('Start') : t('Coming Soon')}
                                   </Text>
                                 </>
                               )}
@@ -1264,8 +1294,8 @@ export default function ChallengesScreen() {
                   <View style={styles.challengeEmptyCard}>
                     <Text style={styles.challengeEmptyText}>
                       {selectedDurationDays === CHALLENGE_FILTER_ALL
-                        ? 'No challenges available right now.'
-                        : `No ${formatDurationLabel(selectedDurationDays).toLowerCase()} challenges available right now.`}
+                        ? t('No challenges available right now.')
+                        : t('No duration challenges available right now.', { duration: formatDurationLabel(selectedDurationDays, t).toLowerCase() })}
                     </Text>
                   </View>
                 )}
@@ -1273,7 +1303,7 @@ export default function ChallengesScreen() {
             ) : null}
             {!challengeLoading && !hasVisibleChallengeSections ? (
               <View style={styles.challengeEmptyCard}>
-                <Text style={styles.challengeEmptyText}>No challenges available right now.</Text>
+                <Text style={styles.challengeEmptyText}>{t('No challenges available right now.')}</Text>
               </View>
             ) : null}
 
@@ -1284,12 +1314,72 @@ export default function ChallengesScreen() {
         {/* ── COMMUNITY TAB ── */}
         {activeTab === 'COMMUNITY' && (
           <View style={styles.section}>
+            <View style={styles.communityFilterTrigger}>
+              <View style={styles.communityFilterTriggerSpacer} />
+              <TouchableOpacity
+                style={styles.communityFilterIconWrap}
+                activeOpacity={0.88}
+                onPress={() => setCommunityFilterPickerOpen(true)}
+              >
+                <Ionicons name="filter" size={14} color="rgba(255,255,255,0.78)" />
+              </TouchableOpacity>
+            </View>
+
+            <Modal
+              visible={communityFilterPickerOpen}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setCommunityFilterPickerOpen(false)}
+            >
+              <TouchableOpacity
+                style={styles.communityFilterModalBackdrop}
+                activeOpacity={1}
+                onPress={() => setCommunityFilterPickerOpen(false)}
+              >
+                <View style={styles.communityFilterModalCard}>
+                  {COMMUNITY_AUDIENCE_FILTERS.map((filterKey) => {
+                    const isAllowed = allowedCommunityAudiences.includes(filterKey);
+                    const isActive = selectedCommunityFilter === filterKey;
+                    return (
+                      <TouchableOpacity
+                        key={filterKey}
+                        style={styles.communityFilterOption}
+                        activeOpacity={0.88}
+                        onPress={() => {
+                          setCommunityFilterPickerOpen(false);
+                          if (!isAllowed) {
+                            setRestrictedSection(`Community ${filterKey}`);
+                            return;
+                          }
+                          setSelectedCommunityFilter(filterKey);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.communityFilterOptionText,
+                            isActive && styles.communityFilterOptionTextActive,
+                            !isAllowed && styles.communityFilterOptionTextLocked,
+                          ]}
+                        >
+                          {filterKey}
+                        </Text>
+                        {!isAllowed ? (
+                          <Ionicons name="lock-closed" size={12} color="#F5D0FE" />
+                        ) : isActive ? (
+                          <Ionicons name="checkmark" size={14} color={Colors.primary} />
+                        ) : null}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </TouchableOpacity>
+            </Modal>
 
             {/* Post Composer */}
             <View style={styles.composerCard}>
               <TextInput
                 style={styles.composerInput}
-                placeholder="What's on your mind?"
+                placeholder={t("What's on your mind?")}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 multiline
                 value={communityDraft}
@@ -1349,7 +1439,7 @@ export default function ChallengesScreen() {
                   onPress={handleCommunityPost}
                   disabled={communityPosting}
                 >
-                  {communityPosting ? <ActivityIndicator size="small" color="#0A0A14" /> : <Text style={styles.postBtnText}>Post</Text>}
+                  {communityPosting ? <ActivityIndicator size="small" color="#0A0A14" /> : <Text style={styles.postBtnText}>{t('Post')}</Text>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -1358,7 +1448,7 @@ export default function ChallengesScreen() {
               <View style={styles.communityPreviewCard}>
                 <Image source={{ uri: communityImage.uri }} style={styles.communityPreviewImage} />
                 <TouchableOpacity onPress={() => setCommunityImage(null)} style={styles.communityPreviewRemove}>
-                  <Text style={styles.communityPreviewRemoveText}>Remove image</Text>
+                  <Text style={styles.communityPreviewRemoveText}>{t('Remove image')}</Text>
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -1371,7 +1461,7 @@ export default function ChallengesScreen() {
             {communityLoading ? renderCommunitySkeleton() : null}
 
             {/* Community Posts */}
-            {!communityLoading && communityPosts.map((post) => (
+            {!communityLoading && filteredCommunityPosts.map((post) => (
               <View key={post.id} style={styles.postCard}>
                 <TouchableOpacity activeOpacity={0.92} onPress={() => setSelectedCommunityPost(post)}>
                   <View style={styles.postHeader}>
@@ -1385,7 +1475,7 @@ export default function ChallengesScreen() {
                     <View style={styles.postMeta}>
                       <View style={styles.postMetaRow}>
                         <Text style={styles.postAuthor}>{post.author_name}</Text>
-                        <Text style={styles.postTime}>{formatCommunityPostTime(post.created_at)}</Text>
+                        <Text style={styles.postTime}>{formatCommunityPostTime(post.created_at, t)}</Text>
                         <View style={[styles.tierBadge, { backgroundColor: post.audience === 'ALL' ? '#22C55E' : '#A855F7' }]}>
                           <Text style={styles.tierBadgeText}>{post.audience}</Text>
                         </View>
@@ -1430,7 +1520,7 @@ export default function ChallengesScreen() {
                       style={styles.postDeleteAction}
                       onPress={() => handleDeleteCommunityPost(post.id)}
                       disabled={deleteSubmitting[post.id]}
-                      accessibilityLabel={deleteSubmitting[post.id] ? 'Deleting post' : 'Delete post'}
+                      accessibilityLabel={deleteSubmitting[post.id] ? t('Deleting post') : t('Delete post')}
                     >
                       {deleteSubmitting[post.id] ? (
                         <ActivityIndicator size="small" color="#F87171" />
@@ -1455,7 +1545,7 @@ export default function ChallengesScreen() {
                         <View style={styles.commentBubble}>
                           <View style={styles.commentMetaRow}>
                             <Text style={styles.commentAuthor}>{comment.author_name}</Text>
-                            <Text style={styles.commentTime}>{formatCommunityPostTime(comment.created_at)}</Text>
+                            <Text style={styles.commentTime}>{formatCommunityPostTime(comment.created_at, t)}</Text>
                           </View>
                           <Text style={styles.commentContent}>{comment.content}</Text>
                         </View>
@@ -1465,7 +1555,7 @@ export default function ChallengesScreen() {
                     <View style={styles.commentComposer}>
                       <TextInput
                         style={styles.commentInput}
-                        placeholder="Write a comment..."
+                        placeholder={t('Write a comment...')}
                         placeholderTextColor="rgba(255,255,255,0.35)"
                         value={commentDrafts[post.id] || ''}
                         onChangeText={(text) => setCommentDrafts((current) => ({ ...current, [post.id]: text }))}
@@ -1478,7 +1568,7 @@ export default function ChallengesScreen() {
                         {commentSubmitting[post.id] ? (
                           <ActivityIndicator size="small" color="#0A0A14" />
                         ) : (
-                          <Text style={styles.commentSendText}>Send</Text>
+                          <Text style={styles.commentSendText}>{t('Send')}</Text>
                         )}
                       </TouchableOpacity>
                     </View>
@@ -1486,6 +1576,12 @@ export default function ChallengesScreen() {
                 ) : null}
               </View>
             ))}
+
+            {!communityLoading && filteredCommunityPosts.length === 0 ? (
+              <View style={styles.challengeEmptyCard}>
+                <Text style={styles.challengeEmptyText}>No community posts available for this filter.</Text>
+              </View>
+            ) : null}
 
           </View>
         )}
@@ -1501,7 +1597,7 @@ export default function ChallengesScreen() {
         }}
         onBackHome={() => {
           setRestrictedSection('');
-          router.replace('/(tabs)');
+          replaceRoute(router, '/(tabs)');
         }}
       />
 
@@ -1530,7 +1626,7 @@ export default function ChallengesScreen() {
                   <View style={styles.postMeta}>
                     <View style={styles.postMetaRow}>
                       <Text style={styles.postAuthor}>{selectedCommunityPost.author_name}</Text>
-                      <Text style={styles.postTime}>{formatCommunityPostTime(selectedCommunityPost.created_at)}</Text>
+                      <Text style={styles.postTime}>{formatCommunityPostTime(selectedCommunityPost.created_at, t)}</Text>
                     </View>
                     <View style={[styles.modalTierBadge, { backgroundColor: selectedCommunityPost.audience === 'ALL' ? '#22C55E' : '#A855F7' }]}>
                       <Text style={styles.tierBadgeText}>{selectedCommunityPost.audience}</Text>
@@ -1677,7 +1773,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   subSectionTitle: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '800',
     color: Colors.primary,
     letterSpacing: 0.5,
@@ -1735,7 +1831,7 @@ const styles = StyleSheet.create({
   },
   challengeStatusText: {
     color: '#FCA5A5',
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
   challengeLoadingWrap: {
@@ -1747,7 +1843,7 @@ const styles = StyleSheet.create({
   },
   challengeLoadingText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
   skeletonBlock: {
@@ -1786,25 +1882,25 @@ const styles = StyleSheet.create({
   },
   challengeEmptyText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
   challengeLibraryLead: {
     color: '#D5DEF0',
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 22,
     fontFamily: 'Inter_700Bold',
-    marginBottom: 16,
+    marginBottom: 6,
   },
   durationTabsRow: {
     gap: 10,
-    paddingBottom: 6,
-    marginBottom: 18,
+    paddingBottom: 0,
+    marginBottom: 8,
   },
   durationTabPill: {
-    minWidth: 74,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minWidth: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 14,
     backgroundColor: '#1F2940',
     borderWidth: 1,
@@ -1823,7 +1919,7 @@ const styles = StyleSheet.create({
   },
   durationTabText: {
     color: '#C7D2E5',
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: 'Inter_700Bold',
   },
   durationTabTextActive: {
@@ -1832,62 +1928,66 @@ const styles = StyleSheet.create({
   challengeLibraryCard: {
     backgroundColor: '#343B4D',
     borderRadius: 18,
-    padding: 14,
-    marginBottom: 14,
+    paddingHorizontal: 5,
+    paddingTop: 4,
+    paddingBottom: 4,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
   challengeLibraryImage: {
     width: '100%',
-    height: 164,
-    borderRadius: 14,
-    marginBottom: 14,
+    height: 82,
+    borderRadius: 10,
+    marginBottom: 3,
     backgroundColor: '#1F2937',
   },
   challengeLibraryCardHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 10,
+    gap: 8,
+    marginBottom: 3,
   },
   challengeLibraryTitleWrap: {
     flex: 1,
+    minWidth: 0,
   },
   challengeLibraryTitle: {
     color: '#fff',
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 18,
     fontFamily: 'Inter_700Bold',
   },
   challengeLibraryCategory: {
-    marginTop: 4,
+    marginTop: 0,
     color: '#F5A43C',
-    fontSize: 12,
+    fontSize: 9,
     textTransform: 'uppercase',
     fontFamily: 'Inter_700Bold',
   },
   challengeLibraryPointsBadge: {
     backgroundColor: '#FFC233',
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   challengeLibraryPointsText: {
     color: '#4C2A00',
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'Inter_700Bold',
   },
   challengeLibraryDescription: {
     color: '#E5E7EB',
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 10,
+    lineHeight: 13,
     fontFamily: 'Inter_400Regular',
+    marginTop: 1,
   },
   challengeLibraryProgressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 14,
+    gap: 8,
+    marginTop: 6,
   },
   challengeLibraryProgressTrack: {
     flex: 1,
@@ -1903,24 +2003,25 @@ const styles = StyleSheet.create({
   },
   challengeLibraryProgressText: {
     color: '#D5DEF0',
-    fontSize: 12,
-    minWidth: 42,
+    fontSize: 10,
+    minWidth: 32,
     textAlign: 'right',
     fontFamily: 'Inter_700Bold',
   },
   challengeLibraryFooter: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: 10,
-    marginTop: 18,
+    marginTop: 4,
+    gap: 3,
   },
   challengeLibraryMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 14,
+    flexWrap: 'nowrap',
+    gap: 8,
     flex: 1,
+    minWidth: 0,
   },
   challengeLibraryMetaItem: {
     flexDirection: 'row',
@@ -1929,35 +2030,39 @@ const styles = StyleSheet.create({
   },
   challengeLibraryMetaText: {
     color: 'rgba(255,255,255,0.65)',
-    fontSize: 13,
+    fontSize: 10,
     fontFamily: 'Inter_500Medium',
   },
   challengeLibraryActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    flexWrap: 'nowrap',
+    justifyContent: 'flex-end',
+    flexShrink: 1,
+    gap: 6,
+    marginTop: 0,
   },
   challengeInviteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: '#2F7CF8',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   challengeInviteBtnText: {
     color: '#EAF4FF',
-    fontSize: 13,
+    fontSize: 10,
     fontFamily: 'Inter_700Bold',
   },
   challengeStatusBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   challengeStatusBtnActive: {
     backgroundColor: '#22C55E',
@@ -1973,7 +2078,7 @@ const styles = StyleSheet.create({
   },
   challengeStatusBtnText: {
     color: '#052E16',
-    fontSize: 13,
+    fontSize: 10,
     fontFamily: 'Inter_700Bold',
   },
   challengeStatusBtnTextLocked: {
@@ -2390,6 +2495,65 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     overflow: 'hidden',
+  },
+  communityFilterTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  communityFilterTriggerSpacer: {
+    flex: 1,
+  },
+  communityFilterIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  communityFilterModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(3,8,20,0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 160,
+  },
+  communityFilterModalCard: {
+    backgroundColor: '#13132A',
+    width: '52%',
+    minWidth: 190,
+    borderTopLeftRadius: 18,
+    borderBottomLeftRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+    overflow: 'hidden',
+  },
+  communityFilterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  communityFilterOptionText: {
+    color: '#D7E0F0',
+    fontSize: 11,
+    fontFamily: 'Inter_700Bold',
+  },
+  communityFilterOptionTextActive: {
+    color: Colors.primary,
+  },
+  communityFilterOptionTextLocked: {
+    color: '#F5D0FE',
   },
   searchInput: {
     color: '#fff',
