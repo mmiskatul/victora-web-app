@@ -335,6 +335,7 @@ export type LongevityCircle = {
 
 const AUTH_STORAGE_KEY = 'victory-auth-tokens';
 const AUTH_USER_STORAGE_KEY = 'victory-auth-user';
+let apiLanguage = 'en';
 
 let authTokens: AuthTokens | null = null;
 let authTokensLoaded = false;
@@ -609,6 +610,11 @@ export async function clearAuthTokens() {
 
 export function setAuthFailureHandler(handler: (() => void) | null) {
   authFailureHandler = handler;
+}
+
+export function setApiLanguage(language: string) {
+  const normalizedLanguage = String(language || '').trim().toLowerCase();
+  apiLanguage = normalizedLanguage || 'en';
 }
 
 export async function getAuthTokens() {
@@ -968,6 +974,7 @@ export async function apiRequest<T>(
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
+    'Accept-Language': apiLanguage,
   };
 
   if (authTokens?.access_token) {
