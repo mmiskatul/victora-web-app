@@ -18,6 +18,7 @@ import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
 import { useLanguage } from '../../lib/i18n';
+import { blurActiveElement, replaceRoute } from '../../lib/navigation';
 import { ScreenState } from '../../components/ScreenState';
 
 type JournalEntry = {
@@ -132,9 +133,20 @@ export default function JournalHistoryScreen() {
   const formattedSelectedEntry = selectedEntry ? formatJournalContent(selectedEntry.content) : [];
 
   const handleBackPress = useCallback(() => {
+    blurActiveElement();
     setSelectedEntry(null);
-    router.replace('/journal');
+    replaceRoute(router, '/journal');
   }, [router]);
+
+  const openSelectedEntry = useCallback((entry: JournalEntry) => {
+    blurActiveElement();
+    setSelectedEntry(entry);
+  }, []);
+
+  const closeSelectedEntry = useCallback(() => {
+    blurActiveElement();
+    setSelectedEntry(null);
+  }, []);
 
   const loadEntries = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -193,7 +205,7 @@ export default function JournalHistoryScreen() {
       <TouchableOpacity
         style={styles.entryCard}
         activeOpacity={0.7}
-        onPress={() => setSelectedEntry(item)}
+        onPress={() => openSelectedEntry(item)}
       >
         <View style={styles.cardHeader}>
           <View>
@@ -245,9 +257,9 @@ export default function JournalHistoryScreen() {
         visible={Boolean(selectedEntry)}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedEntry(null)}
+        onRequestClose={closeSelectedEntry}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setSelectedEntry(null)}>
+        <Pressable style={styles.modalOverlay} onPress={closeSelectedEntry}>
           <Pressable style={styles.modalCard} onPress={() => {}}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleWrap}>
@@ -258,7 +270,7 @@ export default function JournalHistoryScreen() {
                   {selectedEntry ? formatEntryTime(selectedEntry.created_at) : ''}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setSelectedEntry(null)} style={styles.modalCloseButton}>
+              <TouchableOpacity onPress={closeSelectedEntry} style={styles.modalCloseButton}>
                 <Ionicons name="close" size={22} color="#fff" />
               </TouchableOpacity>
             </View>

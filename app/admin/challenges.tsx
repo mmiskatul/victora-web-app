@@ -23,6 +23,7 @@ import {
   fetchAdminChallenges,
   fetchCurrentUser,
 } from '../../lib/api';
+import { blurActiveElement, goBackOrReplace } from '../../lib/navigation';
 
 const DURATION_OPTIONS = [3, 5, 7, 14, 21];
 const INITIAL_FORM: AdminChallengePayload = {
@@ -95,6 +96,16 @@ export default function AdminChallengesScreen() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
+  const openCreateModal = () => {
+    blurActiveElement();
+    setShowCreateModal(true);
+  };
+
+  const closeCreateModal = () => {
+    blurActiveElement();
+    setShowCreateModal(false);
+  };
+
   const handleCreateChallenge = async () => {
     if (saving) {
       return;
@@ -117,7 +128,7 @@ export default function AdminChallengesScreen() {
       });
       setChallenges((current) => [created, ...current]);
       setSelectedDuration(created.durationDays || form.durationDays);
-      setShowCreateModal(false);
+      closeCreateModal();
       setForm(INITIAL_FORM);
       Alert.alert('Challenge added', 'The challenge has been added to the dashboard.');
     } catch (saveError) {
@@ -131,14 +142,14 @@ export default function AdminChallengesScreen() {
     <View style={styles.screen}>
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} activeOpacity={0.88} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} activeOpacity={0.88} onPress={() => goBackOrReplace(router, '/profile')}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerTextWrap}>
           <Text style={styles.headerTitle}>Challenges Dashboard</Text>
           <Text style={styles.headerSubtitle}>Create and manage challenge cards by duration.</Text>
         </View>
-        <TouchableOpacity style={styles.addButton} activeOpacity={0.88} onPress={() => setShowCreateModal(true)}>
+        <TouchableOpacity style={styles.addButton} activeOpacity={0.88} onPress={openCreateModal}>
           <Ionicons name="add" size={20} color="#04111F" />
           <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
@@ -213,12 +224,12 @@ export default function AdminChallengesScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={showCreateModal} transparent animationType="slide" onRequestClose={() => setShowCreateModal(false)}>
+      <Modal visible={showCreateModal} transparent animationType="slide" onRequestClose={closeCreateModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Challenge</Text>
-              <TouchableOpacity activeOpacity={0.88} onPress={() => setShowCreateModal(false)}>
+              <TouchableOpacity activeOpacity={0.88} onPress={closeCreateModal}>
                 <Ionicons name="close" size={22} color="#fff" />
               </TouchableOpacity>
             </View>

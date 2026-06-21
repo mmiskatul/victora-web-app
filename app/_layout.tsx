@@ -11,6 +11,7 @@ import {
 import { Colors } from '../constants/Colors';
 import { fetchCurrentUser, getAuthUser, getValidAuthTokens, setAuthFailureHandler } from '../lib/api';
 import { getPostAuthRoute, isPublicRoute, isRouteAllowedForPlan } from '../lib/access';
+import { blurActiveElement, replaceRoute } from '../lib/navigation';
 
 export default function RootLayout() {
   const router = useRouter();
@@ -24,13 +25,17 @@ export default function RootLayout() {
 
   useEffect(() => {
     setAuthFailureHandler(() => {
-      router.replace('/login');
+      replaceRoute(router, '/login');
     });
 
     return () => {
       setAuthFailureHandler(null);
     };
   }, [router]);
+
+  useEffect(() => {
+    blurActiveElement();
+  }, [pathname]);
 
   useEffect(() => {
     if (!fontsLoaded) {
@@ -47,12 +52,12 @@ export default function RootLayout() {
         }
 
         if (isPublicRoute(pathname)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return true;
         }
 
         if (!isRouteAllowedForPlan(pathname, user)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return true;
         }
 
@@ -69,7 +74,7 @@ export default function RootLayout() {
 
         if (!tokens) {
           if (!isPublicRoute(pathname)) {
-            router.replace('/login');
+            replaceRoute(router, '/login');
           }
           setCheckingAccess(false);
           return;
@@ -94,12 +99,12 @@ export default function RootLayout() {
         }
 
         if (isPublicRoute(pathname)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return;
         }
 
         if (!isRouteAllowedForPlan(pathname, user)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return;
         }
         setCheckingAccess(false);
@@ -114,7 +119,7 @@ export default function RootLayout() {
         }
 
         if (!isPublicRoute(pathname)) {
-          router.replace('/login');
+          replaceRoute(router, '/login');
         }
 
         setCheckingAccess(false);

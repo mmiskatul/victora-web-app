@@ -20,6 +20,7 @@ import VictoryHeader from '../../components/VictoryHeader';
 import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
 import { canAccessFeature, canAccessPlanRoute } from '../../lib/access';
+import { blurActiveElement, pushRoute, replaceRoute } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 function getRankIcon(rank: string) {
@@ -260,8 +261,24 @@ export default function ProfileScreen() {
   ];
 
   const openMetricsModal = () => {
+    blurActiveElement();
     setMetricsDraft(bodyMetrics);
     setShowMetricsModal(true);
+  };
+
+  const closeMetricsModal = () => {
+    blurActiveElement();
+    setShowMetricsModal(false);
+  };
+
+  const openGenderModal = () => {
+    blurActiveElement();
+    setShowGenderModal(true);
+  };
+
+  const closeGenderModal = () => {
+    blurActiveElement();
+    setShowGenderModal(false);
   };
 
   const handleSaveMetrics = async () => {
@@ -278,7 +295,7 @@ export default function ProfileScreen() {
         gender: metricsDraft.gender.trim(),
       });
       setBodyMetrics(updated);
-      setShowMetricsModal(false);
+      closeMetricsModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to update body metrics right now.';
       Alert.alert('Save failed', message);
@@ -476,8 +493,9 @@ export default function ProfileScreen() {
           style={styles.logoutBtn}
           activeOpacity={0.7}
           onPress={async () => {
+            blurActiveElement();
             await clearAuthTokens();
-            router.replace('/login');
+            replaceRoute(router, '/login');
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
@@ -493,15 +511,15 @@ export default function ProfileScreen() {
         onClose={() => setRestrictedSection('')}
         onUpdatePlan={() => {
           setRestrictedSection('');
-          router.push('/plan');
+          pushRoute(router, '/plan');
         }}
         onBackHome={() => {
           setRestrictedSection('');
-          router.replace('/(tabs)');
+          replaceRoute(router, '/(tabs)');
         }}
       />
 
-      <Modal visible={showMetricsModal} transparent animationType="fade" onRequestClose={() => setShowMetricsModal(false)}>
+      <Modal visible={showMetricsModal} transparent animationType="fade" onRequestClose={closeMetricsModal}>
         <View style={styles.metricsModalOverlay}>
           <View style={styles.metricsModalCard}>
             {savingMetrics ? (
@@ -514,7 +532,7 @@ export default function ProfileScreen() {
             ) : null}
             <View style={styles.metricsModalHeader}>
               <Text style={styles.metricsModalTitle}>UPDATE BODY METRICS</Text>
-              <TouchableOpacity onPress={() => setShowMetricsModal(false)} disabled={savingMetrics}>
+              <TouchableOpacity onPress={closeMetricsModal} disabled={savingMetrics}>
                 <Ionicons name="close" size={22} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             </View>
@@ -539,7 +557,7 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   style={styles.metricsInputWrap}
                   activeOpacity={0.8}
-                  onPress={() => setShowGenderModal(true)}
+                  onPress={openGenderModal}
                   disabled={savingMetrics}
                 >
                   <Text style={styles.metricsInput}>{metricsDraft.gender || 'Select'}</Text>
@@ -580,7 +598,7 @@ export default function ProfileScreen() {
               <TouchableOpacity
                 style={styles.metricsCancelBtn}
                 activeOpacity={0.85}
-                onPress={() => setShowMetricsModal(false)}
+                onPress={closeMetricsModal}
                 disabled={savingMetrics}
               >
                 <Text style={styles.metricsCancelBtnText}>Cancel</Text>
@@ -593,8 +611,8 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showGenderModal} transparent animationType="fade" onRequestClose={() => setShowGenderModal(false)}>
-        <TouchableOpacity style={styles.metricsModalOverlay} activeOpacity={1} onPress={() => setShowGenderModal(false)}>
+      <Modal visible={showGenderModal} transparent animationType="fade" onRequestClose={closeGenderModal}>
+        <TouchableOpacity style={styles.metricsModalOverlay} activeOpacity={1} onPress={closeGenderModal}>
           <View style={styles.genderModalCard}>
             <Text style={styles.genderModalTitle}>SELECT GENDER</Text>
             {genderOptions.map((option) => (
@@ -602,8 +620,9 @@ export default function ProfileScreen() {
                 key={option}
                 style={styles.genderModalOption}
                 onPress={() => {
+                  blurActiveElement();
                   setMetricsDraft((prev) => ({ ...prev, gender: option }));
-                  setShowGenderModal(false);
+                  closeGenderModal();
                 }}
               >
                 <Text style={[styles.genderModalOptionText, metricsDraft.gender === option && styles.genderModalOptionTextActive]}>

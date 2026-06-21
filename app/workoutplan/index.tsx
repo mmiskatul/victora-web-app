@@ -19,6 +19,7 @@ import {
   StrengthPlanResponse,
   VideoPlanResponse,
 } from '../../lib/workout-plans';
+import { blurActiveElement, goBackOrReplace, pushRoute } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 const { width } = Dimensions.get('window');
@@ -60,6 +61,16 @@ export default function WorkoutPlanScreen() {
 
   const hasSavedPlan = Boolean(strengthPlan || videoPlan);
 
+  const openPlanModal = () => {
+    blurActiveElement();
+    setIsModalVisible(true);
+  };
+
+  const closePlanModal = () => {
+    blurActiveElement();
+    setIsModalVisible(false);
+  };
+
   if (checkingAccess) {
     return null;
   }
@@ -73,7 +84,7 @@ export default function WorkoutPlanScreen() {
         headerTintColor: '#fff',
         headerTitleStyle: { fontFamily: 'Inter_700Bold', fontSize: 16, letterSpacing: 2 } as any,
         headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
+          <TouchableOpacity onPress={() => goBackOrReplace(router, '/(tabs)/profile')} style={{ marginLeft: 8 }}>
             <Ionicons name="chevron-back" size={28} color="#fff" />
           </TouchableOpacity>
         ),
@@ -92,7 +103,7 @@ export default function WorkoutPlanScreen() {
             <TouchableOpacity
               style={styles.savedPlanCard}
               activeOpacity={0.85}
-              onPress={() => router.push('/workoutplan/strength-plan')}
+              onPress={() => pushRoute(router, '/workoutplan/strength-plan')}
             >
               <Text style={styles.savedPlanEyebrow}>CUSTOM STRENGTH PLAN</Text>
               <Text style={styles.savedPlanTitle}>{strengthPlan.summary}</Text>
@@ -104,7 +115,7 @@ export default function WorkoutPlanScreen() {
             <TouchableOpacity
               style={styles.savedPlanCard}
               activeOpacity={0.85}
-              onPress={() => router.push('/workoutplan/video-plan')}
+              onPress={() => pushRoute(router, '/workoutplan/video-plan')}
             >
               <Text style={styles.savedPlanEyebrow}>7-DAY VIDEO PLAN</Text>
               <Text style={styles.savedPlanTitle}>{videoPlan.summary}</Text>
@@ -115,7 +126,7 @@ export default function WorkoutPlanScreen() {
           <TouchableOpacity
             style={styles.createBtn}
             activeOpacity={0.8}
-            onPress={() => setIsModalVisible(true)}
+            onPress={openPlanModal}
           >
             <Text style={styles.createBtnText}>Create Another Plan</Text>
           </TouchableOpacity>
@@ -135,7 +146,7 @@ export default function WorkoutPlanScreen() {
           <TouchableOpacity 
             style={styles.createBtn} 
             activeOpacity={0.8}
-            onPress={() => setIsModalVisible(true)}
+            onPress={openPlanModal}
           >
             <Text style={styles.createBtnText}>Create Plan</Text>
           </TouchableOpacity>
@@ -148,7 +159,7 @@ export default function WorkoutPlanScreen() {
         visible={isModalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setIsModalVisible(false)}
+        onRequestClose={closePlanModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -156,7 +167,7 @@ export default function WorkoutPlanScreen() {
               <Text style={styles.modalTitle}>Create Plan</Text>
               <TouchableOpacity 
                 style={styles.closeBtn} 
-                onPress={() => setIsModalVisible(false)}
+                onPress={closePlanModal}
               >
                 <Ionicons name="close" size={24} color="rgba(255,255,255,0.6)" />
               </TouchableOpacity>
@@ -170,8 +181,8 @@ export default function WorkoutPlanScreen() {
               style={styles.optionCard} 
               activeOpacity={0.7}
               onPress={() => {
-                setIsModalVisible(false);
-                router.push('/workoutplan/video-wizard');
+                closePlanModal();
+                pushRoute(router, '/workoutplan/video-wizard');
               }}
             >
               <Text style={styles.optionTitle}>7-DAY VIDEO PLAN</Text>
@@ -184,8 +195,8 @@ export default function WorkoutPlanScreen() {
               style={styles.optionCard} 
               activeOpacity={0.7}
               onPress={() => {
-                setIsModalVisible(false);
-                router.push('/workoutplan/strength-wizard');
+                closePlanModal();
+                pushRoute(router, '/workoutplan/strength-wizard');
               }}
             >
               <Text style={styles.optionTitle}>CUSTOM STRENGTH PLAN</Text>

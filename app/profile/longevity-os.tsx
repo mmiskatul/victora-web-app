@@ -42,6 +42,7 @@ import {
   updateLongevityHabit,
 } from '../../lib/api';
 import { canAccessFeature } from '../../lib/access';
+import { blurActiveElement, goBackOrReplace } from '../../lib/navigation';
 import { type NativeSyncTarget, syncNativeHealthSource } from '../../lib/nativeHealthSync';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
@@ -198,11 +199,7 @@ export default function LongevityOS() {
   );
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/profile');
-    }
+    goBackOrReplace(router, '/profile');
   };
 
   const handleSyncWearables = async () => {
@@ -210,14 +207,17 @@ export default function LongevityOS() {
       return;
     }
     if (selectedWearableIds.length === 0) {
+      blurActiveElement();
       Alert.alert('Select wearable', 'Tap one or more wearable sources first, then press Sync Data Now.');
       return;
     }
     if (selectedWearableIds.length === 1 && selectedWearableIds[0] === 'qr-import') {
+      blurActiveElement();
       setShowQrImportModal(true);
       return;
     }
     if (selectedWearableIds.includes('qr-import')) {
+      blurActiveElement();
       Alert.alert(
         'Sync separately',
         'QR Import needs a payload input, so sync it separately from Fitbit, Garmin, Apple Health, or Health Connect.',
@@ -273,6 +273,7 @@ export default function LongevityOS() {
   };
 
   const handleAddWearable = () => {
+    blurActiveElement();
     setShowWearablePicker(true);
   };
 
@@ -285,6 +286,7 @@ export default function LongevityOS() {
   };
 
   const closeQrImportModal = () => {
+    blurActiveElement();
     setShowQrImportModal(false);
     setQrPayload('');
   };
@@ -318,6 +320,7 @@ export default function LongevityOS() {
       setSelectedWearableIds((current) => (
         current.includes(device.id) ? current : [...current, device.id]
       ));
+      blurActiveElement();
       setShowWearablePicker(false);
       await loadDashboard(false);
     } catch (error) {
@@ -503,15 +506,15 @@ export default function LongevityOS() {
               </View>
             )}
 
-            <Modal visible={showWearablePicker} transparent animationType="fade" onRequestClose={() => setShowWearablePicker(false)}>
-              <Pressable style={styles.modalBackdrop} onPress={() => setShowWearablePicker(false)}>
+            <Modal visible={showWearablePicker} transparent animationType="fade" onRequestClose={() => { blurActiveElement(); setShowWearablePicker(false); }}>
+              <Pressable style={styles.modalBackdrop} onPress={() => { blurActiveElement(); setShowWearablePicker(false); }}>
                 <Pressable style={styles.modalCard} onPress={() => undefined}>
                   <View style={styles.modalHeader}>
                     <View>
                       <Text style={styles.modalEyebrow}>WEARABLE SETUP</Text>
                       <Text style={styles.modalTitle}>Add Wearable</Text>
                     </View>
-                    <TouchableOpacity style={styles.modalCloseButton} activeOpacity={0.88} onPress={() => setShowWearablePicker(false)}>
+                    <TouchableOpacity style={styles.modalCloseButton} activeOpacity={0.88} onPress={() => { blurActiveElement(); setShowWearablePicker(false); }}>
                       <Ionicons name="close" size={20} color="#fff" />
                     </TouchableOpacity>
                   </View>

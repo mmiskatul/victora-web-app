@@ -20,6 +20,7 @@ import { Colors } from '../../../constants/Colors';
 import { apiRequest } from '../../../lib/api';
 import { ErrorPopupModal } from '../../../components/ErrorPopupModal';
 import { formatAppError } from '../../../lib/error';
+import { blurActiveElement, goBackOrReplace, pushRoute } from '../../../lib/navigation';
 
 type ChallengePlanExercise = {
   id: string;
@@ -630,10 +631,16 @@ export default function ChallengeProgressScreen() {
     if (!exercise.workout_vimeo_id) {
       return;
     }
+    blurActiveElement();
     setVideoModal({
       title: exercise.workout_title || `${exercise.name} Demo`,
       vimeoId: exercise.workout_vimeo_id,
     });
+  }, []);
+
+  const closeVideoModal = useCallback(() => {
+    blurActiveElement();
+    setVideoModal(null);
   }, []);
 
   const videoEmbedUrl = useMemo(() => {
@@ -809,16 +816,16 @@ export default function ChallengeProgressScreen() {
         visible={Boolean(videoModal)}
         animationType="slide"
         transparent
-        onRequestClose={() => setVideoModal(null)}
+        onRequestClose={closeVideoModal}
       >
         <View style={styles.videoModalBackdrop}>
           <View style={styles.videoModalCard}>
             <View style={styles.videoModalHeader}>
-              <TouchableOpacity onPress={() => setVideoModal(null)} style={styles.videoModalButton}>
+              <TouchableOpacity onPress={closeVideoModal} style={styles.videoModalButton}>
                 <Ionicons name="arrow-back" size={20} color="#fff" />
               </TouchableOpacity>
               <View style={styles.videoModalSpacer} />
-              <TouchableOpacity onPress={() => setVideoModal(null)} style={styles.videoModalButton}>
+              <TouchableOpacity onPress={closeVideoModal} style={styles.videoModalButton}>
                 <Ionicons name="close" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -849,7 +856,7 @@ export default function ChallengeProgressScreen() {
       </Modal>
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+        <TouchableOpacity onPress={() => goBackOrReplace(router, '/challenge')} style={styles.headerIcon}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerBody}>
@@ -892,7 +899,7 @@ export default function ChallengeProgressScreen() {
               </View>
               <TouchableOpacity
                 style={styles.chatShortcut}
-                onPress={() => router.push(`/challenges/${thread.challenge_id}` as any)}
+                onPress={() => pushRoute(router, `/challenges/${thread.challenge_id}` as any)}
               >
                 <Ionicons name="chatbubble-ellipses-outline" size={16} color="#001311" />
                 <Text style={styles.chatShortcutText}>Open challenge chat</Text>

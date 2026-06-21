@@ -10,17 +10,17 @@ export const blurActiveElement = () => {
 };
 
 type RouterLike = {
-  replace: (href: string) => void;
-  push?: (href: string) => void;
+  replace: (href: any) => void;
+  push?: (href: any) => void;
   back?: () => void;
 };
 
-export const replaceRoute = (router: RouterLike, href: string) => {
+export const replaceRoute = (router: RouterLike, href: any) => {
   blurActiveElement();
   router.replace(href);
 };
 
-export const pushRoute = (router: RouterLike, href: string) => {
+export const pushRoute = (router: RouterLike, href: any) => {
   blurActiveElement();
   router.push?.(href);
 };

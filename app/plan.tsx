@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ApiError, fetchCurrentUser, updateCurrentUserSubscription } from '../lib/api';
 import { BillingCycle, getPlanPrice, getPostAuthRoute, getSubscriptionCard, isSubscriptionActive, PLAN_CARDS, SubscriptionTier } from '../lib/access';
+import { blurActiveElement, replaceRoute } from '../lib/navigation';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(width - 92, 320);
@@ -69,6 +70,16 @@ export default function PlanSelectionScreen() {
 
   const selectedPlan = useMemo(() => getSubscriptionCard(selectedTier), [selectedTier]);
 
+  const openConfirmModal = () => {
+    blurActiveElement();
+    setConfirmVisible(true);
+  };
+
+  const closeConfirmModal = () => {
+    blurActiveElement();
+    setConfirmVisible(false);
+  };
+
   const handleConfirm = async () => {
     if (saving) {
       return;
@@ -82,7 +93,7 @@ export default function PlanSelectionScreen() {
         confirm_payment: true,
       });
       setCurrentTier(selectedTier);
-      router.replace('/(tabs)');
+      replaceRoute(router, '/(tabs)');
     } catch (error) {
       const message = error instanceof ApiError && error.status === 404
         ? 'The backend route for subscription purchase was not found. Restart or redeploy the backend that serves this app, then try again.'
@@ -92,7 +103,7 @@ export default function PlanSelectionScreen() {
       Alert.alert('Payment confirmation failed', message);
     } finally {
       setSaving(false);
-      setConfirmVisible(false);
+      closeConfirmModal();
     }
   };
 
@@ -226,14 +237,14 @@ export default function PlanSelectionScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.confirmButton} onPress={() => setConfirmVisible(true)} activeOpacity={0.9}>
+          <TouchableOpacity style={styles.confirmButton} onPress={openConfirmModal} activeOpacity={0.9}>
             <Text style={styles.confirmButtonText}>
               {currentTier === selectedTier ? 'Continue with current plan' : 'Confirm Payment'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
 
-        <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={() => setConfirmVisible(false)}>
+        <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={closeConfirmModal}>
           <View style={styles.modalBackdrop}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Confirm payment</Text>
@@ -244,7 +255,7 @@ export default function PlanSelectionScreen() {
               <View style={styles.modalActions}>
                 <TouchableOpacity
                   style={styles.modalSecondary}
-                  onPress={() => setConfirmVisible(false)}
+                  onPress={closeConfirmModal}
                   disabled={saving}
                 >
                   <Text style={styles.modalSecondaryText}>Cancel</Text>

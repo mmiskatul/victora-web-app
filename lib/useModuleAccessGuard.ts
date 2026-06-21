@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { fetchCurrentUser, getAuthUser, getValidAuthTokens } from './api';
 import { getPostAuthRoute, isRouteAllowedForPlan } from './access';
+import { replaceRoute } from './navigation';
 
 export function useModuleAccessGuard(routePath: string) {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function useModuleAccessGuard(routePath: string) {
         }
 
         if (!isRouteAllowedForPlan(routePath, user)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return true;
         }
 
@@ -34,7 +35,7 @@ export function useModuleAccessGuard(routePath: string) {
         }
 
         if (!tokens) {
-          router.replace('/login');
+          replaceRoute(router, '/login');
           return;
         }
 
@@ -57,7 +58,7 @@ export function useModuleAccessGuard(routePath: string) {
         }
 
         if (!isRouteAllowedForPlan(routePath, user)) {
-          router.replace(getPostAuthRoute(user));
+          replaceRoute(router, getPostAuthRoute(user));
           return;
         }
       } catch {
@@ -67,7 +68,7 @@ export function useModuleAccessGuard(routePath: string) {
             return;
           }
 
-          router.replace('/login');
+          replaceRoute(router, '/login');
           return;
         }
       } finally {

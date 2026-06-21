@@ -21,6 +21,7 @@ import VictoryHeader from '../../components/VictoryHeader';
 import { fetchWorkoutLibrary, WorkoutLibraryCategory, WorkoutLibraryItem } from '../../lib/workouts';
 import { formatAppError } from '../../lib/error';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { pushRoute } from '../../lib/navigation';
 import {
   clearLatestVideoWorkoutPlan,
   deleteLatestStrengthWorkoutPlan,
@@ -187,7 +188,7 @@ export default function WorkoutScreen() {
   const categoryRows = useMemo(() => pairCategories(library.categories), [library.categories]);
 
   const openWorkout = (workout: WorkoutLibraryItem) => {
-    router.push({
+    pushRoute(router, {
       pathname: '/workout-library/[id]',
       params: {
         id: workout.id,
@@ -196,20 +197,20 @@ export default function WorkoutScreen() {
         tag: workout.tag,
         thumbnail: workout.thumbnail,
       },
-    });
+    } as any);
   };
 
   const openCategory = (category: WorkoutLibraryCategory) => {
-    router.push({
+    pushRoute(router, {
       pathname: '/workout-library/category/[name]',
       params: {
         name: category.name,
       },
-    });
+    } as any);
   };
 
   const openAllCategories = () => {
-    router.push('/workout-library/categories');
+    pushRoute(router, '/workout-library/categories');
   };
 
   const handleRemoveStrengthPlan = () => {
@@ -382,7 +383,7 @@ export default function WorkoutScreen() {
                   <TouchableOpacity
                     style={styles.savedPlanCard}
                     activeOpacity={0.88}
-                    onPress={() => router.push('/workoutplan/strength-plan')}
+                    onPress={() => pushRoute(router, '/workoutplan/strength-plan')}
                   >
                     <View style={styles.savedPlanTopRow}>
                       <Text style={styles.savedPlanEyebrow}>CUSTOM STRENGTH PLAN</Text>
@@ -400,7 +401,7 @@ export default function WorkoutScreen() {
                   <TouchableOpacity
                     style={styles.savedPlanCard}
                     activeOpacity={0.88}
-                    onPress={() => router.push('/workoutplan/video-plan')}
+                    onPress={() => pushRoute(router, '/workoutplan/video-plan')}
                   >
                     <View style={styles.savedPlanTopRow}>
                       <Text style={styles.savedPlanEyebrow}>7-DAY VIDEO PLAN</Text>
