@@ -19,7 +19,7 @@ import { Colors } from '../../constants/Colors';
 import VictoryHeader from '../../components/VictoryHeader';
 import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { BodyMetrics, clearAuthTokens, fetchCurrentUser, fetchCurrentUserBodyMetrics, updateCurrentUserBodyMetrics } from '../../lib/api';
-import { canAccessFeature, canAccessPlanRoute } from '../../lib/access';
+import { canAccessFeature, canAccessPlanRoute, normalizeSubscriptionTier } from '../../lib/access';
 import { blurActiveElement, pushRoute, replaceRoute } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
@@ -55,6 +55,7 @@ const MENU_SECTIONS = [
   {
     title: 'Account',
       items: [
+        { icon: 'card-outline', label: 'Subscription Plan', tint: '#F59E0B', route: '/plan', action: 'subscription_plan' },
         { icon: 'person-outline', label: 'Edit Profile', tint: '#4F8EF7', route: '/profile/edit' },
         { icon: 'document-text-outline', label: 'Application', tint: '#EAB308', route: '/profile/application' },
         { icon: 'lock-closed-outline', label: 'Privacy Policy', tint: '#A855F7', route: '/profile/privacy' },
@@ -114,6 +115,9 @@ export default function ProfileScreen() {
     is_admin?: boolean;
     country?: string;
     profileImage?: string;
+    subscription_tier?: string;
+    subscription_status?: string;
+    subscription_billing_cycle?: string;
     points?: number;
     workouts_completed?: number;
     workouts_total?: number;
@@ -151,6 +155,30 @@ export default function ProfileScreen() {
     return parts.length > 0 ? parts.join(' • ') : 'Not set';
   }, [bodyMetrics.age, bodyMetrics.gender, bodyMetrics.height, bodyMetrics.weight]);
 
+  const subscriptionSummary = React.useMemo(() => {
+    if (!me) {
+      return 'Loading...';
+    }
+
+    const tier = normalizeSubscriptionTier(me.subscription_tier);
+    if (tier === 'NONE') {
+      return 'No active plan';
+    }
+
+    const status = String(me.subscription_status || '').trim().toUpperCase();
+    const billingCycle = String(me.subscription_billing_cycle || '').trim().toLowerCase();
+    const parts = [tier.replace(/_/g, ' ')];
+
+    if (status) {
+      parts.push(status);
+    }
+    if (billingCycle) {
+      parts.push(billingCycle);
+    }
+
+    return parts.join(' • ');
+  }, [me]);
+
   const visibleMenuSections = React.useMemo(() => {
     return MENU_SECTIONS.map((section) => ({
       ...section,
@@ -185,10 +213,16 @@ export default function ProfileScreen() {
               value: bodyMetricsSummary,
             };
           }
+          if ((item as any).action === 'subscription_plan') {
+            return {
+              ...item,
+              value: subscriptionSummary,
+            };
+          }
           return item;
         }),
     }));
-  }, [bodyMetricsSummary, me]);
+  }, [bodyMetricsSummary, me, subscriptionSummary]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
@@ -457,12 +491,16 @@ export default function ProfileScreen() {
                         openMetricsModal();
                         return;
                       }
+                      if ((item as any).action === 'subscription_plan') {
+                        pushRoute(router, '/plan');
+                        return;
+                      }
                       if ((item as any).restricted) {
                         setRestrictedSection(item.label);
                         return;
                       }
                       if ((item as any).route) {
-                        router.push((item as any).route);
+                        pushRoute(router, (item as any).route);
                       }
                     }}
                   >
