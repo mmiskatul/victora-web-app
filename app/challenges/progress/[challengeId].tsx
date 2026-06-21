@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Share,
@@ -831,24 +832,35 @@ export default function ChallengeProgressScreen() {
             </View>
             <View style={styles.videoModalPlayerWrap}>
               {videoEmbedUrl ? (
-                <WebView
-                  source={{ html: videoPlayerHtml }}
-                  style={styles.videoModalWebview}
-                  originWhitelist={['*']}
-                  javaScriptEnabled
-                  domStorageEnabled
-                  mediaPlaybackRequiresUserAction={false}
-                  allowsInlineMediaPlayback
-                  setSupportMultipleWindows={false}
-                  javaScriptCanOpenWindowsAutomatically={false}
-                  onShouldStartLoadWithRequest={(request) => isAllowedWorkoutPlayerRequest(request.url)}
-                  startInLoadingState
-                  renderLoading={() => (
-                    <View style={styles.videoModalLoadingWrap}>
-                      <ActivityIndicator size="large" color={Colors.primary} />
-                    </View>
-                  )}
-                />
+                Platform.OS === 'web' ? (
+                  <iframe
+                    src={videoEmbedUrl}
+                    style={styles.videoModalFrame as any}
+                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    title={videoModal?.title || 'Workout video'}
+                  />
+                ) : (
+                  <WebView
+                    source={{ html: videoPlayerHtml }}
+                    style={styles.videoModalWebview}
+                    originWhitelist={['*']}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    mediaPlaybackRequiresUserAction={false}
+                    allowsInlineMediaPlayback
+                    setSupportMultipleWindows={false}
+                    javaScriptCanOpenWindowsAutomatically={false}
+                    onShouldStartLoadWithRequest={(request) => isAllowedWorkoutPlayerRequest(request.url)}
+                    startInLoadingState
+                    renderLoading={() => (
+                      <View style={styles.videoModalLoadingWrap}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                      </View>
+                    )}
+                  />
+                )
               ) : null}
             </View>
           </View>
@@ -1181,6 +1193,12 @@ const styles = StyleSheet.create({
   },
   videoModalWebview: {
     flex: 1,
+    backgroundColor: '#050816',
+  },
+  videoModalFrame: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 0,
     backgroundColor: '#050816',
   },
   videoModalLoadingWrap: {

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -137,25 +138,36 @@ export default function WorkoutPlayerScreen() {
 
       {embedUrl ? (
         <View style={styles.playerWrap}>
-          <WebView
-            source={{ html: playerHtml }}
-            style={styles.webview}
-            originWhitelist={['*']}
-            javaScriptEnabled
-            domStorageEnabled
-            mediaPlaybackRequiresUserAction={false}
-            allowsInlineMediaPlayback
-            setSupportMultipleWindows={false}
-            javaScriptCanOpenWindowsAutomatically={false}
-            onShouldStartLoadWithRequest={(request) => isAllowedWorkoutPlayerRequest(request.url)}
-            startInLoadingState
-            renderLoading={() => (
-              <View style={styles.loadingWrap}>
-                <ActivityIndicator size="large" color={Colors.primary} />
-                <Text style={styles.loadingText}>Preparing secure workout stream...</Text>
-              </View>
-            )}
-          />
+          {Platform.OS === 'web' ? (
+            <iframe
+              src={embedUrl}
+              style={styles.webFrame as any}
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              title={title}
+            />
+          ) : (
+            <WebView
+              source={{ html: playerHtml }}
+              style={styles.webview}
+              originWhitelist={['*']}
+              javaScriptEnabled
+              domStorageEnabled
+              mediaPlaybackRequiresUserAction={false}
+              allowsInlineMediaPlayback
+              setSupportMultipleWindows={false}
+              javaScriptCanOpenWindowsAutomatically={false}
+              onShouldStartLoadWithRequest={(request) => isAllowedWorkoutPlayerRequest(request.url)}
+              startInLoadingState
+              renderLoading={() => (
+                <View style={styles.loadingWrap}>
+                  <ActivityIndicator size="large" color={Colors.primary} />
+                  <Text style={styles.loadingText}>Preparing secure workout stream...</Text>
+                </View>
+              )}
+            />
+          )}
         </View>
       ) : (
         <View style={styles.emptyState}>
@@ -228,6 +240,12 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1,
+    backgroundColor: '#0E1326',
+  },
+  webFrame: {
+    width: '100%',
+    height: '100%',
+    borderWidth: 0,
     backgroundColor: '#0E1326',
   },
   loadingWrap: {
