@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Modal,
   Pressable,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { blurActiveElement } from '../lib/navigation';
 
 type ErrorPopupModalProps = {
   visible: boolean;
@@ -27,10 +28,26 @@ export function ErrorPopupModal({
   onRetry,
   retryLabel = 'Try Again',
 }: ErrorPopupModalProps) {
+  useEffect(() => {
+    if (visible) {
+      blurActiveElement();
+    }
+  }, [visible]);
+
+  const handleClose = () => {
+    blurActiveElement();
+    onClose();
+  };
+
+  const handleRetry = () => {
+    blurActiveElement();
+    onRetry?.();
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.backdrop}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
         <View style={styles.card}>
           <View style={styles.iconWrap}>
             <Ionicons name="alert-circle" size={28} color={Colors.accentDanger} />
@@ -39,11 +56,11 @@ export function ErrorPopupModal({
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
             {onRetry ? (
-              <TouchableOpacity style={[styles.button, styles.retryButton]} onPress={onRetry} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.button, styles.retryButton]} onPress={handleRetry} activeOpacity={0.85}>
                 <Text style={styles.retryText}>{retryLabel}</Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity style={[styles.button, styles.closeButton]} onPress={onClose} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.button, styles.closeButton]} onPress={handleClose} activeOpacity={0.85}>
               <Text style={styles.closeText}>OK</Text>
             </TouchableOpacity>
           </View>

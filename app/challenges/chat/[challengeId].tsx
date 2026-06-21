@@ -21,6 +21,7 @@ import { Colors } from '../../../constants/Colors';
 import { apiRequest, fetchCurrentUser, getValidAuthTokens } from '../../../lib/api';
 import { ErrorPopupModal } from '../../../components/ErrorPopupModal';
 import { formatAppError } from '../../../lib/error';
+import { blurActiveElement } from '../../../lib/navigation';
 
 type ChallengeReaction = {
   emoji: string;
@@ -300,6 +301,21 @@ export default function ChallengeChatScreen() {
   const [showMembers, setShowMembers] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
+  const handleOpenMembers = () => {
+    blurActiveElement();
+    setShowMembers(true);
+  };
+
+  const handleCloseMembers = () => {
+    blurActiveElement();
+    setShowMembers(false);
+  };
+
+  const handleBack = () => {
+    blurActiveElement();
+    router.back();
+  };
+
   const canPostInChallenge = useMemo(
     () => Boolean(thread && ['ACTIVE', 'COMPLETED'].includes(thread.viewer_membership_status) && thread.status === 'ACTIVE'),
     [thread]
@@ -352,6 +368,7 @@ export default function ChallengeChatScreen() {
       const response = await apiRequest<ChallengeChatThread>(`/challenges/${encodeURIComponent(challengeId)}/chat`);
       setThread(response);
     } catch (error) {
+      blurActiveElement();
       setErrorDialog(formatAppError(error, 'Failed to load challenge chat.'));
     } finally {
       setLoading(false);
@@ -503,6 +520,7 @@ export default function ChallengeChatScreen() {
 
       resetComposer();
     } catch (error) {
+      blurActiveElement();
       setErrorDialog(formatAppError(error, editingMessage ? 'Failed to update message.' : 'Failed to send message.'));
     } finally {
       setSending(false);
@@ -524,6 +542,7 @@ export default function ChallengeChatScreen() {
               method: 'DELETE',
             });
           } catch (error) {
+            blurActiveElement();
             setErrorDialog(formatAppError(error, 'Failed to delete message.'));
           }
         },
@@ -541,6 +560,7 @@ export default function ChallengeChatScreen() {
         body: { emoji },
       });
     } catch (error) {
+      blurActiveElement();
       setErrorDialog(formatAppError(error, 'Failed to update reaction.'));
     }
   };
@@ -589,12 +609,12 @@ export default function ChallengeChatScreen() {
         message={errorDialog?.message ?? ''}
         onClose={() => setErrorDialog(null)}
       />
-      <Modal visible={showMembers} transparent animationType="fade" onRequestClose={() => setShowMembers(false)}>
+      <Modal visible={showMembers} transparent animationType="fade" onRequestClose={handleCloseMembers}>
         <View style={styles.membersModalBackdrop}>
           <View style={styles.membersModalCard}>
             <View style={styles.membersModalHeader}>
               <Text style={styles.membersModalTitle}>Challenge Members</Text>
-              <TouchableOpacity onPress={() => setShowMembers(false)} style={styles.membersModalClose}>
+              <TouchableOpacity onPress={handleCloseMembers} style={styles.membersModalClose}>
                 <Ionicons name="close" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -621,7 +641,7 @@ export default function ChallengeChatScreen() {
       </Modal>
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerIcon}>
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerBody}>
@@ -636,7 +656,7 @@ export default function ChallengeChatScreen() {
         >
           <Text style={styles.headerProgressButtonText}>Progress</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowMembers(true)} style={styles.membersButton}>
+        <TouchableOpacity onPress={handleOpenMembers} style={styles.membersButton}>
           <Ionicons name="people-outline" size={16} color="#fff" />
           <Text style={styles.membersButtonText}>Members</Text>
         </TouchableOpacity>

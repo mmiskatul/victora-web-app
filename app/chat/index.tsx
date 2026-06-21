@@ -17,6 +17,7 @@ import { Colors } from '../../constants/Colors';
 import { ErrorPopupModal } from '../../components/ErrorPopupModal';
 import { apiRequest } from '../../lib/api';
 import { formatAppError } from '../../lib/error';
+import { blurActiveElement } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 
 interface Message {
@@ -80,6 +81,11 @@ export default function ChatScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
+  const handleBack = () => {
+    blurActiveElement();
+    router.back();
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -101,6 +107,7 @@ export default function ChatScreen() {
       } catch (error) {
         if (!cancelled) {
           setMessages(INITIAL_MESSAGES);
+          blurActiveElement();
           setErrorDialog(formatAppError(error));
         }
       } finally {
@@ -146,6 +153,7 @@ export default function ChatScreen() {
       };
       setMessages((current) => [...current, coachMessage]);
     } catch (error) {
+      blurActiveElement();
       setErrorDialog(formatAppError(error, 'Coach Victor is unavailable right now. Please try again in a moment.'));
     } finally {
       setSending(false);
@@ -182,7 +190,7 @@ export default function ChatScreen() {
       
       {/* Custom Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerIcon}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerIcon}>
           <Ionicons name="add" size={24} color="#fff" style={{ transform: [{ rotate: '45deg' }] }} />
         </TouchableOpacity>
         

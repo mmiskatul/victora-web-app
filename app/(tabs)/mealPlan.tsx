@@ -26,6 +26,7 @@ import VictoryHeader from '../../components/VictoryHeader';
 import { apiRequest, fetchCurrentUser } from '../../lib/api';
 import { canAccessFeature } from '../../lib/access';
 import { formatAppError } from '../../lib/error';
+import { blurActiveElement } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 import {
   createNutritionPlan,
@@ -409,6 +410,7 @@ function MealPlanResult({
     }
   };
   const openMealModal = (day: string, mealKey: string, mealLabel: string, meal: MealEntry, expandKey: string) => {
+    blurActiveElement();
     const cardKey = mealCompletionKey(day, mealKey);
     setMealModalActionState('idle');
     setMealModalActionMode(isMealComplete(day, mealKey) ? 'unmark' : 'complete');
@@ -417,9 +419,14 @@ function MealPlanResult({
     );
   };
   const closeMealModal = () => {
+    blurActiveElement();
     setSelectedMeal(null);
     setMealModalActionState('idle');
     setMealModalActionMode('complete');
+  };
+  const closeSelectedAnalysis = () => {
+    blurActiveElement();
+    setSelectedAnalysis(null);
   };
   const confirmMealCompletion = async (nextCompleted: boolean) => {
     if (!selectedMeal || mealModalActionState !== 'idle') {
@@ -948,7 +955,10 @@ function MealPlanResult({
                     key={item.analysis_id ?? `${item.meal_name_guess}-${index}`}
                     style={styles.analysisHistoryRow}
                     activeOpacity={0.85}
-                    onPress={() => setSelectedAnalysis(item)}
+                    onPress={() => {
+                      blurActiveElement();
+                      setSelectedAnalysis(item);
+                    }}
                   >
                     <View style={{ flex: 1 }}>
                       <Text style={styles.analysisHistoryRowTitle}>{item.meal_name_guess}</Text>
@@ -1103,7 +1113,7 @@ function MealPlanResult({
         visible={Boolean(selectedAnalysis)}
         animationType="slide"
         transparent
-        onRequestClose={() => setSelectedAnalysis(null)}
+        onRequestClose={closeSelectedAnalysis}
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalSheet}>
@@ -1155,7 +1165,7 @@ function MealPlanResult({
               </View>
             ) : null}
 
-            <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.8} onPress={() => setSelectedAnalysis(null)}>
+            <TouchableOpacity style={styles.modalCancelBtn} activeOpacity={0.8} onPress={closeSelectedAnalysis}>
               <Text style={styles.modalCancelBtnText}>Close</Text>
             </TouchableOpacity>
           </View>

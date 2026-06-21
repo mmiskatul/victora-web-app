@@ -23,6 +23,7 @@ import AccessRestrictionModal from '../../components/AccessRestrictionModal';
 import { apiRequest, fetchCurrentUser, getAuthUser, resolveRemoteAssetUrl } from '../../lib/api';
 import { canAccessFeature, normalizeSubscriptionTier } from '../../lib/access';
 import { useLanguage } from '../../lib/i18n';
+import { blurActiveElement } from '../../lib/navigation';
 import { useModuleAccessGuard } from '../../lib/useModuleAccessGuard';
 import { replaceRoute } from '../../lib/navigation';
 
@@ -934,6 +935,26 @@ export default function ChallengesScreen() {
     ]);
   };
 
+  const openCommunityFilterPicker = () => {
+    blurActiveElement();
+    setCommunityFilterPickerOpen(true);
+  };
+
+  const closeCommunityFilterPicker = () => {
+    blurActiveElement();
+    setCommunityFilterPickerOpen(false);
+  };
+
+  const openCommunityPostModal = (post: CommunityPost) => {
+    blurActiveElement();
+    setSelectedCommunityPost(post);
+  };
+
+  const closeCommunityPostModal = () => {
+    blurActiveElement();
+    setSelectedCommunityPost(null);
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -1319,7 +1340,7 @@ export default function ChallengesScreen() {
               <TouchableOpacity
                 style={styles.communityFilterIconWrap}
                 activeOpacity={0.88}
-                onPress={() => setCommunityFilterPickerOpen(true)}
+                onPress={openCommunityFilterPicker}
               >
                 <Ionicons name="filter" size={14} color="rgba(255,255,255,0.78)" />
               </TouchableOpacity>
@@ -1329,12 +1350,12 @@ export default function ChallengesScreen() {
               visible={communityFilterPickerOpen}
               transparent
               animationType="fade"
-              onRequestClose={() => setCommunityFilterPickerOpen(false)}
+              onRequestClose={closeCommunityFilterPicker}
             >
               <TouchableOpacity
                 style={styles.communityFilterModalBackdrop}
                 activeOpacity={1}
-                onPress={() => setCommunityFilterPickerOpen(false)}
+                onPress={closeCommunityFilterPicker}
               >
                 <View style={styles.communityFilterModalCard}>
                   {COMMUNITY_AUDIENCE_FILTERS.map((filterKey) => {
@@ -1346,7 +1367,7 @@ export default function ChallengesScreen() {
                         style={styles.communityFilterOption}
                         activeOpacity={0.88}
                         onPress={() => {
-                          setCommunityFilterPickerOpen(false);
+                          closeCommunityFilterPicker();
                           if (!isAllowed) {
                             setRestrictedSection(`Community ${filterKey}`);
                             return;
@@ -1463,7 +1484,7 @@ export default function ChallengesScreen() {
             {/* Community Posts */}
             {!communityLoading && filteredCommunityPosts.map((post) => (
               <View key={post.id} style={styles.postCard}>
-                <TouchableOpacity activeOpacity={0.92} onPress={() => setSelectedCommunityPost(post)}>
+                <TouchableOpacity activeOpacity={0.92} onPress={() => openCommunityPostModal(post)}>
                   <View style={styles.postHeader}>
                     {getImageSource(post.author_profile_image) ? (
                       <Image source={getImageSource(post.author_profile_image)!} style={styles.postAvatarImage} />
@@ -1605,11 +1626,11 @@ export default function ChallengesScreen() {
         visible={selectedCommunityPost !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedCommunityPost(null)}
+        onRequestClose={closeCommunityPostModal}
       >
         <View style={styles.postModalOverlay}>
           <View style={styles.postModalCard}>
-            <TouchableOpacity style={styles.postModalClose} onPress={() => setSelectedCommunityPost(null)}>
+            <TouchableOpacity style={styles.postModalClose} onPress={closeCommunityPostModal}>
               <Ionicons name="close" size={22} color="#fff" />
             </TouchableOpacity>
 

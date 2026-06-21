@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
+import { blurActiveElement } from '../lib/navigation';
 
 type AccessRestrictionModalProps = {
   visible: boolean;
@@ -18,16 +19,11 @@ export default function AccessRestrictionModal({
   onUpdatePlan,
   onBackHome,
 }: AccessRestrictionModalProps) {
-  const blurActiveElement = () => {
-    if (typeof document === 'undefined') {
-      return;
+  useEffect(() => {
+    if (visible) {
+      blurActiveElement();
     }
-
-    const activeElement = document.activeElement;
-    if (activeElement instanceof HTMLElement) {
-      activeElement.blur();
-    }
-  };
+  }, [visible]);
 
   const handleClose = () => {
     blurActiveElement();
