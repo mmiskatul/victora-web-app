@@ -17,7 +17,29 @@ import { Colors } from '../../constants/Colors';
 const DEFAULT_THUMBNAIL =
   'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=300&auto=format&fit=crop';
 
-function buildWorkoutPlayerHtml(videoUrl: string) {
+function extractVimeoId(videoUrl: string) {
+  const normalizedUrl = String(videoUrl || '').trim();
+  if (!normalizedUrl) {
+    return '';
+  }
+
+  const match = normalizedUrl.match(/vimeo\.com\/(?:video\/)?([0-9]+)/i);
+  return match?.[1] ? match[1] : '';
+}
+
+function looksLikeDirectVideoUrl(videoUrl: string) {
+  const normalizedUrl = String(videoUrl || '').trim().toLowerCase();
+  return normalizedUrl.endsWith('.mp4')
+    || normalizedUrl.endsWith('.webm')
+    || normalizedUrl.endsWith('.mov')
+    || normalizedUrl.endsWith('.m3u8')
+    || normalizedUrl.includes('.mp4?')
+    || normalizedUrl.includes('.webm?')
+    || normalizedUrl.includes('.mov?')
+    || normalizedUrl.includes('.m3u8?');
+}
+
+function buildWorkoutPlayerHtml(videoUrl: string, mode: 'vimeo' | 'direct') {
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -46,13 +68,22 @@ function buildWorkoutPlayerHtml(videoUrl: string) {
     </style>
   </head>
   <body>
-    <iframe
+    ${mode === 'vimeo'
+      ? `<iframe
       class="frame"
       src="${videoUrl}"
       allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
       allowfullscreen
       referrerpolicy="strict-origin-when-cross-origin"
-    ></iframe>
+    ></iframe>`
+      : `<video
+      class="frame"
+      src="${videoUrl}"
+      controls
+      playsinline
+      autoplay
+      preload="metadata"
+    ></video>`}
     <script>
       window.open = function () { return null; };
       document.addEventListener('click', function (event) {
@@ -94,23 +125,47 @@ export default function WorkoutPlayerScreen() {
     id?: string;
     title?: string;
     vimeoId?: string;
+    videoUrl?: string;
+    videoSource?: string;
     tag?: string;
     thumbnail?: string;
   }>();
 
   const title = typeof params.title === 'string' ? params.title : 'Workout';
   const vimeoId = typeof params.vimeoId === 'string' ? params.vimeoId : '';
+  const videoUrl = typeof params.videoUrl === 'string' ? params.videoUrl : '';
+  const videoSource = typeof params.videoSource === 'string' ? params.videoSource : '';
   const tag = typeof params.tag === 'string' ? params.tag : 'Workout';
   const thumbnail = typeof params.thumbnail === 'string' ? params.thumbnail : DEFAULT_THUMBNAIL;
 
-  const embedUrl = useMemo(() => {
-    if (!vimeoId) {
-      return '';
+  const playback = useMemo(() => {
+    const normalizedSource = videoSource.trim().toUpperCase();
+    const resolvedVimeoId = vimeoId || extractVimeoId(videoUrl);
+
+    if (resolvedVimeoId && (normalizedSource === 'VIMEO' || !videoUrl || videoUrl.includes('vimeo.com'))) {
+      return {
+        mode: 'vimeo' as const,
+        url: `https://player.vimeo.com/video/${encodeURIComponent(resolvedVimeoId)}?autoplay=1&title=0&byline=0&portrait=0&playsinline=1&dnt=1`,
+      };
     }
 
-    return `https://player.vimeo.com/video/${encodeURIComponent(vimeoId)}?autoplay=1&title=0&byline=0&portrait=0&playsinline=1&dnt=1`;
-  }, [vimeoId]);
-  const playerHtml = useMemo(() => (embedUrl ? buildWorkoutPlayerHtml(embedUrl) : ''), [embedUrl]);
+    if (videoUrl && (normalizedSource === 'UPLOAD' || normalizedSource === 'DIRECT' || looksLikeDirectVideoUrl(videoUrl) || !resolvedVimeoId)) {
+      return {
+        mode: 'direct' as const,
+        url: videoUrl,
+      };
+    }
+
+    return {
+      mode: null,
+      url: '',
+    };
+  }, [videoSource, videoUrl, vimeoId]);
+
+  const playerHtml = useMemo(
+    () => (playback.mode && playback.url ? buildWorkoutPlayerHtml(playback.url, playback.mode) : ''),
+    [playback],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -136,17 +191,28 @@ export default function WorkoutPlayerScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      {embedUrl ? (
+      {playback.url ? (
         <View style={styles.playerWrap}>
           {Platform.OS === 'web' ? (
-            <iframe
-              src={embedUrl}
-              style={styles.webFrame as any}
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-              title={title}
-            />
+            playback.mode === 'vimeo' ? (
+              <iframe
+                src={playback.url}
+                style={styles.webFrame as any}
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                title={title}
+              />
+            ) : (
+              <video
+                src={playback.url}
+                style={styles.webVideo as any}
+                controls
+                playsInline
+                autoPlay
+                preload="metadata"
+              />
+            )
           ) : (
             <WebView
               source={{ html: playerHtml }}
@@ -246,6 +312,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderWidth: 0,
+    backgroundColor: '#0E1326',
+  },
+  webVideo: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#0E1326',
   },
   loadingWrap: {

@@ -31,6 +31,7 @@ type ChallengePlanExercise = {
   workout_id: string;
   workout_title: string;
   workout_vimeo_id: string;
+  workout_video_url: string;
   workout_thumbnail: string;
 };
 
@@ -141,6 +142,46 @@ function buildWorkoutPlayerHtml(videoUrl: string) {
     </script>
   </body>
 </html>`;
+}
+
+function buildDirectVideoPlayerHtml(videoUrl: string) {
+  return `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background: #050816;
+        overflow: hidden;
+      }
+      video {
+        width: 100%;
+        height: 100%;
+        background: #050816;
+      }
+    </style>
+  </head>
+  <body>
+    <video src="${videoUrl}" controls playsinline autoplay preload="metadata"></video>
+  </body>
+</html>`;
+}
+
+function looksLikeDirectVideoUrl(videoUrl: string) {
+  const normalizedUrl = String(videoUrl || '').trim().toLowerCase();
+  return normalizedUrl.endsWith('.mp4')
+    || normalizedUrl.endsWith('.webm')
+    || normalizedUrl.endsWith('.mov')
+    || normalizedUrl.endsWith('.m3u8')
+    || normalizedUrl.includes('.mp4?')
+    || normalizedUrl.includes('.webm?')
+    || normalizedUrl.includes('.mov?')
+    || normalizedUrl.includes('.m3u8?');
 }
 
 function isAllowedWorkoutPlayerRequest(url: string): boolean {
@@ -550,7 +591,7 @@ export default function ChallengeProgressScreen() {
   const [completionUpdatingKey, setCompletionUpdatingKey] = useState('');
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({});
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
-  const [videoModal, setVideoModal] = useState<{ title: string; vimeoId: string } | null>(null);
+  const [videoModal, setVideoModal] = useState<{ title: string; vimeoId: string; videoUrl: string } | null>(null);
   const [reportAction, setReportAction] = useState<'download' | 'community' | ''>('');
   const [errorDialog, setErrorDialog] = useState<{ title: string; message: string } | null>(null);
 
@@ -629,13 +670,14 @@ export default function ChallengeProgressScreen() {
   }, []);
 
   const openLinkedWorkout = useCallback((exercise: ChallengePlanExercise) => {
-    if (!exercise.workout_vimeo_id) {
+    if (!exercise.workout_vimeo_id && !exercise.workout_video_url) {
       return;
     }
     blurActiveElement();
     setVideoModal({
       title: exercise.workout_title || `${exercise.name} Demo`,
       vimeoId: exercise.workout_vimeo_id,
+      videoUrl: exercise.workout_video_url,
     });
   }, []);
 
@@ -644,14 +686,30 @@ export default function ChallengeProgressScreen() {
     setVideoModal(null);
   }, []);
 
-  const videoEmbedUrl = useMemo(() => {
-    if (!videoModal?.vimeoId) {
-      return '';
+  const videoPlayback = useMemo(() => {
+    if (videoModal?.vimeoId) {
+      return {
+        mode: 'vimeo' as const,
+        url: `https://player.vimeo.com/video/${encodeURIComponent(videoModal.vimeoId)}?autoplay=1&title=0&byline=0&portrait=0&playsinline=1&dnt=1`,
+      };
     }
-    return `https://player.vimeo.com/video/${encodeURIComponent(videoModal.vimeoId)}?autoplay=1&title=0&byline=0&portrait=0&playsinline=1&dnt=1`;
+    if (videoModal?.videoUrl) {
+      return {
+        mode: 'direct' as const,
+        url: videoModal.videoUrl,
+      };
+    }
+    return { mode: null, url: '' };
   }, [videoModal]);
 
-  const videoPlayerHtml = useMemo(() => (videoEmbedUrl ? buildWorkoutPlayerHtml(videoEmbedUrl) : ''), [videoEmbedUrl]);
+  const videoPlayerHtml = useMemo(() => {
+    if (!videoPlayback.url || !videoPlayback.mode) {
+      return '';
+    }
+    return videoPlayback.mode === 'vimeo'
+      ? buildWorkoutPlayerHtml(videoPlayback.url)
+      : buildDirectVideoPlayerHtml(videoPlayback.url);
+  }, [videoPlayback]);
 
   const toggleDayExpanded = useCallback((dayNumber: number) => {
     setExpandedDays((current) => ({ ...current, [dayNumber]: !current[dayNumber] }));
@@ -831,16 +889,27 @@ export default function ChallengeProgressScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.videoModalPlayerWrap}>
-              {videoEmbedUrl ? (
+              {videoPlayback.url ? (
                 Platform.OS === 'web' ? (
-                  <iframe
-                    src={videoEmbedUrl}
-                    style={styles.videoModalFrame as any}
-                    allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    title={videoModal?.title || 'Workout video'}
-                  />
+                  videoPlayback.mode === 'vimeo' ? (
+                    <iframe
+                      src={videoPlayback.url}
+                      style={styles.videoModalFrame as any}
+                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      title={videoModal?.title || 'Workout video'}
+                    />
+                  ) : (
+                    <video
+                      src={videoPlayback.url}
+                      style={styles.videoModalFrame as any}
+                      controls
+                      playsInline
+                      autoPlay
+                      preload="metadata"
+                    />
+                  )
                 ) : (
                   <WebView
                     source={{ html: videoPlayerHtml }}

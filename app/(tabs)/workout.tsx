@@ -194,6 +194,8 @@ export default function WorkoutScreen() {
         id: workout.id,
         title: workout.title,
         vimeoId: workout.vimeoId,
+        videoUrl: workout.videoUrl,
+        videoSource: workout.videoSource,
         tag: workout.tag,
         thumbnail: workout.thumbnail,
       },
