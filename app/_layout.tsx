@@ -9,7 +9,7 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import { Colors } from '../constants/Colors';
-import { fetchCurrentUser, getValidAuthTokens, setAuthFailureHandler } from '../lib/api';
+import { fetchCurrentUser, getAuthUser, getValidAuthTokens, setAuthFailureHandler } from '../lib/api';
 import { getPostAuthRoute, isPublicRoute, isRouteAllowedForPlan } from '../lib/access';
 
 export default function RootLayout() {
@@ -38,8 +38,29 @@ export default function RootLayout() {
     }
 
     let cancelled = false;
+    let hasGrantedAccessFromCache = false;
 
     const guard = async () => {
+      const applyAccess = async (user: Awaited<ReturnType<typeof getAuthUser>>) => {
+        if (!user) {
+          return false;
+        }
+
+        if (isPublicRoute(pathname)) {
+          router.replace(getPostAuthRoute(user));
+          return true;
+        }
+
+        if (!isRouteAllowedForPlan(pathname, user)) {
+          router.replace(getPostAuthRoute(user));
+          return true;
+        }
+
+        hasGrantedAccessFromCache = true;
+        setCheckingAccess(false);
+        return false;
+      };
+
       try {
         const tokens = await getValidAuthTokens();
         if (cancelled) {
@@ -51,6 +72,19 @@ export default function RootLayout() {
             router.replace('/login');
           }
           setCheckingAccess(false);
+          return;
+        }
+
+        const cachedUser = await getAuthUser();
+        if (cancelled) {
+          return;
+        }
+
+        if (await applyAccess(cachedUser)) {
+          return;
+        }
+
+        if (cachedUser) {
           return;
         }
 
@@ -71,6 +105,11 @@ export default function RootLayout() {
         setCheckingAccess(false);
       } catch {
         if (cancelled) {
+          return;
+        }
+
+        if (hasGrantedAccessFromCache) {
+          setCheckingAccess(false);
           return;
         }
 
